@@ -1,6 +1,6 @@
 # unlaxer-dsl
 
-UBNF（Unlaxer BNF）記法で書いた文法定義から、Java のパーサー・AST・マッパー・エバリュエーターを自動生成するツールです。
+UBNF（Unlaxer BNF）記法で書いた文法定義から、Java のパーサー・AST・マッパー・エバリュエーター・LSP サーバーを自動生成し、VS Code 拡張（VSIX）までビルドできるツールです。
 
 ---
 
@@ -23,6 +23,10 @@ UBNF（Unlaxer BNF）記法で書いた文法定義から、Java のパーサー
   - [ParserGenerator](#parsergenerator)
   - [MapperGenerator](#mappergenerator)
   - [EvaluatorGenerator](#evaluatorgenerator)
+  - [LSPGenerator](#lspgenerator)
+  - [LSPLauncherGenerator](#lsplaunchergenerator)
+- [CodegenMain — CLI ツール](#codegenmain--cli-ツール)
+- [VS Code 拡張（VSIX）のビルド](#vs-code-拡張vsixのビルド)
 - [TinyCalc チュートリアル](#tinycalc-チュートリアル)
 - [プロジェクト構造](#プロジェクト構造)
 - [ロードマップ](#ロードマップ)
@@ -32,11 +36,15 @@ UBNF（Unlaxer BNF）記法で書いた文法定義から、Java のパーサー
 ## 特徴
 
 - **UBNF 記法** — BNF 拡張記法（グループ `()`、Optional `[]`、繰り返し `{}`、キャプチャ `@name`）でシンプルに文法を記述できる
-- **4 種類のコード生成** — 1 つの文法定義から 4 つの Java クラスを自動生成
+- **6 種類のコード生成** — 1 つの文法定義から 6 つの Java クラスを自動生成
   - `XxxParsers.java` — unlaxer-common のパーサーコンビネータを使ったパーサー
   - `XxxAST.java` — sealed interface + record による型安全な AST
   - `XxxMapper.java` — パースツリー → AST 変換のスケルトン
   - `XxxEvaluator.java` — AST を走査する抽象エバリュエーター
+  - `XxxLanguageServer.java` — lsp4j 製 LSP サーバー（補完・ホバー・シンタックスハイライト）
+  - `XxxLspLauncher.java` — stdio 経由で起動する LSP サーバーの main クラス
+- **CLI ツール `CodegenMain`** — `.ubnf` ファイルを指定してコマンド 1 行でソースを生成
+- **VSIX ワンコマンドビルド** — `tinycalc-vscode/` で `mvn verify` を実行するだけで VS Code 拡張（`.vsix`）が `target/` に生成される
 - **Java 21 対応** — sealed interface・record・switch 式をフル活用
 - **自己ホスティング設計** — UBNF 文法自体も UBNF で記述されており、将来的には自分自身を処理できることを目指している
 
@@ -44,10 +52,11 @@ UBNF（Unlaxer BNF）記法で書いた文法定義から、Java のパーサー
 
 ## 前提条件
 
-| ソフトウェア | バージョン |
-|---|---|
-| Java | 21 以上（`--enable-preview` 有効） |
-| Maven | 3.8 以上 |
+| ソフトウェア | バージョン | 用途 |
+|---|---|---|
+| Java | 21 以上（`--enable-preview` 有効） | ライブラリ本体・コード生成 |
+| Maven | 3.8 以上 | ビルド管理 |
+| Node.js + npm | 18 以上 | VSIX ビルド時のみ必要 |
 
 ---
 
@@ -289,6 +298,11 @@ var mapper = new MapperGenerator().generate(grammar);
 
 // エバリュエーター生成
 var evaluator = new EvaluatorGenerator().generate(grammar);
+
+// LSP サーバー生成
+var lspServer  = new LSPGenerator().generate(grammar);
+// LSP ランチャー生成
+var lspLauncher = new LSPLauncherGenerator().generate(grammar);
 ```
 
 ---
@@ -772,6 +786,121 @@ public class TinyCalcCalculator extends TinyCalcEvaluator<Double> {
 
 ---
 
+### LSPGenerator
+
+`{Name}LanguageServer.java` を生成する。lsp4j を使った LSP サーバーで、以下の機能をスケルトンとして含む。
+
+| 機能 | 実装内容 |
+|---|---|
+| `initialize` | TextDocumentSync.Full + Completion + Hover + SemanticTokens |
+| `completion` | grammar の `TerminalElement` から自動抽出したキーワード一覧を返す |
+| `hover` | パース成功時は `"Valid {Name}"`、失敗時は `"Parse error at offset N"` |
+| `semanticTokensFull` | 有効範囲（type=0 緑）+ 無効範囲（type=1 赤）の 2 トークン |
+| `didOpen / didChange` | `{Name}Parsers.getRootParser()` でパースし診断（Diagnostic）を publish |
+
+**生成される `TinyCalcLanguageServer.java` の主要部分：**
+
+```java
+public class TinyCalcLanguageServer implements LanguageServer, LanguageClientAware {
+
+    private static final List<String> KEYWORDS =
+        List.of("var", "variable", "set", "(", ")", ";", "+", "-", "*", "/");
+
+    public ParseResult parseDocument(String uri, String content) {
+        Parser parser = TinyCalcParsers.getRootParser();
+        ParseContext context = new ParseContext(StringSource.createRootSource(content));
+        Parsed result = parser.parse(context);
+        // ...publishDiagnostics
+    }
+
+    static class TinyCalcLanguageServerTextDocumentService implements TextDocumentService {
+        // didOpen, didChange, completion, hover, semanticTokensFull ...
+    }
+    static class TinyCalcLanguageServerWorkspaceService implements WorkspaceService { ... }
+}
+```
+
+---
+
+### LSPLauncherGenerator
+
+`{Name}LspLauncher.java` を生成する。stdio 経由で LSP サーバーを起動する `main` クラス。
+
+```java
+public class TinyCalcLspLauncher {
+    public static void main(String[] args) throws IOException {
+        TinyCalcLanguageServer server = new TinyCalcLanguageServer();
+        Launcher<LanguageClient> launcher =
+            LSPLauncher.createServerLauncher(server, System.in, System.out);
+        server.connect(launcher.getRemoteProxy());
+        launcher.startListening();
+    }
+}
+```
+
+---
+
+## CodegenMain — CLI ツール
+
+`CodegenMain` は `.ubnf` ファイルを読み込んで指定したジェネレーターを一括実行し、Java ソースをファイルに書き出す CLI ツール。
+
+```bash
+java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
+  --grammar path/to/my.ubnf \
+  --output  src/main/java \
+  --generators Parser,LSP,Launcher
+```
+
+| オプション | 説明 | デフォルト |
+|---|---|---|
+| `--grammar <file>` | `.ubnf` ファイルのパス | （必須） |
+| `--output <dir>` | 出力ルートディレクトリ（package 構造で書き出す） | （必須） |
+| `--generators <list>` | カンマ区切りの生成器名 | `Parser,LSP,Launcher` |
+
+使用可能な生成器名: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`
+
+---
+
+## VS Code 拡張（VSIX）のビルド
+
+`tinycalc-vscode/` ディレクトリが TinyCalc 言語の VS Code 拡張サンプルを含む。
+`mvn verify` 1 コマンドで **文法定義 → コード生成 → fat jar → VSIX** までを自動実行する。
+
+### 前提
+
+```bash
+# unlaxer-dsl を Maven ローカルリポジトリにインストール（初回のみ）
+cd unlaxer-dsl
+mvn install -DskipTests
+```
+
+### ビルド
+
+```bash
+cd tinycalc-vscode
+mvn verify
+# → target/tinycalc-lsp-0.1.0.vsix
+```
+
+### Maven フェーズ別の処理内容
+
+| フェーズ | 処理 | 出力先 |
+|---|---|---|
+| `generate-sources` | `CodegenMain` が `grammar/tinycalc.ubnf` を読み込み Java ソースを生成 | `target/generated-sources/tinycalc/` |
+| `compile` | 生成された `TinyCalcParsers`, `TinyCalcLanguageServer`, `TinyCalcLspLauncher` をコンパイル | `target/classes/` |
+| `package` | `maven-shade-plugin` で fat jar を作成し `server-dist/` にコピー | `target/tinycalc-lsp-server.jar` |
+| `verify` | `npm install` → `npx vsce package`（内部で TypeScript コンパイルも実行） | `target/tinycalc-lsp-0.1.0.vsix` |
+
+### インストール
+
+```bash
+code --install-extension tinycalc-vscode/target/tinycalc-lsp-0.1.0.vsix
+```
+
+`.tcalc` ファイルを開くと LSP サーバーが自動起動する。
+
+---
+
 ## TinyCalc チュートリアル
 
 TinyCalc は変数宣言と四則演算をサポートする小さな計算機 DSL である。以下は文法定義から評価までの流れ。
@@ -840,16 +969,19 @@ unlaxer-dsl/
 │   └── tinycalc.ubnf          TinyCalc サンプル文法
 ├── src/
 │   ├── main/java/org/unlaxer/dsl/
+│   │   ├── CodegenMain.java       CLI ツール（ubnf → Java ソース一括生成）
 │   │   ├── bootstrap/
 │   │   │   ├── UBNFAST.java       UBNF の AST（sealed interface + record）
 │   │   │   ├── UBNFParsers.java   Bootstrap パーサー（手書き）
 │   │   │   └── UBNFMapper.java    パースツリー → AST マッパー
 │   │   └── codegen/
-│   │       ├── CodeGenerator.java     共通インターフェース
-│   │       ├── ASTGenerator.java      XxxAST.java 生成器
-│   │       ├── ParserGenerator.java   XxxParsers.java 生成器
-│   │       ├── MapperGenerator.java   XxxMapper.java 生成器
-│   │       └── EvaluatorGenerator.java XxxEvaluator.java 生成器
+│   │       ├── CodeGenerator.java         共通インターフェース
+│   │       ├── ASTGenerator.java          XxxAST.java 生成器
+│   │       ├── ParserGenerator.java       XxxParsers.java 生成器
+│   │       ├── MapperGenerator.java       XxxMapper.java 生成器
+│   │       ├── EvaluatorGenerator.java    XxxEvaluator.java 生成器
+│   │       ├── LSPGenerator.java          XxxLanguageServer.java 生成器
+│   │       └── LSPLauncherGenerator.java  XxxLspLauncher.java 生成器
 │   └── test/java/org/unlaxer/dsl/
 │       ├── UBNFParsersTest.java
 │       ├── UBNFMapperTest.java
@@ -857,7 +989,24 @@ unlaxer-dsl/
 │           ├── ASTGeneratorTest.java
 │           ├── ParserGeneratorTest.java
 │           ├── MapperGeneratorTest.java
-│           └── EvaluatorGeneratorTest.java
+│           ├── EvaluatorGeneratorTest.java
+│           ├── LSPGeneratorTest.java
+│           ├── LSPLauncherGeneratorTest.java
+│           └── LSPCompileVerificationTest.java
+├── tinycalc-vscode/           VS Code 拡張サンプル（TinyCalc）
+│   ├── pom.xml                Maven ビルド設定（codegen → compile → jar → VSIX）
+│   ├── grammar/
+│   │   └── tinycalc.ubnf      拡張のソース文法（CodegenMain への入力）
+│   ├── src/
+│   │   └── extension.ts       VS Code クライアント（TypeScript）
+│   ├── syntaxes/
+│   │   └── tinycalc.tmLanguage.json  TextMate 文法（シンタックスハイライト）
+│   ├── language-configuration.json
+│   ├── package.json
+│   └── target/                ← ビルド成果物（gitignore）
+│       ├── generated-sources/ ← 生成 Java ソース
+│       ├── tinycalc-lsp-server.jar  ← fat jar
+│       └── tinycalc-lsp-0.1.0.vsix ← VS Code 拡張パッケージ
 └── pom.xml
 ```
 
@@ -872,9 +1021,13 @@ unlaxer-dsl/
 | Phase 2 | AST 定義・Bootstrap マッパー（`UBNFAST.java`, `UBNFMapper.java`） | 完了 |
 | Phase 3 | ASTGenerator / EvaluatorGenerator / MapperGenerator 実装 | 完了 |
 | Phase 4 | ParserGenerator 実装 | 完了 |
-| Phase 5 | 生成コードのコンパイル検証（`unlaxer-runtime-compiler` 利用） | 未着手 |
-| Phase 6 | 自己ホスティング（`grammar/ubnf.ubnf` から自分自身を生成） | 未着手 |
-| Phase 7 | LSP / DAP サポート自動生成 | 未着手 |
+| Phase 5 | TinyCalc 統合テスト（`TinyCalcIntegrationTest`） | 完了 |
+| Phase 6 | 自己ホスティングテスト（`SelfHostingTest`） | 完了 |
+| Phase 7 | コンパイル検証テスト（`CompileVerificationTest`） | 完了 |
+| Phase 8 | LSP サーバー自動生成（`LSPGenerator`, `LSPLauncherGenerator`, `CodegenMain`） | 完了 |
+| Phase 9 | VSIX ワンコマンドビルド（`tinycalc-vscode/pom.xml`） | 完了 |
+| Phase 10 | 自己ホスティング（`grammar/ubnf.ubnf` から自分自身を生成） | 未着手 |
+| Phase 11 | DAP サポート自動生成 | 未着手 |
 
 ---
 

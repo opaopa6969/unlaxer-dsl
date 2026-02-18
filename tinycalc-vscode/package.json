@@ -62,9 +62,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "build:server": "cd server && mvn -q -DskipTests package && node ../tools/copyServerJar.js",
-    "package": "npx --yes @vscode/vsce package"
+    "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",

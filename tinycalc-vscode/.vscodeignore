@@ -1,13 +1,12 @@
 .vscode/**
 .vscode-test/**
 src/**
+grammar/**
 .gitignore
 .eslintrc.json
 tsconfig.json
 **/*.ts
 **/*.map
 node_modules/**
-server/src/**
-server/target/**
-tools/**
-build.sh
+target/**
+pom.xml

@@ -5,31 +5,33 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.unlaxer</groupId>
-    <artifactId>tinycalc-lsp-server</artifactId>
+    <artifactId>tinycalc-vscode</artifactId>
     <version>0.1.0</version>
     <packaging>jar</packaging>
+    <description>TinyCalc VS Code 拡張 — grammar/tinycalc.ubnf から VSIX を自動生成する</description>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <lsp4j.version>0.23.1</lsp4j.version>
         <generated.sources.dir>${project.build.directory}/generated-sources/tinycalc</generated.sources.dir>
+        <server.dist.dir>${project.basedir}/server-dist</server.dist.dir>
+        <vsix.output>${project.build.directory}/tinycalc-lsp-${project.version}.vsix</vsix.output>
     </properties>
 
     <dependencies>
-        <!-- コード生成ツール（generate-sources フェーズで exec:java として呼び出す） -->
+        <!-- コード生成エンジン (CodegenMain + generators) -->
         <dependency>
             <groupId>org.unlaxer</groupId>
             <artifactId>unlaxer-dsl</artifactId>
             <version>0.1.0-SNAPSHOT</version>
         </dependency>
-        <!-- 生成コードが使う unlaxer-common は unlaxer-dsl 経由で推移的に解決されるが明示する -->
+        <!-- 生成コードが依存するランタイム -->
         <dependency>
             <groupId>org.unlaxer</groupId>
             <artifactId>unlaxer-common</artifactId>
             <version>2.2.0</version>
         </dependency>
-        <!-- 生成コードが使う lsp4j -->
         <dependency>
             <groupId>org.eclipse.lsp4j</groupId>
             <artifactId>org.eclipse.lsp4j</artifactId>
@@ -44,7 +46,11 @@
 
     <build>
         <plugins>
-            <!-- Step 1: CodegenMain を使って .ubnf → Java ソース生成 -->
+
+            <!--
+              Step 1 [generate-sources]: grammar/tinycalc.ubnf を読み込み
+              CodegenMain でパーサー・LSP サーバー・ランチャーを生成する。
+            -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -53,14 +59,12 @@
                     <execution>
                         <id>generate-tinycalc-sources</id>
                         <phase>generate-sources</phase>
-                        <goals>
-                            <goal>java</goal>
-                        </goals>
+                        <goals><goal>java</goal></goals>
                         <configuration>
                             <mainClass>org.unlaxer.dsl.CodegenMain</mainClass>
                             <arguments>
                                 <argument>--grammar</argument>
-                                <argument>${project.basedir}/src/main/resources/tinycalc.ubnf</argument>
+                                <argument>${project.basedir}/grammar/tinycalc.ubnf</argument>
                                 <argument>--output</argument>
                                 <argument>${generated.sources.dir}</argument>
                                 <argument>--generators</argument>
@@ -70,10 +74,53 @@
                             <includePluginDependencies>false</includePluginDependencies>
                         </configuration>
                     </execution>
+
+                    <!--
+                      Step 5 [verify, after package]: npm install を実行する。
+                      verify フェーズは package (shade + antrun) の後に実行されるため、
+                      server-dist/tinycalc-lsp-server.jar が確実に存在する。
+                    -->
+                    <execution>
+                        <id>npm-install</id>
+                        <phase>verify</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>npm</executable>
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                            <arguments>
+                                <argument>install</argument>
+                                <argument>--silent</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!--
+                      Step 6 [verify, after npm-install]: vsce package を実行。
+                      vscode:prepublish フック経由で TypeScript (tsc) も自動コンパイルされる。
+                      VSIX は target/tinycalc-lsp-{version}.vsix に出力される。
+                    -->
+                    <execution>
+                        <id>vsce-package</id>
+                        <phase>verify</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>npx</executable>
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                            <arguments>
+                                <argument>--yes</argument>
+                                <argument>@vscode/vsce</argument>
+                                <argument>package</argument>
+                                <argument>--out</argument>
+                                <argument>${vsix.output}</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
 
-            <!-- Step 2: 生成ソースディレクトリをコンパイル対象に追加 -->
+            <!--
+              Step 2 [generate-sources]: 生成された Java ソースをコンパイル対象に追加する。
+            -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
@@ -82,9 +129,7 @@
                     <execution>
                         <id>add-generated-sources</id>
                         <phase>generate-sources</phase>
-                        <goals>
-                            <goal>add-source</goal>
-                        </goals>
+                        <goals><goal>add-source</goal></goals>
                         <configuration>
                             <sources>
                                 <source>${generated.sources.dir}</source>
@@ -94,7 +139,10 @@
                 </executions>
             </plugin>
 
-            <!-- Step 3: enable-preview でコンパイル（unlaxer-common が preview ビルドのため） -->
+            <!--
+              Step 3 [compile]: enable-preview を付けてコンパイルする。
+              unlaxer-common が preview ビルドのため必須。
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -107,17 +155,21 @@
                 </configuration>
             </plugin>
 
-            <!-- Step 4: fat jar にシェード（main: TinyCalcLspLauncher） -->
+            <!--
+              Step 4 [package, 先頭]: 全依存を含む fat jar を target/ に生成する。
+              mainClass に TinyCalcLspLauncher を指定（java -jar で起動可能）。
+              宣言順が shade → antrun → npm-install → vsce-package となるよう
+              このプラグインを exec より前に記述する。
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.5.1</version>
                 <executions>
                     <execution>
+                        <id>shade-server-jar</id>
                         <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
+                        <goals><goal>shade</goal></goals>
                         <configuration>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <shadedArtifactAttached>false</shadedArtifactAttached>
@@ -143,14 +195,41 @@
                 </executions>
             </plugin>
 
+            <!--
+              Step 4.5 [package, shade の直後]: fat jar を server-dist/ にコピーする。
+              vsce package が server-dist/tinycalc-lsp-server.jar を VSIX に含める。
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-server-jar</id>
+                        <phase>package</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <target>
+                                <mkdir dir="${server.dist.dir}"/>
+                                <copy file="${project.build.directory}/tinycalc-lsp-server.jar"
+                                      tofile="${server.dist.dir}/tinycalc-lsp-server.jar"
+                                      overwrite="true"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
                 <configuration>
                     <argLine>--enable-preview</argLine>
+                    <skipTests>true</skipTests>
                 </configuration>
             </plugin>
+
         </plugins>
     </build>
 </project>
