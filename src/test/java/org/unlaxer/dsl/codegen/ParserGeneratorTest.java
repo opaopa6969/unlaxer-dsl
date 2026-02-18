@@ -1,6 +1,7 @@
 package org.unlaxer.dsl.codegen;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -254,6 +255,61 @@ public class ParserGeneratorTest {
         String source = generate(TINYCALC_GRAMMAR);
         assertTrue("parser classes should have serialVersionUID",
             source.contains("serialVersionUID = 1L"));
+    }
+
+    // =========================================================================
+    // 複合繰り返し体ヘルパー（バグ修正検証）
+    // =========================================================================
+
+    /** ネストしたグループを持つ最小文法 */
+    private static final String NESTED_GROUP_GRAMMAR =
+        "grammar TestNG {\n" +
+        "  @package: test.generated\n" +
+        "  @whitespace: javaStyle\n" +
+        "  @root\n" +
+        "  Rule ::= ( ( 'a' | 'b' ) 'c' ) ;\n" +
+        "}";
+
+    @Test
+    public void testExpressionRepeat0ParserExists() {
+        // ネストしたグループで inner helper (Group1Parser) が生成されることを確認
+        String source = generate(NESTED_GROUP_GRAMMAR);
+        assertTrue("should generate RuleGroup1Parser for inner group",
+            source.contains("class RuleGroup1Parser"));
+    }
+
+    @Test
+    public void testExpressionParserUsesZeroOrMoreRepeat() {
+        // outer Group0Parser が inner Group1Parser を正しく参照することを確認
+        String source = generate(NESTED_GROUP_GRAMMAR);
+        assertTrue("RuleGroup0Parser should reference RuleGroup1Parser (counter bug fix)",
+            source.contains("Parser.get(RuleGroup1Parser.class)"));
+    }
+
+    @Test
+    public void testTermRepeat0ParserExists() {
+        // outer helper (Group0Parser) も生成されることを確認
+        String source = generate(NESTED_GROUP_GRAMMAR);
+        assertTrue("should generate RuleGroup0Parser for outer group",
+            source.contains("class RuleGroup0Parser"));
+    }
+
+    @Test
+    public void testTermParserUsesZeroOrMoreRepeat() {
+        // RuleParser が Group0Parser を正しく使用することを確認
+        String source = generate(NESTED_GROUP_GRAMMAR);
+        assertTrue("RuleParser should use Parser.get(RuleGroup0Parser.class)",
+            source.contains("Parser.get(RuleGroup0Parser.class)"));
+    }
+
+    @Test
+    public void testRepeat0ParserReferencesCorrectGroupParser() {
+        // カウンターバグがない場合: Group2Parser は存在しない
+        String source = generate(NESTED_GROUP_GRAMMAR);
+        assertTrue("RuleGroup0Parser should exist",
+            source.contains("class RuleGroup0Parser"));
+        assertFalse("RuleGroup2Parser must not appear (would indicate counter bug)",
+            source.contains("RuleGroup2Parser"));
     }
 
     // =========================================================================

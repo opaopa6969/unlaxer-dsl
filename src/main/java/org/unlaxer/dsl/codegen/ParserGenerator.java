@@ -76,6 +76,16 @@ public class ParserGenerator implements CodeGenerator {
             return helperCounters.computeIfAbsent(ruleName, k -> new int[]{0,0,0})[2]++;
         }
 
+        int[] snapshotCounters(String ruleName) {
+            int[] c = helperCounters.computeIfAbsent(ruleName, k -> new int[]{0, 0, 0});
+            return new int[]{c[0], c[1], c[2]};
+        }
+
+        void restoreCounters(String ruleName, int[] snapshot) {
+            int[] c = helperCounters.computeIfAbsent(ruleName, k -> new int[]{0, 0, 0});
+            c[0] = snapshot[0]; c[1] = snapshot[1]; c[2] = snapshot[2];
+        }
+
         void addHelper(String ruleName, String code) {
             helpers.computeIfAbsent(ruleName, k -> new ArrayList<>()).add(code);
         }
@@ -271,9 +281,12 @@ public class ParserGenerator implements CodeGenerator {
                 if (!isSingleRuleRef(rep.body())) {
                     int n = ctx.nextRepeat(ruleName);
                     String helperName = ruleName + "Repeat" + n + "Parser";
-                    // サブヘルパーを先に収集
+                    int[] before = ctx.snapshotCounters(ruleName);
                     collectHelpersInBody(ctx, ruleName, rep.body());
+                    int[] after = ctx.snapshotCounters(ruleName);
+                    ctx.restoreCounters(ruleName, before);
                     String helperCode = generateHelperCode(ctx, ruleName, helperName, rep.body());
+                    ctx.restoreCounters(ruleName, after);
                     ctx.addHelper(ruleName, helperCode);
                 }
             }
@@ -281,16 +294,24 @@ public class ParserGenerator implements CodeGenerator {
                 if (!isSingleAtomicElement(opt.body())) {
                     int n = ctx.nextOpt(ruleName);
                     String helperName = ruleName + "Opt" + n + "Parser";
+                    int[] before = ctx.snapshotCounters(ruleName);
                     collectHelpersInBody(ctx, ruleName, opt.body());
+                    int[] after = ctx.snapshotCounters(ruleName);
+                    ctx.restoreCounters(ruleName, before);
                     String helperCode = generateHelperCode(ctx, ruleName, helperName, opt.body());
+                    ctx.restoreCounters(ruleName, after);
                     ctx.addHelper(ruleName, helperCode);
                 }
             }
             case GroupElement g -> {
                 int n = ctx.nextGroup(ruleName);
                 String helperName = ruleName + "Group" + n + "Parser";
+                int[] before = ctx.snapshotCounters(ruleName);
                 collectHelpersInBody(ctx, ruleName, g.body());
+                int[] after = ctx.snapshotCounters(ruleName);
+                ctx.restoreCounters(ruleName, before);
                 String helperCode = generateHelperCode(ctx, ruleName, helperName, g.body());
+                ctx.restoreCounters(ruleName, after);
                 ctx.addHelper(ruleName, helperCode);
             }
             default -> {} // TerminalElement, RuleRefElement

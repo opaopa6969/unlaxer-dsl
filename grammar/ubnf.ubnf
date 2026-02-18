@@ -12,7 +12,7 @@ grammar UBNF {
   // ===== グローバル設定 =====
   @package: org.unlaxer.dsl.bootstrap.generated
   @whitespace: javaStyle
-  @comment: { line: "//" }
+  @comment: { line: '//' }
 
   // ===== トークン定義 =====
   token IDENTIFIER   = IdentifierParser
@@ -22,7 +22,7 @@ grammar UBNF {
   // ===== エントリーポイント =====
   @root
   @mapping(UBNFFile, params=[grammars])
-  UBNFFile ::= GrammarDecl+ @grammars ;
+  UBNFFile ::= { GrammarDecl } @grammars ;
 
   // ===== grammar ブロック =====
   @mapping(GrammarDecl, params=[name, settings, tokens, rules])
@@ -31,7 +31,7 @@ grammar UBNF {
     '{'
       { GlobalSetting } @settings
       { TokenDecl }     @tokens
-      GrammarDecl       @rules
+      { RuleDecl }      @rules
     '}' ;
 
   // ===== グローバル設定 =====
@@ -46,7 +46,7 @@ grammar UBNF {
   StringSettingValue ::= DottedIdentifier @value ;
 
   @mapping(BlockSettingValue, params=[entries])
-  BlockSettingValue ::= '{' KeyValuePair+ @entries '}' ;
+  BlockSettingValue ::= '{' { KeyValuePair } @entries '}' ;
 
   @mapping(KeyValuePair, params=[key, value])
   KeyValuePair ::= IDENTIFIER @key ':' STRING @value ;
@@ -97,7 +97,7 @@ grammar UBNF {
 
   // 連接: A B C
   @mapping(SequenceBody, params=[elements])
-  SequenceBody ::= AnnotatedElement+ @elements ;
+  SequenceBody ::= { AnnotatedElement } @elements ;
 
   // 要素（キャプチャ名付き可）
   @mapping(AnnotatedElement, params=[element, captureName])
