@@ -115,7 +115,6 @@ public class ParserGenerator implements CodeGenerator {
         sb.append("package ").append(packageName).append(";\n\n");
 
         // インポート
-        sb.append("import java.util.Optional;\n");
         sb.append("import java.util.function.Supplier;\n");
         sb.append("import org.unlaxer.RecursiveMode;\n");
         sb.append("import org.unlaxer.parser.Parser;\n");
@@ -128,6 +127,9 @@ public class ParserGenerator implements CodeGenerator {
         }
         sb.append("import org.unlaxer.reducer.TagBasedReducer.NodeKind;\n");
         sb.append("import org.unlaxer.util.cache.SupplierBoundCache;\n");
+        for (String tokenImport : resolveTokenImports(grammar)) {
+            sb.append(tokenImport).append("\n");
+        }
         sb.append("\n");
 
         // クラス宣言
@@ -160,6 +162,40 @@ public class ParserGenerator implements CodeGenerator {
         sb.append("}\n");
 
         return new GeneratedSource(packageName, className, sb.toString());
+    }
+
+    // =========================================================================
+    // トークンクラスのインポート解決
+    // =========================================================================
+
+    /**
+     * grammar の token 宣言に含まれるパーサークラス名を既知パッケージで検索し、
+     * import 文のリストを返す。見つからないクラスは無視する。
+     */
+    private List<String> resolveTokenImports(GrammarDecl grammar) {
+        Set<String> alreadyImported = Set.of("WordParser", "SpaceParser", "CPPComment");
+        String[] candidatePackages = {
+            "org.unlaxer.parser.clang",
+            "org.unlaxer.parser.elementary",
+            "org.unlaxer.parser.posix",
+        };
+        List<String> imports = new ArrayList<>();
+        for (TokenDecl token : grammar.tokens()) {
+            String parserClass = token.parserClass();
+            if (alreadyImported.contains(parserClass) || parserClass.contains(".")) {
+                continue;
+            }
+            for (String pkg : candidatePackages) {
+                try {
+                    Class.forName(pkg + "." + parserClass);
+                    imports.add("import " + pkg + "." + parserClass + ";");
+                    break;
+                } catch (ClassNotFoundException ignored) {
+                    // 次のパッケージを試す
+                }
+            }
+        }
+        return imports;
     }
 
     // =========================================================================
