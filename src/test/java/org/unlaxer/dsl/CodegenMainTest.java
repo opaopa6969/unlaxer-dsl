@@ -8,6 +8,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.Test;
 
@@ -225,6 +228,8 @@ public class CodegenMainTest {
         assertTrue(out.startsWith("{\"reportVersion\":1,"));
         assertTrue(out.contains("\"toolVersion\":\""));
         assertTrue(out.contains("\"generatedAt\":\""));
+        assertHasNonEmptyJsonField(out, "toolVersion");
+        assertGeneratedAtIsIsoInstant(out);
         assertTrue(out.contains("\"mode\":\"validate\""));
         assertTrue(out.contains("\"ok\":true"));
         assertTrue(out.contains("\"grammarCount\":1"));
@@ -257,6 +262,8 @@ public class CodegenMainTest {
             assertTrue(msg.startsWith("{\"reportVersion\":1,"));
             assertTrue(msg.contains("\"toolVersion\":\""));
             assertTrue(msg.contains("\"generatedAt\":\""));
+            assertHasNonEmptyJsonField(msg, "toolVersion");
+            assertGeneratedAtIsIsoInstant(msg);
             assertTrue(msg.contains("\"mode\":\"validate\""));
             assertTrue(msg.contains("\"ok\":false"));
             assertTrue(msg.contains("\"grammar\":\"Invalid\""));
@@ -334,6 +341,8 @@ public class CodegenMainTest {
         assertTrue(report.startsWith("{\"reportVersion\":1,"));
         assertTrue(report.contains("\"toolVersion\":\""));
         assertTrue(report.contains("\"generatedAt\":\""));
+        assertHasNonEmptyJsonField(report, "toolVersion");
+        assertGeneratedAtIsIsoInstant(report);
         assertTrue(report.contains("\"mode\":\"validate\""));
         assertTrue(report.contains("\"ok\":true"));
         assertTrue(report.contains("\"grammarCount\":1"));
@@ -368,9 +377,31 @@ public class CodegenMainTest {
         assertTrue(report.contains("\"reportVersion\":1"));
         assertTrue(report.contains("\"toolVersion\":\""));
         assertTrue(report.contains("\"generatedAt\":\""));
+        assertHasNonEmptyJsonField(report, "toolVersion");
+        assertGeneratedAtIsIsoInstant(report);
         assertTrue(report.contains("\"mode\":\"generate\""));
         assertTrue(report.contains("\"generatedCount\":1"));
         assertTrue(report.contains("\"generatedFiles\":["));
         assertTrue(report.contains("ValidAST.java"));
+    }
+
+    private static void assertHasNonEmptyJsonField(String json, String fieldName) {
+        String value = extractJsonStringField(json, fieldName);
+        assertTrue(fieldName + " should be non-empty", value != null && !value.isBlank());
+    }
+
+    private static void assertGeneratedAtIsIsoInstant(String json) {
+        String value = extractJsonStringField(json, "generatedAt");
+        assertTrue("generatedAt should exist", value != null);
+        Instant.parse(value);
+    }
+
+    private static String extractJsonStringField(String json, String fieldName) {
+        Pattern pattern = Pattern.compile("\"" + Pattern.quote(fieldName) + "\":\"([^\"]+)\"");
+        Matcher matcher = pattern.matcher(json);
+        if (!matcher.find()) {
+            return null;
+        }
+        return matcher.group(1);
     }
 }

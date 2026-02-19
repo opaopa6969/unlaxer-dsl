@@ -85,6 +85,7 @@ Current behavior:
 - In normal generation mode with `--report-format json`, CLI emits generation summary (`generatedCount`, `generatedFiles`).
 - JSON report schema includes stable top-level fields:
   `reportVersion`, `toolVersion`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
+- `toolVersion` is sourced from artifact `Implementation-Version`; fallback is `dev`.
 - Validation failure `issues[]` entries include structured metadata:
   `rule`, `code`, `severity`, `category`, `message`, and `hint` (plus `grammar`).
 - Validation `issues[]` order is deterministic (sorted by `grammar`, `rule`, `code`, `message`).
