@@ -9,6 +9,9 @@ This memo proposes a hybrid approach for advanced parsing features in unlaxer-ds
 
 Draft schema artifact: `docs/schema/parser-ir-v1.draft.json`
 Draft sample payloads: `src/test/resources/schema/parser-ir/`
+- `valid-minimal.json`: smallest valid payload.
+- `valid-rich.json`: optional fields including `scopeEvents` and `diagnostics.related`.
+- `invalid-*.json`: negative fixtures for required keys / span order / code format.
 
 ## 1. Design Goals
 

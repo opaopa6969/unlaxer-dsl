@@ -7,10 +7,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.junit.Test;
 
 public class ParserIrSchemaSampleConsistencyTest {
+
+    private static final Pattern DIAGNOSTIC_CODE_PATTERN = Pattern.compile("^E-[A-Z0-9-]+$|^W-[A-Z0-9-]+$|^I-[A-Z0-9-]+$");
+    private static final Set<String> DIAGNOSTIC_SEVERITIES = Set.of("ERROR", "WARNING", "INFO");
+    private static final Set<String> SCOPE_EVENTS = Set.of("enterScope", "leaveScope", "define", "use");
 
     @Test
     public void testValidSampleSatisfiesDraftSchemaContract() throws Exception {
@@ -19,6 +25,17 @@ public class ParserIrSchemaSampleConsistencyTest {
         validateTopLevelContract(schema, sample);
         validateNodeContract(schema, sample);
         validateSpanOrder(sample);
+        validateOptionalContracts(sample);
+    }
+
+    @Test
+    public void testValidRichSampleSatisfiesDraftSchemaContract() throws Exception {
+        Map<String, Object> schema = loadSchema();
+        Map<String, Object> sample = loadSample("valid-rich.json");
+        validateTopLevelContract(schema, sample);
+        validateNodeContract(schema, sample);
+        validateSpanOrder(sample);
+        validateOptionalContracts(sample);
     }
 
     @Test
@@ -41,6 +58,17 @@ public class ParserIrSchemaSampleConsistencyTest {
             fail("expected span order failure");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("span.start <= span.end"));
+        }
+    }
+
+    @Test
+    public void testInvalidDiagnosticCodeIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-diagnostic-code.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected diagnostic code pattern failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("diagnostic code pattern"));
         }
     }
 
@@ -89,6 +117,65 @@ public class ParserIrSchemaSampleConsistencyTest {
             if (start > end) {
                 throw new IllegalArgumentException("span.start <= span.end required");
             }
+        }
+    }
+
+    private static void validateOptionalContracts(Map<String, Object> sample) {
+        if (sample.containsKey("diagnostics")) {
+            validateDiagnosticsContract(sample);
+        }
+        if (sample.containsKey("scopeEvents")) {
+            validateScopeEventsContract(sample);
+        }
+    }
+
+    private static void validateDiagnosticsContract(Map<String, Object> sample) {
+        List<Object> diagnostics = JsonTestUtil.getArray(sample, "diagnostics");
+        for (Object item : diagnostics) {
+            if (!(item instanceof Map<?, ?> raw)) {
+                throw new IllegalArgumentException("diagnostic must be object");
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> diagnostic = (Map<String, Object>) raw;
+            String code = JsonTestUtil.getString(diagnostic, "code");
+            if (!DIAGNOSTIC_CODE_PATTERN.matcher(code).matches()) {
+                throw new IllegalArgumentException("diagnostic code pattern mismatch: " + code);
+            }
+            String severity = JsonTestUtil.getString(diagnostic, "severity");
+            if (!DIAGNOSTIC_SEVERITIES.contains(severity)) {
+                throw new IllegalArgumentException("unsupported diagnostic severity: " + severity);
+            }
+            JsonTestUtil.getObject(diagnostic, "span");
+            JsonTestUtil.getString(diagnostic, "message");
+            if (diagnostic.containsKey("related")) {
+                List<Object> related = JsonTestUtil.getArray(diagnostic, "related");
+                for (Object relItem : related) {
+                    if (!(relItem instanceof Map<?, ?> relRaw)) {
+                        throw new IllegalArgumentException("diagnostic related must be object");
+                    }
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> relatedObj = (Map<String, Object>) relRaw;
+                    JsonTestUtil.getObject(relatedObj, "span");
+                    JsonTestUtil.getString(relatedObj, "message");
+                }
+            }
+        }
+    }
+
+    private static void validateScopeEventsContract(Map<String, Object> sample) {
+        List<Object> scopeEvents = JsonTestUtil.getArray(sample, "scopeEvents");
+        for (Object item : scopeEvents) {
+            if (!(item instanceof Map<?, ?> raw)) {
+                throw new IllegalArgumentException("scopeEvent must be object");
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> event = (Map<String, Object>) raw;
+            String eventName = JsonTestUtil.getString(event, "event");
+            if (!SCOPE_EVENTS.contains(eventName)) {
+                throw new IllegalArgumentException("unsupported scope event: " + eventName);
+            }
+            JsonTestUtil.getString(event, "scopeId");
+            JsonTestUtil.getObject(event, "span");
         }
     }
 
