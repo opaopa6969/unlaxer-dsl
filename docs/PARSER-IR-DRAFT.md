@@ -63,6 +63,67 @@ Minimum contract:
 - diagnostics stream:
   - code, severity, span, message, hint
 
+### 4.1 v1 Field Matrix (Draft)
+
+Top-level:
+- required:
+  - `irVersion` (string, e.g. `1.0`)
+  - `source` (path or logical id)
+  - `nodes` (array)
+  - `diagnostics` (array)
+- optional:
+  - `tokens` (array)
+  - `trivia` (array)
+  - `scopeEvents` (array)
+  - `annotations` (array)
+
+Node:
+- required:
+  - `id` (stable within one parse)
+  - `kind`
+  - `span.start`, `span.end` (UTF-16 offset by default)
+- optional:
+  - `parentId`
+  - `children`
+  - `text`
+  - `attributes`
+
+Scope event:
+- required:
+  - `event` (`enterScope` | `leaveScope` | `define` | `use`)
+  - `scopeId`
+  - `span`
+- optional:
+  - `symbol`
+  - `kind`
+  - `targetScopeId`
+
+Diagnostic:
+- required:
+  - `code`
+  - `severity` (`ERROR` | `WARNING` | `INFO`)
+  - `span`
+  - `message`
+- optional:
+  - `hint`
+  - `related`
+
+### 4.2 Invariants (Draft)
+
+- node spans must be non-negative and `start <= end`.
+- if `parentId` exists, parent node must exist.
+- scope enter/leave must be balanced per `scopeId`.
+- diagnostic spans must be within source span range.
+- ids are stable only within the same parse result unless stated otherwise.
+
+### 4.3 Versioning Policy (Draft)
+
+- v1 focuses on compatibility, not maximal strictness.
+- additive fields are backward-compatible.
+- removing/renaming required fields requires major version bump.
+- semantic changes (offset unit change, id stability semantics) require major version bump.
+- adapters must declare supported `irVersion` range.
+
 ## 5. Non-UBNF Parser Integration
 
 Introduce an adapter SPI:
@@ -76,6 +137,13 @@ Suggested components:
   - expected IR snapshots
   - required invariants (span order, scope balance, stable ids)
 
+Suggested SPI shape:
+- `ParserIrAdapter#parseToIr(ParseRequest request): ParserIrDocument`
+- adapter metadata:
+  - adapter id
+  - supported IR versions
+  - supported feature flags (interleave/backreference/scope-events)
+
 ## 6. Proposed Work Items
 
 1. Define IR schema document and JSON examples.
@@ -83,6 +151,8 @@ Suggested components:
 3. Implement one reference adapter for a non-UBNF parser.
 4. Add conformance tests and golden snapshots.
 5. Add docs for migration: UBNF-generated parser vs external parser.
+6. Publish "minimal external parser adapter" example in `examples/`.
+7. Add CI lane for parser IR conformance fixtures.
 
 ## 7. Open Questions
 
@@ -90,3 +160,5 @@ Suggested components:
 - Should trivia be required in v1 IR or optional?
 - Do we allow dynamic scope kinds, or fixed enum first?
 - Backreference semantics: exact text equality vs normalized token equality?
+- Offset unit default: UTF-16 vs UTF-8 byte offset?
+- Should IR carry parser trace events, or keep a separate debug stream?
