@@ -45,6 +45,19 @@ public class ParserGeneratorTest {
         "    | IDENTIFIER ;\n" +
         "}";
 
+    private static final String RIGHT_ASSOC_GRAMMAR =
+        "grammar Pow {\n" +
+        "  @package: org.example.pow\n" +
+        "  @whitespace: javaStyle\n" +
+        "  token NUMBER = NumberParser\n" +
+        "  @root\n" +
+        "  @mapping(PowNode, params=[left, op, right])\n" +
+        "  @rightAssoc\n" +
+        "  @precedence(level=30)\n" +
+        "  Expr ::= Atom @left { '^' @op Atom @right } ;\n" +
+        "  Atom ::= NUMBER ;\n" +
+        "}";
+
     // =========================================================================
     // パッケージ名・クラス名
     // =========================================================================
@@ -166,6 +179,15 @@ public class ParserGeneratorTest {
         String source = generate(TINYCALC_GRAMMAR);
         assertTrue("should contain ZeroOrMore for repeat elements",
             source.contains("ZeroOrMore"));
+    }
+
+    @Test
+    public void testRightAssocRuleUsesRecursiveChoice() {
+        String source = generate(RIGHT_ASSOC_GRAMMAR);
+        assertTrue("right-assoc rule should be generated as choice",
+            source.contains("class ExprParser extends LazyChoice"));
+        assertTrue("right-assoc recursive branch should reference itself",
+            source.contains("Parser.get(ExprParser.class)"));
     }
 
     @Test

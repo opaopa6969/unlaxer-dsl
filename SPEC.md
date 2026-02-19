@@ -24,15 +24,15 @@ Current behavior:
 
 ### `@leftAssoc`
 
-- Current status: **declarative only**.
-- It records intent but does not currently change parser generation behavior.
-- Future work: introduce operator-precedence/associativity aware generation.
+- Current status: contract-validated metadata.
+- Parser generation remains grammar-driven.
 
 ### `@rightAssoc`
 
-- Current status: **declarative only**.
+- Current status: partially consumed by parser generation.
 - It uses the same capture/mapping contract as `@leftAssoc` (`left`, `op`, `right`).
 - It is mutually exclusive with `@leftAssoc` on the same rule.
+- Canonical shape `Base { Op Right }` is generated as right-recursive choice (`Base Op Self | Base`).
 
 ### `@precedence(level=...)`
 

@@ -255,8 +255,8 @@ Place annotations immediately before a rule declaration.
 | `@root` | Declares this rule as the parse entry point (root). Its class is returned by `getRootParser()` |
 | `@mapping(ClassName)` | Specifies AST class name for mapping parse tree |
 | `@mapping(ClassName, params=[a, b, c])` | Specifies AST class name and field names. Field types are inferred from capture names |
-| `@leftAssoc` | Declares a left-associative operator (validated as a contract for left/op/right captures and params; parser generation is still grammar-driven) |
-| `@rightAssoc` | Declares a right-associative operator (validated with the same left/op/right contract as `@leftAssoc`) |
+| `@leftAssoc` | Declares a left-associative operator (validated as a contract for left/op/right captures and params; parser generation remains grammar-driven) |
+| `@rightAssoc` | Declares a right-associative operator. Canonical form `Base { Op Right }` is emitted as right-recursive parser generation |
 | `@precedence(level=10)` | Declares precedence metadata for operator rules. Current validator requires pairing with either `@leftAssoc` or `@rightAssoc` and disallows duplicate declarations on one rule |
 | `@whitespace` | Controls whitespace for this rule; it overrides global whitespace settings (optional) |
 

@@ -8,6 +8,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GroupElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.OptionalElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RepeatElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.RightAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RootAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleDecl;
@@ -33,6 +34,8 @@ import java.util.stream.Collectors;
  * 基底チェーンクラスを生成する。</p>
  */
 public class ParserGenerator implements CodeGenerator {
+
+    private record RightAssocShape(AtomicElement base, AtomicElement op) {}
 
     // =========================================================================
     // 内部型
@@ -445,7 +448,8 @@ public class ParserGenerator implements CodeGenerator {
     private String generateRuleClass(GenContext ctx, RuleDecl rule) {
         String ruleName = rule.name();
         String className = ruleName + "Parser";
-        boolean isChoice = isMultiChoice(rule.body());
+        RightAssocShape rightAssocShape = getRightAssocShape(rule);
+        boolean isChoice = rightAssocShape != null || isMultiChoice(rule.body());
 
         StringBuilder sb = new StringBuilder();
         String indent = "    ";
@@ -460,7 +464,11 @@ public class ParserGenerator implements CodeGenerator {
         sb.append(indent).append("    @Override\n");
         sb.append(indent).append("    public Parsers getLazyParsers() {\n");
         sb.append(indent).append("        return new Parsers(\n");
-        sb.append(generateBodyElements(ctx, ruleName, rule.body(), indent + "            "));
+        if (rightAssocShape != null) {
+            sb.append(generateRightAssocElements(ctx, ruleName, className, rightAssocShape, indent + "            "));
+        } else {
+            sb.append(generateBodyElements(ctx, ruleName, rule.body(), indent + "            "));
+        }
         sb.append(indent).append("        );\n");
         sb.append(indent).append("    }\n");
         if (isChoice) {
@@ -468,6 +476,34 @@ public class ParserGenerator implements CodeGenerator {
             sb.append(indent).append("    public java.util.Optional<RecursiveMode> getNotAstNodeSpecifier() { return java.util.Optional.empty(); }\n");
         }
         sb.append(indent).append("}\n\n");
+
+        return sb.toString();
+    }
+
+    private String generateRightAssocElements(
+        GenContext ctx,
+        String ruleName,
+        String className,
+        RightAssocShape shape,
+        String indent
+    ) {
+        String baseCode = generateElementCode(ctx, ruleName, shape.base());
+        String opCode = generateElementCode(ctx, ruleName, shape.op());
+        String chainClass = getChainClassName(ctx, ruleName);
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(indent).append("new ").append(chainClass).append("() {\n");
+        sb.append(indent).append("    private static final long serialVersionUID = 1L;\n");
+        sb.append(indent).append("    @Override\n");
+        sb.append(indent).append("    public Parsers getLazyParsers() {\n");
+        sb.append(indent).append("        return new Parsers(\n");
+        sb.append(indent).append("            ").append(baseCode).append(",\n");
+        sb.append(indent).append("            ").append(opCode).append(",\n");
+        sb.append(indent).append("            Parser.get(").append(className).append(".class)\n");
+        sb.append(indent).append("        );\n");
+        sb.append(indent).append("    }\n");
+        sb.append(indent).append("},\n");
+        sb.append(indent).append(baseCode).append("\n");
 
         return sb.toString();
     }
@@ -646,6 +682,36 @@ public class ParserGenerator implements CodeGenerator {
             return tokenClass + ".class";
         }
         return name + "Parser.class";
+    }
+
+    private RightAssocShape getRightAssocShape(RuleDecl rule) {
+        boolean rightAssoc = rule.annotations().stream().anyMatch(a -> a instanceof RightAssocAnnotation);
+        if (!rightAssoc) {
+            return null;
+        }
+        SequenceBody seq = getSingleSequenceFrom(rule.body());
+        if (seq == null || seq.elements().size() != 2) {
+            return null;
+        }
+        AtomicElement base = seq.elements().get(0).element();
+        AtomicElement second = seq.elements().get(1).element();
+        if (!(second instanceof RepeatElement repeat)) {
+            return null;
+        }
+        SequenceBody repeatSeq = getSingleSequenceFrom(repeat.body());
+        if (repeatSeq == null || repeatSeq.elements().size() < 1) {
+            return null;
+        }
+        AtomicElement op = repeatSeq.elements().get(0).element();
+        return new RightAssocShape(base, op);
+    }
+
+    private SequenceBody getSingleSequenceFrom(RuleBody body) {
+        return switch (body) {
+            case SequenceBody seq -> seq;
+            case ChoiceBody choice when choice.alternatives().size() == 1 -> choice.alternatives().get(0);
+            default -> null;
+        };
     }
 
     /** ルートルール名を返す（@root アノテーション付き） */

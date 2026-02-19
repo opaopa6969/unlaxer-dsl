@@ -271,8 +271,8 @@ Expression ::= Term @left { ( '+' @op | '-' @op ) Term @right } ;
 | `@root` | このルールがパースのエントリーポイント（ルート）であることを宣言。`getRootParser()` が返すクラスになる |
 | `@mapping(ClassName)` | パースツリーをマップする AST クラス名を指定 |
 | `@mapping(ClassName, params=[a, b, c])` | AST クラス名とフィールド名を指定。フィールド型はキャプチャ名から自動推論される |
-| `@leftAssoc` | 左結合演算子であることを宣言（left/op/right の capture・params 契約として検証される。パーサー生成自体は現状 grammar 駆動） |
-| `@rightAssoc` | 右結合演算子であることを宣言（`@leftAssoc` と同じ left/op/right 契約で検証） |
+| `@leftAssoc` | 左結合演算子であることを宣言（left/op/right の capture・params 契約として検証。パーサー生成は grammar 駆動） |
+| `@rightAssoc` | 右結合演算子であることを宣言。標準形 `Base { Op Right }` は右再帰パーサーとして生成される |
 | `@precedence(level=10)` | 演算子ルールの優先順位メタデータ。現状 validator は `@leftAssoc` または `@rightAssoc` との併用を要求し、同一ルールでの重複指定を禁止 |
 | `@whitespace` | このルールの空白処理を個別に制御（global 設定より優先、オプション） |
 
