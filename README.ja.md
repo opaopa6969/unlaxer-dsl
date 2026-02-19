@@ -1,6 +1,6 @@
 # unlaxer-dsl
 
-UBNF（Unlaxer BNF）記法で書いた文法定義から、Java のパーサー・AST・マッパー・エバリュエーター・LSP サーバーを自動生成し、VS Code 拡張（VSIX）までビルドできるツールです。
+UBNF（Unlaxer BNF）記法で書いた文法定義から、Java のパーサー・AST・マッパー・エバリュエーター・LSP サーバー・DAP デバッグアダプターを自動生成し、VS Code 拡張（VSIX）までビルドできるツールです。
 
 ---
 
@@ -25,10 +25,14 @@ UBNF（Unlaxer BNF）記法で書いた文法定義から、Java のパーサー
   - [EvaluatorGenerator](#evaluatorgenerator)
   - [LSPGenerator](#lspgenerator)
   - [LSPLauncherGenerator](#lsplaunchergenerator)
+  - [DAPGenerator](#dapgenerator)
+  - [DAPLauncherGenerator](#daplaunchergenerator)
 - [CodegenMain — CLI ツール](#codegenmain--cli-ツール)
 - [VS Code 拡張（VSIX）のビルド](#vs-code-拡張vsixのビルド)
-- [TinyCalc チュートリアル](#tinycalc-チュートリアル)
+- [チュートリアル 1: TinyCalc](#チュートリアル-1-tinycalc)
+- [チュートリアル 2: UBNF の VS Code 拡張を作る](#チュートリアル-2-ubnf-の-vs-code-拡張を作る)
 - [プロジェクト構造](#プロジェクト構造)
+- [自己ホスティング](#自己ホスティング)
 - [ロードマップ](#ロードマップ)
 
 ---
@@ -36,17 +40,19 @@ UBNF（Unlaxer BNF）記法で書いた文法定義から、Java のパーサー
 ## 特徴
 
 - **UBNF 記法** — BNF 拡張記法（グループ `()`、Optional `[]`、繰り返し `{}`、キャプチャ `@name`）でシンプルに文法を記述できる
-- **6 種類のコード生成** — 1 つの文法定義から 6 つの Java クラスを自動生成
+- **8 種類のコード生成** — 1 つの文法定義から最大 8 つの Java クラスを自動生成
   - `XxxParsers.java` — unlaxer-common のパーサーコンビネータを使ったパーサー
   - `XxxAST.java` — sealed interface + record による型安全な AST
   - `XxxMapper.java` — パースツリー → AST 変換のスケルトン
   - `XxxEvaluator.java` — AST を走査する抽象エバリュエーター
   - `XxxLanguageServer.java` — lsp4j 製 LSP サーバー（補完・ホバー・シンタックスハイライト）
   - `XxxLspLauncher.java` — stdio 経由で起動する LSP サーバーの main クラス
+  - `XxxDebugAdapter.java` — DAP サーバー（launch・parseエラー報告・stopOnEntry・トークン単位ステップ実行・ブレークポイント）
+  - `XxxDapLauncher.java` — stdio 経由で起動する DAP サーバーの main クラス
 - **CLI ツール `CodegenMain`** — `.ubnf` ファイルを指定してコマンド 1 行でソースを生成
-- **VSIX ワンコマンドビルド** — `tinycalc-vscode/` で `mvn verify` を実行するだけで VS Code 拡張（`.vsix`）が `target/` に生成される
+- **VSIX ワンコマンドビルド** — `tinycalc-vscode/` または `ubnf-vscode/` で `mvn verify` を実行するだけで VS Code 拡張（`.vsix`）が `target/` に生成される。LSP + DAP は同一 fat jar に収録
 - **Java 21 対応** — sealed interface・record・switch 式をフル活用
-- **自己ホスティング設計** — UBNF 文法自体も UBNF で記述されており、将来的には自分自身を処理できることを目指している
+- **自己ホスティング達成** — `grammar/ubnf.ubnf` を `ParserGenerator` で処理して生成した `UBNFParsers` が、`ubnf.ubnf` 自身を完全にパースできることを `SelfHostingRoundTripTest` で検証済み
 
 ---
 
@@ -95,15 +101,20 @@ String ubnfSource = Files.readString(Path.of("tinycalc.ubnf"));
 GrammarDecl grammar = UBNFMapper.parse(ubnfSource).grammars().get(0);
 
 // 3. 各コードを生成
-CodeGenerator.GeneratedSource ast       = new ASTGenerator()      .generate(grammar);
-CodeGenerator.GeneratedSource parsers   = new ParserGenerator()   .generate(grammar);
-CodeGenerator.GeneratedSource mapper    = new MapperGenerator()   .generate(grammar);
-CodeGenerator.GeneratedSource evaluator = new EvaluatorGenerator().generate(grammar);
+CodeGenerator.GeneratedSource ast        = new ASTGenerator()         .generate(grammar);
+CodeGenerator.GeneratedSource parsers    = new ParserGenerator()      .generate(grammar);
+CodeGenerator.GeneratedSource mapper     = new MapperGenerator()      .generate(grammar);
+CodeGenerator.GeneratedSource evaluator  = new EvaluatorGenerator()   .generate(grammar);
+CodeGenerator.GeneratedSource lspServer  = new LSPGenerator()         .generate(grammar);
+CodeGenerator.GeneratedSource lspLaunch  = new LSPLauncherGenerator() .generate(grammar);
+CodeGenerator.GeneratedSource dapAdapter = new DAPGenerator()         .generate(grammar);
+CodeGenerator.GeneratedSource dapLaunch  = new DAPLauncherGenerator() .generate(grammar);
 
 // 4. ソースを取り出して保存
-System.out.println(parsers.packageName()); // org.unlaxer.tinycalc.generated
-System.out.println(parsers.className());   // TinyCalcParsers
-System.out.println(parsers.source());      // public class TinyCalcParsers { ... }
+System.out.println(parsers.packageName());    // org.unlaxer.tinycalc.generated
+System.out.println(parsers.className());      // TinyCalcParsers
+System.out.println(dapAdapter.className());   // TinyCalcDebugAdapter
+System.out.println(dapLaunch.className());    // TinyCalcDapLauncher
 ```
 
 ---
@@ -300,9 +311,14 @@ var mapper = new MapperGenerator().generate(grammar);
 var evaluator = new EvaluatorGenerator().generate(grammar);
 
 // LSP サーバー生成
-var lspServer  = new LSPGenerator().generate(grammar);
+var lspServer   = new LSPGenerator().generate(grammar);
 // LSP ランチャー生成
 var lspLauncher = new LSPLauncherGenerator().generate(grammar);
+
+// DAP デバッグアダプター生成
+var dapAdapter  = new DAPGenerator().generate(grammar);
+// DAP ランチャー生成
+var dapLauncher = new DAPLauncherGenerator().generate(grammar);
 ```
 
 ---
@@ -838,6 +854,126 @@ public class TinyCalcLspLauncher {
 }
 ```
 
+### DAPGenerator
+
+`{Name}DebugAdapter.java` を生成する。DAP (Debug Adapter Protocol) over stdio で動作し、
+VS Code から `launch` リクエストを受け取ってファイルをパース・**トークン単位ステップ実行**する。
+
+| リクエスト / イベント | 動作 |
+|---|---|
+| `initialize` | `supportsConfigurationDoneRequest: true` を返す |
+| `launch` | `program` パスと `stopOnEntry` フラグを記録し、`initialized` イベントを発火 |
+| `configurationDone` | `parseAndCollectSteps()` でパース＆ステップ点収集。`stopOnEntry: false` なら即終了、`true` なら `stopped(entry)` |
+| `setBreakpoints` | 要求された行番号を `breakpointLines` に保存し、全件 `verified: true` で返す |
+| `next` (F10) | `stepIndex++`。次のトークンがあれば `stopped(step)`、なければ `terminated` |
+| `continue` (F5) | `findBreakpointIndex()` で次のブレークポイントを探し、あれば `stopped(breakpoint)`、なければ `terminated` |
+| `threads` | スレッド "main"（id=1）を 1 件返す |
+| `stackTrace` | 現在トークンの `offsetFromRoot()` から行/列を計算し、ソースファイルを強調表示 |
+| `scopes` | ステップ実行中は `"Current Token"` スコープ（`variablesReference=1`）を返す |
+| `variables` | 現在トークンのテキストとパーサークラス名を変数として返す |
+| `disconnect` | `System.exit(0)` |
+
+**`parseAndCollectSteps()` の処理:**
+
+1. `launch` args の `program` ファイルを読み込む
+2. `{Name}Parsers.getRootParser()` でパース
+3. 成功 → `result.getConsumed().filteredChildren` をステップ点リストとして収集（空の場合はルートトークンをフォールバック）
+4. 失敗 → `"Parse error at offset N"` を stderr として出力し `terminated`
+
+**ステップ実行の仕組み（トークンツリー歩き）:**
+
+```
+launch → configurationDone
+    ↓ parseAndCollectSteps()
+    ↓ [filteredChildren = [expr1, expr2, expr3, ...]]
+    ↓ stopOnEntry=true → stopped("entry")  ← stepIndex=0, expr1 がエディタで強調
+F10 → next()                               ← stepIndex=1, expr2 が強調
+F10 → next()                               ← stepIndex=2, expr3 が強調
+F10 → next()                               ← stepIndex >= size → terminated
+```
+
+**ブレークポイントの仕組み:**
+
+```
+setBreakpoints([line=3])  ← breakpointLines = {3}
+launch → configurationDone
+    ↓ parseAndCollectSteps()
+    ↓ findBreakpointIndex(-1) → expr at line 3 found → stepIndex=2
+    ↓ stopped("breakpoint")                    ← line 3 がエディタで強調
+F5 → continue_()
+    ↓ findBreakpointIndex(2) → no more → terminated
+```
+
+`stackTrace()` では `token.source.offsetFromRoot().value()` でソース先頭からの文字オフセットを取得し、
+改行カウントで 1-based の行/列に変換する。`getLineForToken()` ヘルパーはブレークポイント行照合にも共用する。
+
+```java
+// 生成される TinyCalcDebugAdapter.java（抜粋）
+public class TinyCalcDebugAdapter implements IDebugProtocolServer {
+
+    private List<Token> stepPoints = new ArrayList<>();
+    private int stepIndex = 0;
+    private String sourceContent = "";
+
+    @Override
+    public CompletableFuture<Void> next(NextArguments args) {
+        stepIndex++;
+        if (stepIndex >= stepPoints.size()) {
+            sendOutput("stdout", "Completed: " + pendingProgram + "\n");
+            sendTerminated();
+        } else {
+            StoppedEventArguments stopped = new StoppedEventArguments();
+            stopped.setReason("step");
+            stopped.setThreadId(1);
+            client.stopped(stopped);
+        }
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletableFuture<StackTraceResponse> stackTrace(StackTraceArguments args) {
+        Token current = stepPoints.get(stepIndex);
+        int charOffset = current.source.offsetFromRoot().value();
+        int line = 0, col = 0;
+        for (int i = 0; i < charOffset && i < sourceContent.length(); i++) {
+            if (sourceContent.charAt(i) == '\n') { line++; col = 0; }
+            else { col++; }
+        }
+        StackFrame frame = new StackFrame();
+        frame.setLine(line + 1);   // DAP は 1-based
+        frame.setColumn(col + 1);
+        ...
+    }
+}
+```
+
+---
+
+### DAPLauncherGenerator
+
+`{Name}DapLauncher.java` を生成する。`DSPLauncher.createServerLauncher` で stdio 接続を確立する main クラス。
+
+```java
+public class TinyCalcDapLauncher {
+    public static void main(String[] args) throws IOException {
+        TinyCalcDebugAdapter adapter = new TinyCalcDebugAdapter();
+        Launcher<IDebugProtocolClient> launcher =
+            DSPLauncher.createServerLauncher(adapter, System.in, System.out);
+        adapter.connect(launcher.getRemoteProxy());
+        launcher.startListening();
+    }
+}
+```
+
+**起動方法（VS Code 拡張から）：**
+
+LSP と同じ fat jar に両方のクラスが含まれるため、`-jar` ではなく `-cp` で起動して main クラスを指定する。
+
+```
+java --enable-preview -cp tinycalc-lsp-server.jar \
+    org.unlaxer.tinycalc.generated.TinyCalcDapLauncher
+```
+
 ---
 
 ## CodegenMain — CLI ツール
@@ -848,7 +984,7 @@ public class TinyCalcLspLauncher {
 java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
   --grammar path/to/my.ubnf \
   --output  src/main/java \
-  --generators Parser,LSP,Launcher
+  --generators Parser,LSP,Launcher,DAP,DAPLauncher
 ```
 
 | オプション | 説明 | デフォルト |
@@ -857,7 +993,7 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
 | `--output <dir>` | 出力ルートディレクトリ（package 構造で書き出す） | （必須） |
 | `--generators <list>` | カンマ区切りの生成器名 | `Parser,LSP,Launcher` |
 
-使用可能な生成器名: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`
+使用可能な生成器名: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 
 ---
 
@@ -886,9 +1022,9 @@ mvn verify
 
 | フェーズ | 処理 | 出力先 |
 |---|---|---|
-| `generate-sources` | `CodegenMain` が `grammar/tinycalc.ubnf` を読み込み Java ソースを生成 | `target/generated-sources/tinycalc/` |
-| `compile` | 生成された `TinyCalcParsers`, `TinyCalcLanguageServer`, `TinyCalcLspLauncher` をコンパイル | `target/classes/` |
-| `package` | `maven-shade-plugin` で fat jar を作成し `server-dist/` にコピー | `target/tinycalc-lsp-server.jar` |
+| `generate-sources` | `CodegenMain` が `grammar/tinycalc.ubnf` を読み込み Java ソースを生成（Parser, LSP, Launcher, DAP, DAPLauncher） | `target/generated-sources/tinycalc/` |
+| `compile` | 生成された 5 クラスをコンパイル | `target/classes/` |
+| `package` | `maven-shade-plugin` で fat jar を作成（LSP・DAP の両クラスを含む）し `server-dist/` にコピー | `target/tinycalc-lsp-server.jar` |
 | `verify` | `npm install` → `npx vsce package`（内部で TypeScript コンパイルも実行） | `target/tinycalc-lsp-0.1.0.vsix` |
 
 ### インストール
@@ -899,9 +1035,61 @@ code --install-extension tinycalc-vscode/target/tinycalc-lsp-0.1.0.vsix
 
 `.tcalc` ファイルを開くと LSP サーバーが自動起動する。
 
+DAP のデバッグは `F5` で起動（または `launch.json` を作成）。
+`.tcalc` ファイルをエディタで開いた状態で `F5` → `TinyCalc Debug` を選択すると、
+そのファイルがパースされ Debug Console に結果が表示される。
+
+**通常実行（`stopOnEntry: false`）：**
+
+```json
+// .vscode/launch.json の例
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "tinycalc",
+      "request": "launch",
+      "name": "Debug TinyCalc File",
+      "program": "${file}"
+    }
+  ]
+}
+```
+
+**ステップ実行（`stopOnEntry: true`）：**
+
+`stopOnEntry: true` を設定するとトークン単位のステップ実行が可能になる。
+パース後に先頭トークンで一時停止し、`F10`（next）でトークンを 1 つずつ進める。
+Variables パネルに現在トークンのテキストとパーサークラス名が表示される。
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "tinycalc",
+      "request": "launch",
+      "name": "Step TinyCalc File",
+      "program": "${file}",
+      "stopOnEntry": true
+    }
+  ]
+}
+```
+
+| 操作 | 説明 |
+|---|---|
+| `F5` (Continue) | 次のブレークポイントまで実行（なければ終了） |
+| `F10` (Next) | 次のトークンへ 1 つ進む |
+| Variables パネル | 現在トークンのテキストとパーサークラス名 |
+| エディタのハイライト | 現在トークンの行/列を自動で示す |
+| ブレークポイント | ガター（行番号左）をクリックして設定。`verified: true` で即時有効になる |
+
+**LSP と DAP は同じ fat jar に含まれる。** 拡張は LSP を `-jar` で、DAP を `-cp … TinyCalcDapLauncher` で起動する。
+
 ---
 
-## TinyCalc チュートリアル
+## チュートリアル 1: TinyCalc
 
 TinyCalc は変数宣言と四則演算をサポートする小さな計算機 DSL である。以下は文法定義から評価までの流れ。
 
@@ -959,6 +1147,197 @@ System.out.println(result); // 7.0
 
 ---
 
+## チュートリアル 2: UBNF の VS Code 拡張を作る
+
+このチュートリアルでは `grammar/ubnf.ubnf`（UBNF 自身の文法定義）を入力として、
+`.ubnf` ファイル対応の VS Code 拡張（VSIX）をゼロからビルドする手順を解説する。
+
+TinyCalc と異なり **「文法定義自体に手書き実装への依存がある」** という特殊な制約があるため、
+その回避策も含めて説明する。
+
+---
+
+### 背景と技術的制約
+
+`grammar/ubnf.ubnf` には次のトークン宣言がある。
+
+```ubnf
+token STRING = SingleQuotedParser
+```
+
+`SingleQuotedParser` は `unlaxer-common` の `UBNFParsers.java` の **inner class** であり、
+通常の `--generators Parser` でパーサーを自動生成すると実行時に `ClassNotFoundException` が発生する。
+
+**解決策**: `--generators LSP,Launcher` のみ生成（Parser は生成しない）し、
+`getRootParser()` を手書きの `org.unlaxer.dsl.bootstrap.UBNFParsers` に委譲する
+shim クラスを `src/main/java/` に手動で置く。
+
+```
+自動生成:  UBNFLanguageServer.java  (LSP サーバー)
+           UBNFLspLauncher.java     (main クラス)
+手動 shim: UBNFParsers.java         (bootstrap の getRootParser() に委譲)
+```
+
+---
+
+### ステップ 1: ディレクトリを作る
+
+```bash
+mkdir -p unlaxer-dsl/ubnf-vscode/src/main/java/org/unlaxer/dsl/bootstrap/generated
+mkdir -p unlaxer-dsl/ubnf-vscode/syntaxes
+```
+
+---
+
+### ステップ 2: UBNFParsers.java（shim）を作る
+
+`ubnf-vscode/src/main/java/org/unlaxer/dsl/bootstrap/generated/UBNFParsers.java`
+
+```java
+package org.unlaxer.dsl.bootstrap.generated;
+
+import org.unlaxer.parser.Parser;
+
+public class UBNFParsers {
+    public static Parser getRootParser() {
+        return org.unlaxer.dsl.bootstrap.UBNFParsers.getRootParser();
+    }
+}
+```
+
+`LSPGenerator` が生成する `UBNFLanguageServer.java` は
+`org.unlaxer.dsl.bootstrap.generated.UBNFParsers.getRootParser()` を呼び出す。
+この shim がその呼び出しを手書き bootstrap 実装に橋渡しする。
+
+---
+
+### ステップ 3: pom.xml を作る
+
+TinyCalc の `pom.xml` との主な差分は次の 4 点。
+
+| 設定 | tinycalc-vscode | ubnf-vscode |
+|---|---|---|
+| `--grammar` | `grammar/tinycalc.ubnf` | `../grammar/ubnf.ubnf` |
+| `--generators` | `Parser,LSP,Launcher` | `LSP,Launcher` |
+| shade `mainClass` | `TinyCalcLspLauncher` | `org.unlaxer.dsl.bootstrap.generated.UBNFLspLauncher` |
+| fat jar 名 | `tinycalc-lsp-server` | `ubnf-lsp-server` |
+
+`build-helper-maven-plugin` は生成された LSP/Launcher コードを
+`target/generated-sources/ubnf/` からコンパイル対象に追加するために引き続き必要。
+
+Maven フェーズ別の処理内容：
+
+| フェーズ | 処理 | 出力先 |
+|---|---|---|
+| `generate-sources` | `CodegenMain` が `grammar/ubnf.ubnf` を読み込み LSP・Launcher を生成 | `target/generated-sources/ubnf/` |
+| `compile` | shim + 生成コード（`UBNFLanguageServer`, `UBNFLspLauncher`）をコンパイル | `target/classes/` |
+| `package` | `maven-shade-plugin` で fat jar を作成し `server-dist/` にコピー | `target/ubnf-lsp-server.jar` |
+| `verify` | `npm install` → `npx vsce package`（TypeScript コンパイルも実行） | `target/ubnf-lsp-0.1.0.vsix` |
+
+---
+
+### ステップ 4: VS Code 拡張の設定ファイルを作る
+
+**`package.json`** — 言語 ID `ubnf`、拡張子 `.ubnf`、設定キー prefix `ubnfLsp.server.*`
+
+```json
+{
+  "name": "ubnf-lsp",
+  "displayName": "UBNF (LSP)",
+  "activationEvents": ["onLanguage:ubnf"],
+  "contributes": {
+    "languages": [{ "id": "ubnf", "extensions": [".ubnf"] }],
+    "grammars": [{
+      "language": "ubnf",
+      "scopeName": "source.ubnf",
+      "path": "./syntaxes/ubnf.tmLanguage.json"
+    }]
+  }
+}
+```
+
+**`src/extension.ts`** — `tinycalcLsp` → `ubnfLsp`、jar パスを `server-dist/ubnf-lsp-server.jar` に変更するだけ。
+
+---
+
+### ステップ 5: シンタックスハイライト定義を作る
+
+`syntaxes/ubnf.tmLanguage.json` に以下のパターンを定義する。
+
+| パターン | スコープ |
+|---|---|
+| `//.*$` | `comment.line.double-slash.ubnf` |
+| `\bgrammar\b`, `\btoken\b` | `keyword.control.ubnf` |
+| `::=`, `\|`, `;` | `keyword.operator.ubnf` |
+| `@root`, `@mapping`, `@whitespace`, `@leftAssoc` | `storage.modifier.ubnf` |
+| `'[^']*'` | `string.quoted.single.ubnf` |
+| `[A-Z][A-Z_0-9]*` | `entity.name.type.ubnf` |
+
+---
+
+### ステップ 6: ビルドする
+
+```bash
+# 事前に unlaxer-dsl 本体をローカルリポジトリにインストール（初回のみ）
+cd unlaxer-dsl
+mvn install -DskipTests
+
+# ubnf-vscode をビルド
+cd ubnf-vscode
+mvn verify
+```
+
+成功すると `target/ubnf-lsp-0.1.0.vsix` が生成される。
+
+```
+ DONE  Packaged: target/ubnf-lsp-0.1.0.vsix (7 files, 2.19 MB)
+```
+
+VSIX の内容確認：
+
+```bash
+unzip -l target/ubnf-lsp-0.1.0.vsix
+# extension/server-dist/ubnf-lsp-server.jar  ← fat jar（約 2.4 MB）
+# extension/out/extension.js                 ← コンパイル済み TypeScript
+# extension/syntaxes/ubnf.tmLanguage.json
+# extension/language-configuration.json
+# extension/package.json
+```
+
+---
+
+### ステップ 7: VS Code にインストールする
+
+```bash
+code --install-extension target/ubnf-lsp-0.1.0.vsix
+```
+
+VS Code を再読み込み（`Ctrl+Shift+P` → `Developer: Reload Window`）後、
+`.ubnf` ファイルを開くと次の機能が有効になる。
+
+| 機能 | 内容 |
+|---|---|
+| シンタックスハイライト | コメント・キーワード・演算子・アノテーション・文字列・型名を色分け |
+| パース診断 | 構文エラーを赤波線で表示 |
+| ホバー | カーソル位置のパース状態を表示（`Valid UBNF` / `Parse error at offset N`） |
+| 補完 | `grammar`, `token` 等のキーワード候補を表示 |
+
+---
+
+### TinyCalc との比較まとめ
+
+| 項目 | tinycalc-vscode | ubnf-vscode |
+|---|---|---|
+| 文法ファイル | `grammar/tinycalc.ubnf` | `../grammar/ubnf.ubnf` |
+| `--generators` | `Parser,LSP,Launcher,DAP,DAPLauncher` | `LSP,Launcher`（Parser は shim、DAP は未対応） |
+| shim | 不要 | `generated/UBNFParsers.java` が必要 |
+| DAP サポート | あり（`TinyCalcDebugAdapter` + `TinyCalcDapLauncher`） | なし |
+| 言語 ID | `tinycalc` | `ubnf` |
+| 拡張子 | `.tcalc` | `.ubnf` |
+| fat jar | `tinycalc-lsp-server.jar`（LSP + DAP） | `ubnf-lsp-server.jar`（LSP のみ） |
+
+---
+
 ## プロジェクト構造
 
 ```
@@ -981,7 +1360,9 @@ unlaxer-dsl/
 │   │       ├── MapperGenerator.java       XxxMapper.java 生成器
 │   │       ├── EvaluatorGenerator.java    XxxEvaluator.java 生成器
 │   │       ├── LSPGenerator.java          XxxLanguageServer.java 生成器
-│   │       └── LSPLauncherGenerator.java  XxxLspLauncher.java 生成器
+│   │       ├── LSPLauncherGenerator.java  XxxLspLauncher.java 生成器
+│   │       ├── DAPGenerator.java          XxxDebugAdapter.java 生成器
+│   │       └── DAPLauncherGenerator.java  XxxDapLauncher.java 生成器
 │   └── test/java/org/unlaxer/dsl/
 │       ├── UBNFParsersTest.java
 │       ├── UBNFMapperTest.java
@@ -992,23 +1373,104 @@ unlaxer-dsl/
 │           ├── EvaluatorGeneratorTest.java
 │           ├── LSPGeneratorTest.java
 │           ├── LSPLauncherGeneratorTest.java
-│           └── LSPCompileVerificationTest.java
-├── tinycalc-vscode/           VS Code 拡張サンプル（TinyCalc）
+│           ├── LSPCompileVerificationTest.java
+│           ├── DAPGeneratorTest.java
+│           ├── DAPCompileVerificationTest.java
+│           ├── CompileVerificationTest.java    生成 Java ソースのコンパイル検証
+│           ├── SelfHostingTest.java            生成 UBNFParsers の構造・コンパイル検証
+│           └── SelfHostingRoundTripTest.java   生成パーサーで ubnf.ubnf を実際にパース（ラウンドトリップ）
+├── tinycalc-vscode/           VS Code 拡張サンプル（TinyCalc、LSP + DAP）
 │   ├── pom.xml                Maven ビルド設定（codegen → compile → jar → VSIX）
 │   ├── grammar/
 │   │   └── tinycalc.ubnf      拡張のソース文法（CodegenMain への入力）
 │   ├── src/
-│   │   └── extension.ts       VS Code クライアント（TypeScript）
+│   │   └── extension.ts       VS Code クライアント（LSP + DAP ファクトリ登録）
 │   ├── syntaxes/
 │   │   └── tinycalc.tmLanguage.json  TextMate 文法（シンタックスハイライト）
 │   ├── language-configuration.json
 │   ├── package.json
 │   └── target/                ← ビルド成果物（gitignore）
-│       ├── generated-sources/ ← 生成 Java ソース
-│       ├── tinycalc-lsp-server.jar  ← fat jar
+│       ├── generated-sources/ ← 生成 Java ソース（Parser, LSP, Launcher, DAP, DAPLauncher）
+│       ├── tinycalc-lsp-server.jar  ← fat jar（LSP + DAP 両方含む）
 │       └── tinycalc-lsp-0.1.0.vsix ← VS Code 拡張パッケージ
+├── ubnf-vscode/               VS Code 拡張（UBNF 自身の文法エディタ）
+│   ├── pom.xml                Maven ビルド設定（LSP,Launcher のみ生成）
+│   ├── src/
+│   │   ├── extension.ts       VS Code クライアント（TypeScript）
+│   │   └── main/java/org/unlaxer/dsl/bootstrap/generated/
+│   │       └── UBNFParsers.java   手書き shim（bootstrap.UBNFParsers に委譲）
+│   ├── syntaxes/
+│   │   └── ubnf.tmLanguage.json  TextMate 文法（シンタックスハイライト）
+│   ├── language-configuration.json
+│   ├── package.json
+│   └── target/                ← ビルド成果物（gitignore）
+│       ├── generated-sources/ ← 生成 Java ソース（LSP, Launcher のみ）
+│       ├── ubnf-lsp-server.jar    ← fat jar
+│       └── ubnf-lsp-0.1.0.vsix   ← VS Code 拡張パッケージ
 └── pom.xml
 ```
+
+---
+
+## 自己ホスティング
+
+`unlaxer-dsl` は **自己ホスティング**を達成している。
+`grammar/ubnf.ubnf`（UBNF 文法自身を UBNF で記述したファイル）を `ParserGenerator` で処理すると
+`org.unlaxer.dsl.bootstrap.generated.UBNFParsers` が生成される。
+この生成パーサーは `ubnf.ubnf` 自身を完全にパースできることが `SelfHostingRoundTripTest` で検証済みである。
+
+### ラウンドトリップ検証フロー
+
+```
+grammar/ubnf.ubnf
+    │
+    ▼  手書き bootstrap (UBNFParsers + UBNFAST + UBNFMapper)
+GrammarDecl (AST)
+    │
+    ▼  ParserGenerator.generate()
+generated/UBNFParsers.java (ソース文字列)
+    │
+    ▼  javax.tools.JavaCompiler (--enable-preview --release 21)
+generated/UBNFParsers.class (インメモリコンパイル → tmpDir)
+    │
+    ▼  URLClassLoader + getRootParser() 反射呼び出し
+Parser (生成パーサーのルートパーサー)
+    │
+    ▼  parser.parse(ParseContext(grammar/ubnf.ubnf))
+Parsed (成功 + 全入力消費) ← SelfHostingRoundTripTest で検証
+```
+
+### 発見したバグと修正
+
+自己ホスティング実装中に `UBNFMapper.toTokenDecl()` のバグを発見・修正した。
+
+**バグ**: `token CLASS_NAME = IdentifierParser` の末尾の `IdentifierParser` は
+手書き `UBNFParsers.IdentifierParser extends UBNFLazyChain` なので、
+trailing SPACE（CPPComment を含む）がトークン source に含まれてしまう。
+その結果 `source.toString().trim()` が `"IdentifierParser\n\n// コメント"` を返し、
+`ParserGenerator` が `Parser.get(IdentifierParser\n\n// コメント.class)` という不正なコードを生成していた。
+
+**修正**: `toTokenDecl()` に `firstWord()` ヘルパーを追加し、
+最初の空白文字以降を除去して純粋なクラス名だけを取り出すように修正した。
+
+```java
+// 修正前
+String parserClass = identifiers.get(1).source.toString().trim();
+
+// 修正後
+String parserClass = firstWord(identifiers.get(1).source.toString());
+// firstWord(): 最初の空白文字以前の部分だけを返す
+```
+
+### 現状の自己ホスティングの範囲
+
+| コンポーネント | 自動生成 | 説明 |
+|---|---|---|
+| `UBNFParsers` (parser) | ✅ | `ParserGenerator` で生成・ラウンドトリップ検証済み |
+| `UBNFAST` (AST) | ❌ | `ASTGenerator` は nested sealed interface を未生成 |
+| `UBNFMapper` (mapper) | ❌ | `MapperGenerator` はスタブのみ（手書き実装が必要） |
+
+`UBNFParsers` 以外の2コンポーネントの完全自動生成は将来の課題。
 
 ---
 
@@ -1026,8 +1488,11 @@ unlaxer-dsl/
 | Phase 7 | コンパイル検証テスト（`CompileVerificationTest`） | 完了 |
 | Phase 8 | LSP サーバー自動生成（`LSPGenerator`, `LSPLauncherGenerator`, `CodegenMain`） | 完了 |
 | Phase 9 | VSIX ワンコマンドビルド（`tinycalc-vscode/pom.xml`） | 完了 |
-| Phase 10 | 自己ホスティング（`grammar/ubnf.ubnf` から自分自身を生成） | 未着手 |
-| Phase 11 | DAP サポート自動生成 | 未着手 |
+| Phase 9.5 | UBNF 自身の VS Code 拡張（`ubnf-vscode/`、shim パターンで実現） | 完了 |
+| Phase 10 | DAP サポート自動生成（`DAPGenerator`, `DAPLauncherGenerator`） | 完了 |
+| Phase 11 | 自己ホスティング（`grammar/ubnf.ubnf` から生成した `UBNFParsers` で `ubnf.ubnf` 自身をパース） | 完了 |
+| Phase 12 | DAP トークン単位ステップ実行（F10 next・Variables パネル・stackTrace 行ハイライト） | 完了 |
+| Phase 13 | DAP ブレークポイント対応（行番号照合・continue で次の BP まで実行） | 完了 |
 
 ---
 
