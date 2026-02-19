@@ -17,6 +17,7 @@ import org.unlaxer.dsl.codegen.ParserGenerator;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -86,8 +87,22 @@ public class CodegenMain {
 
         Path outPath = Path.of(outputDir);
 
+        List<String> validationErrors = new ArrayList<>();
         for (GrammarDecl grammar : file.grammars()) {
-            GrammarValidator.validateOrThrow(grammar);
+            List<GrammarValidator.ValidationIssue> issues = GrammarValidator.validate(grammar);
+            if (!issues.isEmpty()) {
+                for (GrammarValidator.ValidationIssue issue : issues) {
+                    validationErrors.add("grammar " + grammar.name() + ": " + issue.format());
+                }
+            }
+        }
+        if (!validationErrors.isEmpty()) {
+            throw new IllegalArgumentException(
+                "Grammar validation failed:\n - " + String.join("\n - ", validationErrors)
+            );
+        }
+
+        for (GrammarDecl grammar : file.grammars()) {
             for (String name : generators) {
                 String key = name.trim();
                 CodeGenerator gen = generatorMap.get(key);

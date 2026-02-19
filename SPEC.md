@@ -78,6 +78,7 @@ Current behavior:
 - All `grammar` blocks in a single `.ubnf` file are processed (not only the first one).
 - Missing values for `--grammar`, `--output`, or `--generators` are treated as CLI errors.
 - Grammar validation runs before generation for each grammar block.
+- Validation failures are aggregated across grammar blocks and reported in one error.
 
 ## LSP / DAP Expectations
 

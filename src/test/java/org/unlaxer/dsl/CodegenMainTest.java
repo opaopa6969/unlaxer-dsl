@@ -101,4 +101,43 @@ public class CodegenMainTest {
             assertTrue(e.getMessage().contains("body is not canonical"));
         }
     }
+
+    @Test
+    public void testAggregatesValidationErrorsAcrossGrammarBlocks() throws Exception {
+        String source = """
+            grammar InvalidA {
+              @package: org.example.invalid
+              @root
+              @mapping(RootNode, params=[value, missing])
+              A ::= 'x' @value ;
+            }
+
+            grammar InvalidB {
+              @package: org.example.invalid
+              @root
+              @mapping(PowNode, params=[left, op, right])
+              @rightAssoc
+              @precedence(level=30)
+              Expr ::= Atom @left { '^' @op Atom @right } ;
+              Atom ::= 'n' ;
+            }
+            """;
+
+        Path grammarFile = Files.createTempFile("codegen-main-invalid-multi", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-invalid-multi-out");
+        Files.writeString(grammarFile, source);
+
+        try {
+            CodegenMain.main(new String[] {
+                "--grammar", grammarFile.toString(),
+                "--output", outputDir.toString(),
+                "--generators", "Parser"
+            });
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("grammar InvalidA:"));
+            assertTrue(e.getMessage().contains("grammar InvalidB:"));
+            assertTrue(e.getMessage().contains("[code:"));
+        }
+    }
 }
