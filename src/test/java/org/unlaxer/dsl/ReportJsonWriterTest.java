@@ -12,7 +12,7 @@ public class ReportJsonWriterTest {
     @Test
     public void testUnsupportedReportVersionFails() {
         try {
-            ReportJsonWriter.validationSuccess(999, "dev", "2026-01-01T00:00:00Z", 1);
+            ReportJsonWriter.validationSuccess(999, "dev", "2026-01-01T00:00:00Z", 1, 0);
             fail("expected unsupported reportVersion error");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("Unsupported reportVersion"));

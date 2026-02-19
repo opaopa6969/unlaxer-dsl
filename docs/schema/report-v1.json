@@ -16,6 +16,7 @@
         "mode",
         "ok",
         "grammarCount",
+        "warningsCount",
         "issues"
       ],
       "additionalProperties": false,
@@ -28,6 +29,7 @@
         "mode": { "const": "validate" },
         "ok": { "const": true },
         "grammarCount": { "type": "integer", "minimum": 0 },
+        "warningsCount": { "type": "integer", "minimum": 0 },
         "issues": {
           "type": "array",
           "maxItems": 0,
@@ -47,6 +49,7 @@
         "mode",
         "ok",
         "issueCount",
+        "warningsCount",
         "severityCounts",
         "categoryCounts",
         "issues"
@@ -61,6 +64,7 @@
         "mode": { "const": "validate" },
         "ok": { "const": false },
         "issueCount": { "type": "integer", "minimum": 1 },
+        "warningsCount": { "type": "integer", "minimum": 0 },
         "severityCounts": { "$ref": "#/$defs/countMap" },
         "categoryCounts": { "$ref": "#/$defs/countMap" },
         "issues": {
@@ -83,6 +87,7 @@
         "ok",
         "grammarCount",
         "generatedCount",
+        "warningsCount",
         "generatedFiles"
       ],
       "additionalProperties": false,
@@ -96,6 +101,7 @@
         "ok": { "const": true },
         "grammarCount": { "type": "integer", "minimum": 0 },
         "generatedCount": { "type": "integer", "minimum": 0 },
+        "warningsCount": { "type": "integer", "minimum": 0 },
         "generatedFiles": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }

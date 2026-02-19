@@ -11,7 +11,7 @@ public class ReportJsonSchemaValidatorTest {
 
     @Test
     public void testAcceptsValidateSuccessV1() {
-        String json = ReportJsonWriter.validationSuccess(1, "dev", "2026-01-01T00:00:00Z", 1);
+        String json = ReportJsonWriter.validationSuccess(1, "dev", "2026-01-01T00:00:00Z", 1, 0);
         ReportJsonSchemaValidator.validate(1, json);
     }
 
@@ -31,14 +31,15 @@ public class ReportJsonSchemaValidatorTest {
             "dev",
             "2026-01-01T00:00:00Z",
             1,
-            List.of("org/example/ValidAST.java")
+            List.of("org/example/ValidAST.java"),
+            0
         );
         ReportJsonSchemaValidator.validate(1, json);
     }
 
     @Test
     public void testRejectsUnsupportedVersion() {
-        String json = ReportJsonWriter.validationSuccess(1, "dev", "2026-01-01T00:00:00Z", 1);
+        String json = ReportJsonWriter.validationSuccess(1, "dev", "2026-01-01T00:00:00Z", 1, 0);
         try {
             ReportJsonSchemaValidator.validate(2, json);
             fail("expected unsupported version error");
@@ -81,7 +82,7 @@ public class ReportJsonSchemaValidatorTest {
 
     @Test
     public void testRejectsTrailingCharacters() {
-        String valid = ReportJsonWriter.validationSuccess(1, "dev", "2026-01-01T00:00:00Z", 1);
+        String valid = ReportJsonWriter.validationSuccess(1, "dev", "2026-01-01T00:00:00Z", 1, 0);
         try {
             ReportJsonSchemaValidator.validate(1, valid + " trailing");
             fail("expected schema validation error");

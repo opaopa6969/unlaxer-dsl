@@ -43,6 +43,7 @@ public class ReportJsonSchemaCompatibilityTest {
                 "mode",
                 "ok",
                 "grammarCount",
+                "warningsCount",
                 "issues"
             ),
             List.copyOf(obj.keySet())
@@ -52,6 +53,7 @@ public class ReportJsonSchemaCompatibilityTest {
         assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
         assertEquals(true, JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "grammarCount"));
+        assertEquals(0L, JsonTestUtil.getLong(obj, "warningsCount"));
         assertEquals(List.of(), JsonTestUtil.getArray(obj, "issues"));
     }
 
@@ -86,6 +88,7 @@ public class ReportJsonSchemaCompatibilityTest {
                 "mode",
                 "ok",
                 "issueCount",
+                "warningsCount",
                 "severityCounts",
                 "categoryCounts",
                 "issues"
@@ -96,6 +99,7 @@ public class ReportJsonSchemaCompatibilityTest {
         assertEquals("1.0", JsonTestUtil.getString(obj, "schemaVersion"));
         assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
         assertEquals(false, JsonTestUtil.getBoolean(obj, "ok"));
+        assertEquals(0L, JsonTestUtil.getLong(obj, "warningsCount"));
         var severityCounts = JsonTestUtil.getObject(obj, "severityCounts");
         assertEquals(1L, JsonTestUtil.getLong(severityCounts, "ERROR"));
         var issues = JsonTestUtil.getArray(obj, "issues");
@@ -138,6 +142,7 @@ public class ReportJsonSchemaCompatibilityTest {
                 "ok",
                 "grammarCount",
                 "generatedCount",
+                "warningsCount",
                 "generatedFiles"
             ),
             List.copyOf(obj.keySet())
@@ -147,6 +152,7 @@ public class ReportJsonSchemaCompatibilityTest {
         assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
         assertEquals(true, JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "generatedCount"));
+        assertEquals(0L, JsonTestUtil.getLong(obj, "warningsCount"));
     }
 
     private static RunResult runCodegen(String... args) {

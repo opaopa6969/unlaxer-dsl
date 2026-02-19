@@ -1064,6 +1064,8 @@ JSON レポートは安定したトップレベル項目として
 | `--grammar <file>` | `.ubnf` ファイルのパス | （必須） |
 | `--output <dir>` | 出力ルートディレクトリ（package 構造で書き出す） | `--validate-only` 以外では必須 |
 | `--generators <list>` | カンマ区切りの生成器名 | `Parser,LSP,Launcher` |
+| `--dry-run` | 生成ファイルを書き込まずに出力先だけ確認する | `false` |
+| `--overwrite never\|if-different\|always` | 既存ファイル上書きポリシー | `always` |
 | `--strict` | warning をバリデーション失敗として扱う | `false` |
 | `--help`, `-h` | 使用方法を表示して終了 | `false` |
 | `--version`, `-v` | ツールバージョンを表示して終了 | `false` |
@@ -1078,6 +1080,7 @@ JSON レポートは安定したトップレベル項目として
 `--generators` はカンマ区切り値をトリムし、空要素はエラーとして拒否する（例: `"AST, LSP"` は有効）。
 `--report-schema-check` で失敗した場合のメッセージは `E-REPORT-SCHEMA-*` で始まる。
 `--warnings-as-json` は warning をバリデーション失敗JSONと同じ形で出力する。
+JSON ペイロードには `warningsCount` が含まれ、`issues[]` を走査せず warning 件数を確認できる。
 
 終了コード:
 

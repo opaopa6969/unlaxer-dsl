@@ -39,6 +39,7 @@ final class ReportJsonSchemaValidator {
                     "mode",
                     "ok",
                     "grammarCount",
+                    "warningsCount",
                     "issues"
                 )
             );
@@ -48,6 +49,7 @@ final class ReportJsonSchemaValidator {
             requireString(obj, "toolVersion");
             requireString(obj, "generatedAt");
             requireNumber(obj, "grammarCount");
+            requireNumber(obj, "warningsCount");
             requireArray(obj, "issues");
             return;
         }
@@ -64,6 +66,7 @@ final class ReportJsonSchemaValidator {
                     "mode",
                     "ok",
                     "issueCount",
+                    "warningsCount",
                     "severityCounts",
                     "categoryCounts",
                     "issues"
@@ -75,6 +78,7 @@ final class ReportJsonSchemaValidator {
             requireString(obj, "toolVersion");
             requireString(obj, "generatedAt");
             requireNumber(obj, "issueCount");
+            requireNumber(obj, "warningsCount");
             requireObject(obj, "severityCounts");
             requireObject(obj, "categoryCounts");
             requireArray(obj, "issues");
@@ -94,6 +98,7 @@ final class ReportJsonSchemaValidator {
                     "ok",
                     "grammarCount",
                     "generatedCount",
+                    "warningsCount",
                     "generatedFiles"
                 )
             );
@@ -104,6 +109,7 @@ final class ReportJsonSchemaValidator {
             requireString(obj, "generatedAt");
             requireNumber(obj, "grammarCount");
             requireNumber(obj, "generatedCount");
+            requireNumber(obj, "warningsCount");
             requireArray(obj, "generatedFiles");
             return;
         }

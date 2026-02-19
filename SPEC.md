@@ -78,6 +78,8 @@ Current behavior:
 - All `grammar` blocks in a single `.ubnf` file are processed (not only the first one).
 - Missing values for `--grammar`, `--output`, or `--generators` are treated as CLI errors.
 - `--generators` values are comma-split with whitespace trimming; empty entries are rejected as CLI errors.
+- `--dry-run` previews generated file paths without writing outputs.
+- `--overwrite never|if-different|always` controls overwrite behavior for existing files.
 - `--help`/`-h` prints usage and exits with code `0`.
 - `--version`/`-v` prints resolved tool version and exits with code `0`.
 - `--strict` treats validation warnings as failures (exit code `5`).
@@ -93,6 +95,7 @@ Current behavior:
 - In normal generation mode with `--report-format json`, CLI emits generation summary (`generatedCount`, `generatedFiles`).
 - JSON report schema includes stable top-level fields:
   `reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
+- JSON report payloads include `warningsCount` for warning aggregation.
 - `toolVersion` is sourced from artifact `Implementation-Version`; fallback is `dev`.
 - Validation failure `issues[]` entries include structured metadata:
   `rule`, `code`, `severity`, `category`, `message`, and `hint` (plus `grammar`).
@@ -117,19 +120,19 @@ Regenerate from live CLI output:
 Validate success:
 
 ```json
-{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","generatedAt":"<generatedAt>","mode":"validate","ok":true,"grammarCount":1,"issues":[]}
+{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","generatedAt":"<generatedAt>","mode":"validate","ok":true,"grammarCount":1,"warningsCount":0,"issues":[]}
 ```
 
 Validate failure:
 
 ```json
-{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","generatedAt":"<generatedAt>","mode":"validate","ok":false,"issueCount":1,"severityCounts":{"ERROR":1},"categoryCounts":{"MAPPING":1},"issues":[{"grammar":"Invalid","rule":"Invalid","code":"E-MAPPING-MISSING-CAPTURE","severity":"ERROR","category":"MAPPING","message":"rule Invalid @mapping(RootNode) param 'missing' has no matching capture","hint":"Add @missing capture in the rule body or remove it from params."}]}
+{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","generatedAt":"<generatedAt>","mode":"validate","ok":false,"issueCount":1,"warningsCount":0,"severityCounts":{"ERROR":1},"categoryCounts":{"MAPPING":1},"issues":[{"grammar":"Invalid","rule":"Invalid","code":"E-MAPPING-MISSING-CAPTURE","severity":"ERROR","category":"MAPPING","message":"rule Invalid @mapping(RootNode) param 'missing' has no matching capture","hint":"Add @missing capture in the rule body or remove it from params."}]}
 ```
 
 Generate success:
 
 ```json
-{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","generatedAt":"<generatedAt>","mode":"generate","ok":true,"grammarCount":1,"generatedCount":1,"generatedFiles":["/path/to/out/org/example/valid/ValidAST.java"]}
+{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","generatedAt":"<generatedAt>","mode":"generate","ok":true,"grammarCount":1,"generatedCount":1,"warningsCount":0,"generatedFiles":["/path/to/out/org/example/valid/ValidAST.java"]}
 ```
 <!-- JSON_REPORT_EXAMPLES_END -->
 

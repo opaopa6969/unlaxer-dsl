@@ -64,6 +64,8 @@ public class CodegenMain {
             "Usage: CodegenMain [--help] [--version] --grammar <file.ubnf> --output <dir>"
                 + " [--generators AST,Parser,Mapper,Evaluator,LSP,Launcher,DAP,DAPLauncher]"
                 + " [--validate-only]"
+                + " [--dry-run]"
+                + " [--overwrite never|if-different|always]"
                 + " [--strict]"
                 + " [--report-format text|json]"
                 + " [--report-file <path>]"

@@ -18,6 +18,7 @@ final class CodegenCliParser {
         String outputDir = null;
         List<String> generators = List.of("Parser", "LSP", "Launcher");
         boolean validateOnly = false;
+        boolean dryRun = false;
         boolean strict = false;
         boolean help = false;
         boolean version = false;
@@ -26,6 +27,7 @@ final class CodegenCliParser {
         int reportVersion = DEFAULT_REPORT_VERSION;
         boolean reportSchemaCheck = false;
         boolean warningsAsJson = false;
+        String overwrite = "always";
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -55,6 +57,7 @@ final class CodegenCliParser {
                     }
                 }
                 case "--validate-only" -> validateOnly = true;
+                case "--dry-run" -> dryRun = true;
                 case "--strict" -> strict = true;
                 case "--help", "-h" -> help = true;
                 case "--version", "-v" -> version = true;
@@ -98,6 +101,18 @@ final class CodegenCliParser {
                 }
                 case "--report-schema-check" -> reportSchemaCheck = true;
                 case "--warnings-as-json" -> warningsAsJson = true;
+                case "--overwrite" -> {
+                    if (i + 1 >= args.length) {
+                        throw new UsageException("Missing value for --overwrite", true);
+                    }
+                    overwrite = args[++i].trim().toLowerCase();
+                    if (!"never".equals(overwrite) && !"if-different".equals(overwrite) && !"always".equals(overwrite)) {
+                        throw new UsageException(
+                            "Unsupported --overwrite: " + overwrite + "\nAllowed values: never, if-different, always",
+                            false
+                        );
+                    }
+                }
                 default -> throw new UsageException("Unknown argument: " + args[i], true);
             }
         }
@@ -108,6 +123,7 @@ final class CodegenCliParser {
                 outputDir,
                 generators,
                 validateOnly,
+                dryRun,
                 strict,
                 help,
                 version,
@@ -115,7 +131,8 @@ final class CodegenCliParser {
                 reportFile,
                 reportVersion,
                 reportSchemaCheck,
-                warningsAsJson
+                warningsAsJson,
+                overwrite
             );
         }
 
@@ -128,6 +145,7 @@ final class CodegenCliParser {
             outputDir,
             generators,
             validateOnly,
+            dryRun,
             strict,
             help,
             version,
@@ -135,7 +153,8 @@ final class CodegenCliParser {
             reportFile,
             reportVersion,
             reportSchemaCheck,
-            warningsAsJson
+            warningsAsJson,
+            overwrite
         );
     }
 
@@ -144,6 +163,7 @@ final class CodegenCliParser {
         String outputDir,
         List<String> generators,
         boolean validateOnly,
+        boolean dryRun,
         boolean strict,
         boolean help,
         boolean version,
@@ -151,7 +171,8 @@ final class CodegenCliParser {
         String reportFile,
         int reportVersion,
         boolean reportSchemaCheck,
-        boolean warningsAsJson
+        boolean warningsAsJson,
+        String overwrite
     ) {}
 
     static final class UsageException extends Exception {

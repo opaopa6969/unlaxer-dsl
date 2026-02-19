@@ -864,6 +864,8 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 | `--grammar <file>` | Path to `.ubnf` file | (required) |
 | `--output <dir>` | Output root directory (written with package structure) | required unless `--validate-only` |
 | `--generators <list>` | Comma-separated generator names | `Parser,LSP,Launcher` |
+| `--dry-run` | Preview generated file paths without writing files | `false` |
+| `--overwrite never\|if-different\|always` | Overwrite policy for existing files | `always` |
 | `--strict` | Treat warnings as validation failures | `false` |
 | `--help`, `-h` | Print usage and exit | `false` |
 | `--version`, `-v` | Print tool version and exit | `false` |
@@ -878,6 +880,7 @@ Available generator names: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launc
 `--generators` values are trimmed by comma, empty entries are rejected (for example, `"AST, LSP"` is valid).
 When `--report-schema-check` fails, error messages are prefixed with `E-REPORT-SCHEMA-*`.
 `--warnings-as-json` emits warning payloads using the same JSON shape as validation failure reports.
+JSON payloads expose `warningsCount` so clients can detect warnings without scanning `issues[]`.
 
 Exit codes:
 

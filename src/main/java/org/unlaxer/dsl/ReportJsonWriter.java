@@ -25,10 +25,11 @@ final class ReportJsonWriter {
         int reportVersion,
         String toolVersion,
         String generatedAt,
-        int grammarCount
+        int grammarCount,
+        int warningsCount
     ) {
         return switch (reportVersion) {
-            case 1 -> ReportJsonWriterV1.validationSuccess(toolVersion, generatedAt, grammarCount);
+            case 1 -> ReportJsonWriterV1.validationSuccess(toolVersion, generatedAt, grammarCount, warningsCount);
             default -> throw unsupportedVersion(reportVersion);
         };
     }
@@ -50,10 +51,17 @@ final class ReportJsonWriter {
         String toolVersion,
         String generatedAt,
         int grammarCount,
-        List<String> generatedFiles
+        List<String> generatedFiles,
+        int warningsCount
     ) {
         return switch (reportVersion) {
-            case 1 -> ReportJsonWriterV1.generationSuccess(toolVersion, generatedAt, grammarCount, generatedFiles);
+            case 1 -> ReportJsonWriterV1.generationSuccess(
+                toolVersion,
+                generatedAt,
+                grammarCount,
+                generatedFiles,
+                warningsCount
+            );
             default -> throw unsupportedVersion(reportVersion);
         };
     }

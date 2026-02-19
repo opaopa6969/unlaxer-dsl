@@ -57,11 +57,13 @@ public class CodegenRunnerTest {
             false,
             false,
             false,
+            false,
             "json",
             null,
             1,
             false,
-            false
+            false,
+            "always"
         );
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ByteArrayOutputStream err = new ByteArrayOutputStream();
@@ -77,6 +79,7 @@ public class CodegenRunnerTest {
         assertEquals(CodegenMain.EXIT_OK, exitCode);
         assertTrue(out.toString().contains("\"mode\":\"validate\""));
         assertTrue(out.toString().contains("\"generatedAt\":\"2026-01-01T00:00:00Z\""));
+        assertTrue(out.toString().contains("\"warningsCount\":0"));
         assertTrue(fs.createdDirs.isEmpty());
         assertTrue(fs.writes.isEmpty());
     }
@@ -96,6 +99,11 @@ public class CodegenRunnerTest {
         }
 
         @Override
+        public boolean exists(Path path) {
+            return files.containsKey(path.toString()) || writes.containsKey(path.toString());
+        }
+
+        @Override
         public void createDirectories(Path path) {
             createdDirs.add(path.toString());
         }
@@ -103,6 +111,7 @@ public class CodegenRunnerTest {
         @Override
         public void writeString(Path path, String content) {
             writes.put(path.toString(), content);
+            files.put(path.toString(), content);
         }
     }
 }

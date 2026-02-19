@@ -11,14 +11,14 @@ final class ReportJsonWriterV1 {
 
     private ReportJsonWriterV1() {}
 
-    static String validationSuccess(String toolVersion, String generatedAt, int grammarCount) {
+    static String validationSuccess(String toolVersion, String generatedAt, int grammarCount, int warningsCount) {
         return "{\"reportVersion\":1"
             + ",\"schemaVersion\":\"" + ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_VERSION) + "\""
             + ",\"schemaUrl\":\"" + ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_URL) + "\""
             + ",\"toolVersion\":\"" + ReportJsonWriter.escapeJson(toolVersion) + "\""
             + ",\"generatedAt\":\"" + ReportJsonWriter.escapeJson(generatedAt) + "\""
             + ",\"mode\":\"validate\""
-            + ",\"ok\":true,\"grammarCount\":" + grammarCount + ",\"issues\":[]}";
+            + ",\"ok\":true,\"grammarCount\":" + grammarCount + ",\"warningsCount\":" + warningsCount + ",\"issues\":[]}";
     }
 
     static String validationFailure(
@@ -32,6 +32,7 @@ final class ReportJsonWriterV1 {
             severityCounts.merge(row.severity(), 1, Integer::sum);
             categoryCounts.merge(row.category(), 1, Integer::sum);
         }
+        int warningsCount = severityCounts.getOrDefault("WARNING", 0);
 
         StringBuilder sb = new StringBuilder();
         sb.append("{\"reportVersion\":1")
@@ -41,6 +42,7 @@ final class ReportJsonWriterV1 {
             .append(",\"generatedAt\":\"").append(ReportJsonWriter.escapeJson(generatedAt)).append("\"")
             .append(",\"mode\":\"validate\",\"ok\":false,\"issueCount\":")
             .append(rows.size())
+            .append(",\"warningsCount\":").append(warningsCount)
             .append(",\"severityCounts\":").append(toCountsJson(severityCounts))
             .append(",\"categoryCounts\":").append(toCountsJson(categoryCounts))
             .append(",\"issues\":[");
@@ -73,7 +75,8 @@ final class ReportJsonWriterV1 {
         String toolVersion,
         String generatedAt,
         int grammarCount,
-        List<String> generatedFiles
+        List<String> generatedFiles,
+        int warningsCount
     ) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"reportVersion\":1")
@@ -84,6 +87,7 @@ final class ReportJsonWriterV1 {
             .append(",\"mode\":\"generate\",\"ok\":true,\"grammarCount\":")
             .append(grammarCount)
             .append(",\"generatedCount\":").append(generatedFiles.size())
+            .append(",\"warningsCount\":").append(warningsCount)
             .append(",\"generatedFiles\":[");
 
         for (int i = 0; i < generatedFiles.size(); i++) {

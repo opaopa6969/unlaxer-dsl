@@ -36,6 +36,7 @@ final class CodegenRunner {
 
     interface FileSystemPort {
         String readString(Path path) throws IOException;
+        boolean exists(Path path);
         void createDirectories(Path path) throws IOException;
         void writeString(Path path, String content) throws IOException;
     }
@@ -68,6 +69,7 @@ final class CodegenRunner {
 
         boolean hasErrors = hasErrorRows(sortedRows);
         boolean hasWarnings = hasWarningRows(sortedRows);
+        int warningsCount = countWarnings(sortedRows);
 
         String generatedAt = Instant.now(clock).toString();
         String warningJson = hasWarnings
@@ -119,7 +121,8 @@ final class CodegenRunner {
                     config.reportVersion(),
                     toolVersion,
                     generatedAt,
-                    file.grammars().size()
+                    file.grammars().size(),
+                    warningsCount
                 );
                 validateJsonIfRequested(config, json, true);
                 out.println(json);
@@ -147,10 +150,22 @@ final class CodegenRunner {
 
                 CodeGenerator.GeneratedSource src = gen.generate(grammar);
                 Path pkgDir = outPath.resolve(src.packageName().replace('.', '/'));
-                fs.createDirectories(pkgDir);
                 Path javaFile = pkgDir.resolve(src.className() + ".java");
-                fs.writeString(javaFile, src.source());
-                out.println("Generated: " + javaFile);
+                WriteAction action = writeGeneratedSource(config, fs, pkgDir, javaFile, src.source());
+                if (action == WriteAction.CONFLICT) {
+                    err.println("Refusing to overwrite existing file: " + javaFile);
+                    err.println("Use --overwrite if-different or --overwrite always, or pass --dry-run.");
+                    return CodegenMain.EXIT_GENERATION_ERROR;
+                }
+                if (action == WriteAction.SKIPPED) {
+                    out.println("Skipped (unchanged): " + javaFile);
+                    continue;
+                }
+                if (action == WriteAction.DRY_RUN) {
+                    out.println("Dry-run: would generate " + javaFile);
+                } else {
+                    out.println("Generated: " + javaFile);
+                }
                 generatedFiles.add(javaFile.toString());
             }
         }
@@ -161,7 +176,8 @@ final class CodegenRunner {
                 toolVersion,
                 generatedAt,
                 file.grammars().size(),
-                generatedFiles
+                generatedFiles,
+                warningsCount
             );
             validateJsonIfRequested(config, json, true);
             out.println(json);
@@ -182,6 +198,16 @@ final class CodegenRunner {
 
     static boolean hasWarningRows(List<ReportJsonWriter.ValidationIssueRow> rows) {
         return rows.stream().anyMatch(row -> "WARNING".equals(row.severity()));
+    }
+
+    private static int countWarnings(List<ReportJsonWriter.ValidationIssueRow> rows) {
+        int count = 0;
+        for (ReportJsonWriter.ValidationIssueRow row : rows) {
+            if ("WARNING".equals(row.severity())) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private static Map<String, CodeGenerator> generatorMap() {
@@ -279,6 +305,11 @@ final class CodegenRunner {
         }
 
         @Override
+        public boolean exists(Path path) {
+            return Files.exists(path);
+        }
+
+        @Override
         public void createDirectories(Path path) throws IOException {
             Files.createDirectories(path);
         }
@@ -287,5 +318,49 @@ final class CodegenRunner {
         public void writeString(Path path, String content) throws IOException {
             Files.writeString(path, content);
         }
+    }
+
+    private enum WriteAction {
+        WRITTEN,
+        SKIPPED,
+        DRY_RUN,
+        CONFLICT
+    }
+
+    private static WriteAction writeGeneratedSource(
+        CodegenCliParser.CliOptions config,
+        FileSystemPort fs,
+        Path pkgDir,
+        Path javaFile,
+        String source
+    ) throws IOException {
+        if (config.dryRun()) {
+            return WriteAction.DRY_RUN;
+        }
+
+        fs.createDirectories(pkgDir);
+
+        boolean exists = fs.exists(javaFile);
+        if (!exists) {
+            fs.writeString(javaFile, source);
+            return WriteAction.WRITTEN;
+        }
+
+        return switch (config.overwrite()) {
+            case "always" -> {
+                fs.writeString(javaFile, source);
+                yield WriteAction.WRITTEN;
+            }
+            case "if-different" -> {
+                String existing = fs.readString(javaFile);
+                if (existing.equals(source)) {
+                    yield WriteAction.SKIPPED;
+                }
+                fs.writeString(javaFile, source);
+                yield WriteAction.WRITTEN;
+            }
+            case "never" -> WriteAction.CONFLICT;
+            default -> throw new IllegalArgumentException("Unsupported overwrite policy: " + config.overwrite());
+        };
     }
 }
