@@ -157,8 +157,24 @@ public class UBNFMapper {
     static TokenDecl toTokenDecl(Token token) {
         List<Token> identifiers = findDescendants(token, UBNFParsers.IdentifierParser.class);
         String name = identifiers.size() > 0 ? identifiers.get(0).source.toString().trim() : "";
-        String parserClass = identifiers.size() > 1 ? identifiers.get(1).source.toString().trim() : "";
+        // parserClass は TokenDecl の末尾要素で、trailing SPACE がコメントを消費することがある。
+        // IdentifierParser が一致する文字は [A-Za-z_][A-Za-z0-9_]* のみなので
+        // 最初の空白文字以降を除去して純粋なクラス名だけを取り出す。
+        String parserClass = identifiers.size() > 1
+            ? firstWord(identifiers.get(1).source.toString())
+            : "";
         return new TokenDecl(name, parserClass);
+    }
+
+    /** 文字列から先頭の空白を除き、最初の空白文字より前の部分だけを返す。 */
+    private static String firstWord(String text) {
+        String trimmed = text.trim();
+        for (int i = 0; i < trimmed.length(); i++) {
+            if (Character.isWhitespace(trimmed.charAt(i))) {
+                return trimmed.substring(0, i);
+            }
+        }
+        return trimmed;
     }
 
     // =========================================================================

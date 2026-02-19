@@ -5,8 +5,18 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.ToolProvider;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -166,5 +176,31 @@ public class SelfHostingTest {
     public void testCombinatorImport() {
         assertTrue("should import combinator package",
             generatedSource.contains("import org.unlaxer.parser.combinator.*;"));
+    }
+
+    // =========================================================================
+    // コンパイル検証: 生成した UBNFParsers が実際にコンパイルできるか
+    // =========================================================================
+
+    @Test
+    public void testGeneratedUBNFParsersCompiles() {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        StandardJavaFileManager fm = compiler.getStandardFileManager(null, null, null);
+
+        String uriPath = "/" + generatedResult.packageName().replace('.', '/')
+            + "/" + generatedResult.className() + ".java";
+        JavaFileObject src = new SimpleJavaFileObject(
+            URI.create("string://" + uriPath), JavaFileObject.Kind.SOURCE) {
+            @Override
+            public CharSequence getCharContent(boolean ignore) { return generatedSource; }
+        };
+
+        String classpath = System.getProperty("java.class.path");
+        List<String> options = List.of("--enable-preview", "--release", "21", "-classpath", classpath);
+
+        StringWriter diag = new StringWriter();
+        boolean ok = compiler.getTask(new PrintWriter(diag), fm, null, options, null, List.of(src)).call();
+
+        assertTrue("Generated UBNFParsers should compile:\n" + diag, ok);
     }
 }
