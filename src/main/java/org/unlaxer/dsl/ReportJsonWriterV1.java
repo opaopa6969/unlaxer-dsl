@@ -11,11 +11,18 @@ final class ReportJsonWriterV1 {
 
     private ReportJsonWriterV1() {}
 
-    static String validationSuccess(String toolVersion, String generatedAt, int grammarCount, int warningsCount) {
+    static String validationSuccess(
+        String toolVersion,
+        String argsHash,
+        String generatedAt,
+        int grammarCount,
+        int warningsCount
+    ) {
         return "{\"reportVersion\":1"
             + ",\"schemaVersion\":\"" + ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_VERSION) + "\""
             + ",\"schemaUrl\":\"" + ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_URL) + "\""
             + ",\"toolVersion\":\"" + ReportJsonWriter.escapeJson(toolVersion) + "\""
+            + ",\"argsHash\":\"" + ReportJsonWriter.escapeJson(argsHash) + "\""
             + ",\"generatedAt\":\"" + ReportJsonWriter.escapeJson(generatedAt) + "\""
             + ",\"mode\":\"validate\""
             + ",\"ok\":true,\"grammarCount\":" + grammarCount + ",\"warningsCount\":" + warningsCount + ",\"issues\":[]}";
@@ -23,6 +30,7 @@ final class ReportJsonWriterV1 {
 
     static String validationFailure(
         String toolVersion,
+        String argsHash,
         String generatedAt,
         List<ReportJsonWriter.ValidationIssueRow> rows
     ) {
@@ -39,6 +47,7 @@ final class ReportJsonWriterV1 {
             .append(",\"schemaVersion\":\"").append(ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_VERSION)).append("\"")
             .append(",\"schemaUrl\":\"").append(ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_URL)).append("\"")
             .append(",\"toolVersion\":\"").append(ReportJsonWriter.escapeJson(toolVersion)).append("\"")
+            .append(",\"argsHash\":\"").append(ReportJsonWriter.escapeJson(argsHash)).append("\"")
             .append(",\"generatedAt\":\"").append(ReportJsonWriter.escapeJson(generatedAt)).append("\"")
             .append(",\"mode\":\"validate\",\"ok\":false,\"issueCount\":")
             .append(rows.size())
@@ -73,6 +82,7 @@ final class ReportJsonWriterV1 {
 
     static String generationSuccess(
         String toolVersion,
+        String argsHash,
         String generatedAt,
         int grammarCount,
         List<String> generatedFiles,
@@ -87,6 +97,7 @@ final class ReportJsonWriterV1 {
             .append(",\"schemaVersion\":\"").append(ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_VERSION)).append("\"")
             .append(",\"schemaUrl\":\"").append(ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_URL)).append("\"")
             .append(",\"toolVersion\":\"").append(ReportJsonWriter.escapeJson(toolVersion)).append("\"")
+            .append(",\"argsHash\":\"").append(ReportJsonWriter.escapeJson(argsHash)).append("\"")
             .append(",\"generatedAt\":\"").append(ReportJsonWriter.escapeJson(generatedAt)).append("\"")
             .append(",\"mode\":\"generate\",\"ok\":true,\"grammarCount\":")
             .append(grammarCount)

@@ -2,7 +2,10 @@ package org.unlaxer.dsl;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 /**
  * CLI tool entry point for UBNF validation and source generation.
@@ -38,7 +41,7 @@ public class CodegenMain {
                 out.println(TOOL_VERSION);
                 return EXIT_OK;
             }
-            return CodegenRunner.execute(config, out, err, clock, TOOL_VERSION);
+            return CodegenRunner.execute(config, out, err, clock, TOOL_VERSION, argsHash(args));
         } catch (CodegenCliParser.UsageException e) {
             if (e.getMessage() != null && !e.getMessage().isBlank()) {
                 err.println(e.getMessage());
@@ -67,11 +70,12 @@ public class CodegenMain {
                 + " [--dry-run]"
                 + " [--clean-output]"
                 + " [--overwrite never|if-different|always]"
-                + " [--fail-on none|warning|skipped|conflict|warnings-count>=N]"
+                + " [--fail-on none|warning|skipped|conflict|cleaned|warnings-count>=N]"
                 + " [--strict]"
                 + " [--report-format text|json|ndjson]"
                 + " [--report-file <path>]"
                 + " [--output-manifest <path>]"
+                + " [--manifest-format json|ndjson]"
                 + " [--report-version 1]"
                 + " [--report-schema-check]"
                 + " [--warnings-as-json]"
@@ -88,5 +92,28 @@ public class CodegenMain {
             return "dev";
         }
         return version;
+    }
+
+    private static String argsHash(String[] args) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            if (args != null) {
+                for (String arg : args) {
+                    if (arg != null) {
+                        md.update(arg.getBytes(StandardCharsets.UTF_8));
+                    }
+                    md.update((byte) 0);
+                }
+            }
+            byte[] digest = md.digest();
+            StringBuilder sb = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                sb.append(Character.forDigit((b >> 4) & 0xF, 16));
+                sb.append(Character.forDigit(b & 0xF, 16));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
     }
 }

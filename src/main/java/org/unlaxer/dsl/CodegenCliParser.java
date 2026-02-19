@@ -26,6 +26,7 @@ final class CodegenCliParser {
         String reportFormat = "text";
         String reportFile = null;
         String outputManifest = null;
+        String manifestFormat = "json";
         int reportVersion = DEFAULT_REPORT_VERSION;
         boolean reportSchemaCheck = false;
         boolean warningsAsJson = false;
@@ -136,23 +137,35 @@ final class CodegenCliParser {
                         } catch (NumberFormatException e) {
                             throw new UsageException(
                                 "Unsupported --fail-on: " + failOn
-                                    + "\nAllowed values: none, warning, skipped, conflict, warnings-count>=N",
+                                + "\nAllowed values: none, warning, skipped, conflict, cleaned, warnings-count>=N",
                                 false
                             );
                         }
                         if (failOnWarningsThreshold < 0) {
                             throw new UsageException(
                                 "Unsupported --fail-on: " + failOn
-                                    + "\nAllowed values: none, warning, skipped, conflict, warnings-count>=N",
+                                + "\nAllowed values: none, warning, skipped, conflict, cleaned, warnings-count>=N",
                                 false
                             );
                         }
                         failOn = "warnings-count";
                     } else if (!"none".equals(failOn) && !"warning".equals(failOn)
-                        && !"skipped".equals(failOn) && !"conflict".equals(failOn)) {
+                        && !"skipped".equals(failOn) && !"conflict".equals(failOn) && !"cleaned".equals(failOn)) {
                         throw new UsageException(
                             "Unsupported --fail-on: " + failOn
-                                + "\nAllowed values: none, warning, skipped, conflict, warnings-count>=N",
+                                + "\nAllowed values: none, warning, skipped, conflict, cleaned, warnings-count>=N",
+                            false
+                        );
+                    }
+                }
+                case "--manifest-format" -> {
+                    if (i + 1 >= args.length) {
+                        throw new UsageException("Missing value for --manifest-format", true);
+                    }
+                    manifestFormat = args[++i].trim().toLowerCase();
+                    if (!"json".equals(manifestFormat) && !"ndjson".equals(manifestFormat)) {
+                        throw new UsageException(
+                            "Unsupported --manifest-format: " + manifestFormat + "\nAllowed values: json, ndjson",
                             false
                         );
                     }
@@ -175,6 +188,7 @@ final class CodegenCliParser {
                 reportFormat,
                 reportFile,
                 outputManifest,
+                manifestFormat,
                 reportVersion,
                 reportSchemaCheck,
                 warningsAsJson,
@@ -201,6 +215,7 @@ final class CodegenCliParser {
             reportFormat,
             reportFile,
             outputManifest,
+            manifestFormat,
             reportVersion,
             reportSchemaCheck,
             warningsAsJson,
@@ -223,6 +238,7 @@ final class CodegenCliParser {
         String reportFormat,
         String reportFile,
         String outputManifest,
+        String manifestFormat,
         int reportVersion,
         boolean reportSchemaCheck,
         boolean warningsAsJson,

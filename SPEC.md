@@ -126,19 +126,19 @@ Regenerate from live CLI output:
 Validate success:
 
 ```json
-{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","generatedAt":"<generatedAt>","mode":"validate","ok":true,"grammarCount":1,"warningsCount":0,"issues":[]}
+{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","argsHash":"<argsHash>","generatedAt":"<generatedAt>","mode":"validate","ok":true,"grammarCount":1,"warningsCount":0,"issues":[]}
 ```
 
 Validate failure:
 
 ```json
-{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","generatedAt":"<generatedAt>","mode":"validate","ok":false,"issueCount":1,"warningsCount":0,"severityCounts":{"ERROR":1},"categoryCounts":{"MAPPING":1},"issues":[{"grammar":"Invalid","rule":"Invalid","code":"E-MAPPING-MISSING-CAPTURE","severity":"ERROR","category":"MAPPING","message":"rule Invalid @mapping(RootNode) param 'missing' has no matching capture","hint":"Add @missing capture in the rule body or remove it from params."}]}
+{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","argsHash":"<argsHash>","generatedAt":"<generatedAt>","mode":"validate","ok":false,"issueCount":1,"warningsCount":0,"severityCounts":{"ERROR":1},"categoryCounts":{"MAPPING":1},"issues":[{"grammar":"Invalid","rule":"Invalid","code":"E-MAPPING-MISSING-CAPTURE","severity":"ERROR","category":"MAPPING","message":"rule Invalid @mapping(RootNode) param 'missing' has no matching capture","hint":"Add @missing capture in the rule body or remove it from params."}]}
 ```
 
 Generate success:
 
 ```json
-{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","generatedAt":"<generatedAt>","mode":"generate","ok":true,"grammarCount":1,"generatedCount":1,"warningsCount":0,"writtenCount":1,"skippedCount":0,"conflictCount":0,"dryRunCount":0,"generatedFiles":["/path/to/out/org/example/valid/ValidAST.java"]}
+{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","argsHash":"<argsHash>","generatedAt":"<generatedAt>","mode":"generate","ok":true,"grammarCount":1,"generatedCount":1,"warningsCount":0,"writtenCount":1,"skippedCount":0,"conflictCount":0,"dryRunCount":0,"generatedFiles":["/path/to/out/org/example/valid/ValidAST.java"]}
 ```
 <!-- JSON_REPORT_EXAMPLES_END -->
 

@@ -48,9 +48,10 @@ final class CodegenRunner {
         PrintStream out,
         PrintStream err,
         Clock clock,
-        String toolVersion
+        String toolVersion,
+        String argsHash
     ) throws IOException {
-        return execute(config, out, err, clock, toolVersion, new JdkFileSystemPort());
+        return execute(config, out, err, clock, toolVersion, argsHash, new JdkFileSystemPort());
     }
 
     static int execute(
@@ -59,6 +60,7 @@ final class CodegenRunner {
         PrintStream err,
         Clock clock,
         String toolVersion,
+        String argsHash,
         FileSystemPort fs
     ) throws IOException {
         String source = fs.readString(Path.of(config.grammarFile()));
@@ -77,22 +79,21 @@ final class CodegenRunner {
 
         String generatedAt = Instant.now(clock).toString();
         List<FileEvent> fileEvents = new ArrayList<>();
+
         String warningJson = hasWarnings
-            ? ReportJsonWriter.validationFailure(config.reportVersion(), toolVersion, generatedAt, sortedRows)
+            ? ReportJsonWriter.validationFailure(config.reportVersion(), toolVersion, argsHash, generatedAt, sortedRows)
             : null;
 
         if (hasErrors || warningPolicyTriggered) {
             int exitCode = hasErrors ? CodegenMain.EXIT_VALIDATION_ERROR : CodegenMain.EXIT_STRICT_VALIDATION_ERROR;
-            boolean emitJson =
-                "json".equals(config.reportFormat())
-                    || "ndjson".equals(config.reportFormat())
-                    || (config.warningsAsJson() && !hasErrors);
+            boolean emitJson = isJsonLike(config.reportFormat()) || (config.warningsAsJson() && !hasErrors);
             if (emitJson) {
                 String json = warningJson != null
                     ? warningJson
                     : ReportJsonWriter.validationFailure(
                         config.reportVersion(),
                         toolVersion,
+                        argsHash,
                         generatedAt,
                         sortedRows
                     );
@@ -108,6 +109,8 @@ final class CodegenRunner {
                     fs,
                     "validate",
                     generatedAt,
+                    toolVersion,
+                    argsHash,
                     fileEvents,
                     warningsCount,
                     0,
@@ -134,6 +137,8 @@ final class CodegenRunner {
                 fs,
                 "validate",
                 generatedAt,
+                toolVersion,
+                argsHash,
                 fileEvents,
                 warningsCount,
                 0,
@@ -160,10 +165,11 @@ final class CodegenRunner {
         }
 
         if (config.validateOnly()) {
-            if ("json".equals(config.reportFormat()) || "ndjson".equals(config.reportFormat())) {
+            if (isJsonLike(config.reportFormat())) {
                 String json = ReportJsonWriter.validationSuccess(
                     config.reportVersion(),
                     toolVersion,
+                    argsHash,
                     generatedAt,
                     file.grammars().size(),
                     warningsCount
@@ -185,6 +191,8 @@ final class CodegenRunner {
                 fs,
                 "validate",
                 generatedAt,
+                toolVersion,
+                argsHash,
                 fileEvents,
                 warningsCount,
                 0,
@@ -203,6 +211,7 @@ final class CodegenRunner {
             err.println("Choose a project-scoped output directory.");
             return CodegenMain.EXIT_CLI_ERROR;
         }
+
         List<String> generatedFiles = new ArrayList<>();
         int writtenCount = 0;
         int skippedCount = 0;
@@ -222,6 +231,7 @@ final class CodegenRunner {
                 CodeGenerator.GeneratedSource src = gen.generate(grammar);
                 Path pkgDir = outPath.resolve(src.packageName().replace('.', '/'));
                 Path javaFile = pkgDir.resolve(src.className() + ".java");
+
                 if (config.cleanOutput() && !config.dryRun()) {
                     if (fs.deleteIfExists(javaFile)) {
                         fileEvents.add(new FileEvent("cleaned", javaFile.toString()));
@@ -230,6 +240,7 @@ final class CodegenRunner {
                         }
                     }
                 }
+
                 WriteAction action = writeGeneratedSource(config, fs, pkgDir, javaFile, src.source());
                 if (action == WriteAction.CONFLICT) {
                     conflictCount++;
@@ -275,6 +286,8 @@ final class CodegenRunner {
                 fs,
                 "generate",
                 generatedAt,
+                toolVersion,
+                argsHash,
                 fileEvents,
                 warningsCount,
                 writtenCount,
@@ -293,6 +306,8 @@ final class CodegenRunner {
                 fs,
                 "generate",
                 generatedAt,
+                toolVersion,
+                argsHash,
                 fileEvents,
                 warningsCount,
                 writtenCount,
@@ -304,11 +319,35 @@ final class CodegenRunner {
             );
             return CodegenMain.EXIT_GENERATION_ERROR;
         }
+        if (shouldFailOn(config, "cleaned")) {
+            int cleanedCount = countEvents(fileEvents, "cleaned");
+            if (cleanedCount > 0) {
+                err.println("Fail-on policy triggered: cleaned=" + cleanedCount);
+                writeManifestIfNeeded(
+                    config,
+                    fs,
+                    "generate",
+                    generatedAt,
+                    toolVersion,
+                    argsHash,
+                    fileEvents,
+                    warningsCount,
+                    writtenCount,
+                    skippedCount,
+                    conflictCount,
+                    dryRunCount,
+                    false,
+                    CodegenMain.EXIT_GENERATION_ERROR
+                );
+                return CodegenMain.EXIT_GENERATION_ERROR;
+            }
+        }
 
-        if ("json".equals(config.reportFormat()) || "ndjson".equals(config.reportFormat())) {
+        if (isJsonLike(config.reportFormat())) {
             String json = ReportJsonWriter.generationSuccess(
                 config.reportVersion(),
                 toolVersion,
+                argsHash,
                 generatedAt,
                 file.grammars().size(),
                 generatedFiles,
@@ -337,6 +376,8 @@ final class CodegenRunner {
             fs,
             "generate",
             generatedAt,
+            toolVersion,
+            argsHash,
             fileEvents,
             warningsCount,
             writtenCount,
@@ -366,6 +407,20 @@ final class CodegenRunner {
             }
         }
         return count;
+    }
+
+    private static int countEvents(List<FileEvent> events, String action) {
+        int count = 0;
+        for (FileEvent event : events) {
+            if (action.equals(event.action())) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static boolean isJsonLike(String reportFormat) {
+        return "json".equals(reportFormat) || "ndjson".equals(reportFormat);
     }
 
     private static Map<String, CodeGenerator> generatorMap() {
@@ -571,6 +626,8 @@ final class CodegenRunner {
         FileSystemPort fs,
         String mode,
         String generatedAt,
+        String toolVersion,
+        String argsHash,
         List<FileEvent> fileEvents,
         int warningsCount,
         int writtenCount,
@@ -583,29 +640,51 @@ final class CodegenRunner {
         if (config.outputManifest() == null) {
             return;
         }
-        String json = manifestJson(
-            mode,
-            generatedAt,
-            fileEvents,
-            warningsCount,
-            writtenCount,
-            skippedCount,
-            conflictCount,
-            dryRunCount,
-            ok,
-            exitCode
-        );
         Path manifestPath = Path.of(config.outputManifest());
         Path parent = manifestPath.getParent();
         if (parent != null) {
             fs.createDirectories(parent);
         }
-        fs.writeString(manifestPath, json);
+        String payload;
+        if ("ndjson".equals(config.manifestFormat())) {
+            payload = manifestNdjson(
+                mode,
+                generatedAt,
+                toolVersion,
+                argsHash,
+                fileEvents,
+                warningsCount,
+                writtenCount,
+                skippedCount,
+                conflictCount,
+                dryRunCount,
+                ok,
+                exitCode
+            );
+        } else {
+            payload = manifestJson(
+                mode,
+                generatedAt,
+                toolVersion,
+                argsHash,
+                fileEvents,
+                warningsCount,
+                writtenCount,
+                skippedCount,
+                conflictCount,
+                dryRunCount,
+                ok,
+                exitCode
+            );
+        }
+        fs.writeString(manifestPath, payload);
     }
 
     private static String manifestJson(
         String mode,
         String generatedAt,
+        String toolVersion,
+        String argsHash,
         List<FileEvent> fileEvents,
         int warningsCount,
         int writtenCount,
@@ -619,6 +698,8 @@ final class CodegenRunner {
         sb.append("{")
             .append("\"mode\":\"").append(ReportJsonWriter.escapeJson(mode)).append("\",")
             .append("\"generatedAt\":\"").append(ReportJsonWriter.escapeJson(generatedAt)).append("\",")
+            .append("\"toolVersion\":\"").append(ReportJsonWriter.escapeJson(toolVersion)).append("\",")
+            .append("\"argsHash\":\"").append(ReportJsonWriter.escapeJson(argsHash)).append("\",")
             .append("\"ok\":").append(ok).append(",")
             .append("\"exitCode\":").append(exitCode).append(",")
             .append("\"warningsCount\":").append(warningsCount).append(",")
@@ -636,6 +717,44 @@ final class CodegenRunner {
                 .append("\"path\":\"").append(ReportJsonWriter.escapeJson(e.path())).append("\"}");
         }
         sb.append("]}");
+        return sb.toString();
+    }
+
+    private static String manifestNdjson(
+        String mode,
+        String generatedAt,
+        String toolVersion,
+        String argsHash,
+        List<FileEvent> fileEvents,
+        int warningsCount,
+        int writtenCount,
+        int skippedCount,
+        int conflictCount,
+        int dryRunCount,
+        boolean ok,
+        int exitCode
+    ) {
+        StringBuilder sb = new StringBuilder();
+        for (FileEvent e : fileEvents) {
+            sb.append("{\"event\":\"file\",\"action\":\"")
+                .append(ReportJsonWriter.escapeJson(e.action()))
+                .append("\",\"path\":\"")
+                .append(ReportJsonWriter.escapeJson(e.path()))
+                .append("\"}\n");
+        }
+        sb.append("{\"event\":\"manifest-summary\",")
+            .append("\"mode\":\"").append(ReportJsonWriter.escapeJson(mode)).append("\",")
+            .append("\"generatedAt\":\"").append(ReportJsonWriter.escapeJson(generatedAt)).append("\",")
+            .append("\"toolVersion\":\"").append(ReportJsonWriter.escapeJson(toolVersion)).append("\",")
+            .append("\"argsHash\":\"").append(ReportJsonWriter.escapeJson(argsHash)).append("\",")
+            .append("\"ok\":").append(ok).append(",")
+            .append("\"exitCode\":").append(exitCode).append(",")
+            .append("\"warningsCount\":").append(warningsCount).append(",")
+            .append("\"writtenCount\":").append(writtenCount).append(",")
+            .append("\"skippedCount\":").append(skippedCount).append(",")
+            .append("\"conflictCount\":").append(conflictCount).append(",")
+            .append("\"dryRunCount\":").append(dryRunCount)
+            .append("}");
         return sb.toString();
     }
 

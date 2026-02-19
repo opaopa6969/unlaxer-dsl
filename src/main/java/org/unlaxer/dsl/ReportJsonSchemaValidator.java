@@ -35,6 +35,7 @@ final class ReportJsonSchemaValidator {
                     "schemaVersion",
                     "schemaUrl",
                     "toolVersion",
+                    "argsHash",
                     "generatedAt",
                     "mode",
                     "ok",
@@ -47,6 +48,7 @@ final class ReportJsonSchemaValidator {
             requireString(obj, "schemaVersion");
             requireString(obj, "schemaUrl");
             requireString(obj, "toolVersion");
+            requireString(obj, "argsHash");
             requireString(obj, "generatedAt");
             requireNumber(obj, "grammarCount");
             requireNumber(obj, "warningsCount");
@@ -62,6 +64,7 @@ final class ReportJsonSchemaValidator {
                     "schemaVersion",
                     "schemaUrl",
                     "toolVersion",
+                    "argsHash",
                     "generatedAt",
                     "mode",
                     "ok",
@@ -76,6 +79,7 @@ final class ReportJsonSchemaValidator {
             requireString(obj, "schemaVersion");
             requireString(obj, "schemaUrl");
             requireString(obj, "toolVersion");
+            requireString(obj, "argsHash");
             requireString(obj, "generatedAt");
             requireNumber(obj, "issueCount");
             requireNumber(obj, "warningsCount");
@@ -93,6 +97,7 @@ final class ReportJsonSchemaValidator {
                     "schemaVersion",
                     "schemaUrl",
                     "toolVersion",
+                    "argsHash",
                     "generatedAt",
                     "mode",
                     "ok",
@@ -110,6 +115,7 @@ final class ReportJsonSchemaValidator {
             requireString(obj, "schemaVersion");
             requireString(obj, "schemaUrl");
             requireString(obj, "toolVersion");
+            requireString(obj, "argsHash");
             requireString(obj, "generatedAt");
             requireNumber(obj, "grammarCount");
             requireNumber(obj, "generatedCount");

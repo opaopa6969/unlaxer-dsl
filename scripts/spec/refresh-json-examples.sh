@@ -93,11 +93,11 @@ java -cp "$JAVA_CP" org.unlaxer.dsl.CodegenMain \
   >/dev/null
 
 sed "s#${OUT_DIR//\//\\/}#/path/to/out#g" "$WORK_DIR/generate-success.json" > "$WORK_DIR/generate-success.norm.json"
-sed -E 's/"generatedAt":"[^"]+"/"generatedAt":"<generatedAt>"/g; s/"toolVersion":"[^"]+"/"toolVersion":"<toolVersion>"/g' \
+sed -E 's/"generatedAt":"[^"]+"/"generatedAt":"<generatedAt>"/g; s/"toolVersion":"[^"]+"/"toolVersion":"<toolVersion>"/g; s/"argsHash":"[^"]+"/"argsHash":"<argsHash>"/g' \
   "$WORK_DIR/validate-success.json" > "$WORK_DIR/validate-success.norm.json"
-sed -E 's/"generatedAt":"[^"]+"/"generatedAt":"<generatedAt>"/g; s/"toolVersion":"[^"]+"/"toolVersion":"<toolVersion>"/g' \
+sed -E 's/"generatedAt":"[^"]+"/"generatedAt":"<generatedAt>"/g; s/"toolVersion":"[^"]+"/"toolVersion":"<toolVersion>"/g; s/"argsHash":"[^"]+"/"argsHash":"<argsHash>"/g' \
   "$WORK_DIR/validate-failure.json" > "$WORK_DIR/validate-failure.norm.json"
-sed -E 's/"generatedAt":"[^"]+"/"generatedAt":"<generatedAt>"/g; s/"toolVersion":"[^"]+"/"toolVersion":"<toolVersion>"/g' \
+sed -E 's/"generatedAt":"[^"]+"/"generatedAt":"<generatedAt>"/g; s/"toolVersion":"[^"]+"/"toolVersion":"<toolVersion>"/g; s/"argsHash":"[^"]+"/"argsHash":"<argsHash>"/g' \
   "$WORK_DIR/generate-success.norm.json" > "$WORK_DIR/generate-success.final.json"
 
 VALIDATE_SUCCESS_JSON="$(cat "$WORK_DIR/validate-success.norm.json")"

@@ -224,6 +224,7 @@ public class CodegenMainTest {
         assertTrue(out.contains("\"schemaVersion\":\"1.0\""));
         assertTrue(out.contains("\"schemaUrl\":\"https://unlaxer.dev/schema/report-v1.json\""));
         assertTrue(out.contains("\"toolVersion\":\""));
+        assertTrue(out.contains("\"argsHash\":\""));
         assertTrue(out.contains("\"generatedAt\":\""));
         assertHasNonEmptyJsonField(out, "toolVersion");
         assertGeneratedAtIsIsoInstant(out);
@@ -237,6 +238,7 @@ public class CodegenMainTest {
         assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
         assertEquals("1.0", JsonTestUtil.getString(obj, "schemaVersion"));
         assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
+        assertHasNonEmptyJsonField(out, "argsHash");
         assertEquals("validate", JsonTestUtil.getString(obj, "mode"));
         assertTrue(JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "grammarCount"));
@@ -270,6 +272,7 @@ public class CodegenMainTest {
         assertTrue(msg.contains("\"schemaVersion\":\"1.0\""));
         assertTrue(msg.contains("\"schemaUrl\":\"https://unlaxer.dev/schema/report-v1.json\""));
         assertTrue(msg.contains("\"toolVersion\":\""));
+        assertTrue(msg.contains("\"argsHash\":\""));
         assertTrue(msg.contains("\"generatedAt\":\""));
         assertHasNonEmptyJsonField(msg, "toolVersion");
         assertGeneratedAtIsIsoInstant(msg);
@@ -289,6 +292,7 @@ public class CodegenMainTest {
         assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
         assertEquals("1.0", JsonTestUtil.getString(obj, "schemaVersion"));
         assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
+        assertHasNonEmptyJsonField(msg, "argsHash");
         assertEquals("validate", JsonTestUtil.getString(obj, "mode"));
         assertFalse(JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "issueCount"));
@@ -399,6 +403,7 @@ public class CodegenMainTest {
         assertTrue(report.contains("\"schemaVersion\":\"1.0\""));
         assertTrue(report.contains("\"schemaUrl\":\"https://unlaxer.dev/schema/report-v1.json\""));
         assertTrue(report.contains("\"toolVersion\":\""));
+        assertTrue(report.contains("\"argsHash\":\""));
         assertTrue(report.contains("\"generatedAt\":\""));
         assertHasNonEmptyJsonField(report, "toolVersion");
         assertGeneratedAtIsIsoInstant(report);
@@ -440,6 +445,7 @@ public class CodegenMainTest {
         assertTrue(report.contains("\"schemaVersion\":\"1.0\""));
         assertTrue(report.contains("\"schemaUrl\":\"https://unlaxer.dev/schema/report-v1.json\""));
         assertTrue(report.contains("\"toolVersion\":\""));
+        assertTrue(report.contains("\"argsHash\":\""));
         assertTrue(report.contains("\"generatedAt\":\""));
         assertHasNonEmptyJsonField(report, "toolVersion");
         assertGeneratedAtIsIsoInstant(report);
@@ -457,6 +463,7 @@ public class CodegenMainTest {
         assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
         assertEquals("1.0", JsonTestUtil.getString(obj, "schemaVersion"));
         assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
+        assertHasNonEmptyJsonField(report, "argsHash");
         assertEquals("generate", JsonTestUtil.getString(obj, "mode"));
         assertTrue(JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "generatedCount"));

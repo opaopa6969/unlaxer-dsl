@@ -62,6 +62,7 @@ public class CodegenRunnerTest {
             "json",
             null,
             null,
+            "json",
             1,
             false,
             false,
@@ -77,6 +78,7 @@ public class CodegenRunnerTest {
             new PrintStream(err),
             Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC),
             "test",
+            "hash",
             fs
         );
 

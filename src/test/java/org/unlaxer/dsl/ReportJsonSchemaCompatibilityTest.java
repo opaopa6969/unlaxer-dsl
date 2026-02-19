@@ -1,6 +1,7 @@
 package org.unlaxer.dsl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -39,6 +40,7 @@ public class ReportJsonSchemaCompatibilityTest {
                 "schemaVersion",
                 "schemaUrl",
                 "toolVersion",
+                "argsHash",
                 "generatedAt",
                 "mode",
                 "ok",
@@ -51,6 +53,7 @@ public class ReportJsonSchemaCompatibilityTest {
         assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
         assertEquals("1.0", JsonTestUtil.getString(obj, "schemaVersion"));
         assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
+        assertTrue(!JsonTestUtil.getString(obj, "argsHash").isBlank());
         assertEquals(true, JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "grammarCount"));
         assertEquals(0L, JsonTestUtil.getLong(obj, "warningsCount"));
@@ -84,6 +87,7 @@ public class ReportJsonSchemaCompatibilityTest {
                 "schemaVersion",
                 "schemaUrl",
                 "toolVersion",
+                "argsHash",
                 "generatedAt",
                 "mode",
                 "ok",
@@ -98,6 +102,7 @@ public class ReportJsonSchemaCompatibilityTest {
         assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
         assertEquals("1.0", JsonTestUtil.getString(obj, "schemaVersion"));
         assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
+        assertTrue(!JsonTestUtil.getString(obj, "argsHash").isBlank());
         assertEquals(false, JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(0L, JsonTestUtil.getLong(obj, "warningsCount"));
         var severityCounts = JsonTestUtil.getObject(obj, "severityCounts");
@@ -137,6 +142,7 @@ public class ReportJsonSchemaCompatibilityTest {
                 "schemaVersion",
                 "schemaUrl",
                 "toolVersion",
+                "argsHash",
                 "generatedAt",
                 "mode",
                 "ok",
@@ -154,6 +160,7 @@ public class ReportJsonSchemaCompatibilityTest {
         assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
         assertEquals("1.0", JsonTestUtil.getString(obj, "schemaVersion"));
         assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
+        assertTrue(!JsonTestUtil.getString(obj, "argsHash").isBlank());
         assertEquals(true, JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "generatedCount"));
         assertEquals(0L, JsonTestUtil.getLong(obj, "warningsCount"));
