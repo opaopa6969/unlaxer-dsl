@@ -13,6 +13,8 @@ final class ReportJsonWriterV1 {
 
     static String validationSuccess(String toolVersion, String generatedAt, int grammarCount) {
         return "{\"reportVersion\":1"
+            + ",\"schemaVersion\":\"" + ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_VERSION) + "\""
+            + ",\"schemaUrl\":\"" + ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_URL) + "\""
             + ",\"toolVersion\":\"" + ReportJsonWriter.escapeJson(toolVersion) + "\""
             + ",\"generatedAt\":\"" + ReportJsonWriter.escapeJson(generatedAt) + "\""
             + ",\"mode\":\"validate\""
@@ -33,6 +35,8 @@ final class ReportJsonWriterV1 {
 
         StringBuilder sb = new StringBuilder();
         sb.append("{\"reportVersion\":1")
+            .append(",\"schemaVersion\":\"").append(ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_VERSION)).append("\"")
+            .append(",\"schemaUrl\":\"").append(ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_URL)).append("\"")
             .append(",\"toolVersion\":\"").append(ReportJsonWriter.escapeJson(toolVersion)).append("\"")
             .append(",\"generatedAt\":\"").append(ReportJsonWriter.escapeJson(generatedAt)).append("\"")
             .append(",\"mode\":\"validate\",\"ok\":false,\"issueCount\":")
@@ -73,6 +77,8 @@ final class ReportJsonWriterV1 {
     ) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"reportVersion\":1")
+            .append(",\"schemaVersion\":\"").append(ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_VERSION)).append("\"")
+            .append(",\"schemaUrl\":\"").append(ReportJsonWriter.escapeJson(ReportJsonWriter.REPORT_SCHEMA_URL)).append("\"")
             .append(",\"toolVersion\":\"").append(ReportJsonWriter.escapeJson(toolVersion)).append("\"")
             .append(",\"generatedAt\":\"").append(ReportJsonWriter.escapeJson(generatedAt)).append("\"")
             .append(",\"mode\":\"generate\",\"ok\":true,\"grammarCount\":")

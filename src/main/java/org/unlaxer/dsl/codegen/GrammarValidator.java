@@ -12,6 +12,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.OptionalElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.PrecedenceAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RepeatElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RightAssocAnnotation;
+import org.unlaxer.dsl.bootstrap.UBNFAST.RootAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleRefElement;
@@ -73,6 +74,7 @@ public final class GrammarValidator {
         List<ValidationIssue> errors = new ArrayList<>();
 
         validateGlobalWhitespace(grammar, errors);
+        validateRootPresence(grammar, errors);
 
         for (RuleDecl rule : grammar.rules()) {
             MappingAnnotation mapping = null;
@@ -236,6 +238,19 @@ public final class GrammarValidator {
                     }
                 }
             });
+    }
+
+    private static void validateRootPresence(GrammarDecl grammar, List<ValidationIssue> errors) {
+        boolean hasRootRule = grammar.rules().stream()
+            .anyMatch(rule -> rule.annotations().stream().anyMatch(a -> a instanceof RootAnnotation));
+        if (!hasRootRule) {
+            addError(
+                errors,
+                "grammar " + grammar.name() + " has no @root rule",
+                "Add @root to at least one entry rule.",
+                "W-GENERAL-NO-ROOT"
+            );
+        }
     }
 
     private static void validateRuleWhitespace(RuleDecl rule, WhitespaceAnnotation w, List<ValidationIssue> errors) {

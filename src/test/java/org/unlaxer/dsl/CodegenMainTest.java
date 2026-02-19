@@ -221,6 +221,8 @@ public class CodegenMainTest {
         assertEquals(CodegenMain.EXIT_OK, result.exitCode());
         String out = result.out().trim();
         assertTrue(out.startsWith("{\"reportVersion\":1,"));
+        assertTrue(out.contains("\"schemaVersion\":\"1.0\""));
+        assertTrue(out.contains("\"schemaUrl\":\"https://unlaxer.dev/schema/report-v1.json\""));
         assertTrue(out.contains("\"toolVersion\":\""));
         assertTrue(out.contains("\"generatedAt\":\""));
         assertHasNonEmptyJsonField(out, "toolVersion");
@@ -232,6 +234,8 @@ public class CodegenMainTest {
 
         Map<String, Object> obj = JsonTestUtil.parseObject(out);
         assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
+        assertEquals("1.0", JsonTestUtil.getString(obj, "schemaVersion"));
+        assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
         assertEquals("validate", JsonTestUtil.getString(obj, "mode"));
         assertTrue(JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "grammarCount"));
@@ -261,6 +265,8 @@ public class CodegenMainTest {
         assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
         String msg = result.err().trim();
         assertTrue(msg.startsWith("{\"reportVersion\":1,"));
+        assertTrue(msg.contains("\"schemaVersion\":\"1.0\""));
+        assertTrue(msg.contains("\"schemaUrl\":\"https://unlaxer.dev/schema/report-v1.json\""));
         assertTrue(msg.contains("\"toolVersion\":\""));
         assertTrue(msg.contains("\"generatedAt\":\""));
         assertHasNonEmptyJsonField(msg, "toolVersion");
@@ -278,6 +284,8 @@ public class CodegenMainTest {
 
         Map<String, Object> obj = JsonTestUtil.parseObject(msg);
         assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
+        assertEquals("1.0", JsonTestUtil.getString(obj, "schemaVersion"));
+        assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
         assertEquals("validate", JsonTestUtil.getString(obj, "mode"));
         assertFalse(JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "issueCount"));
@@ -384,6 +392,8 @@ public class CodegenMainTest {
         assertEquals(CodegenMain.EXIT_OK, result.exitCode());
         String report = Files.readString(reportFile).trim();
         assertTrue(report.startsWith("{\"reportVersion\":1,"));
+        assertTrue(report.contains("\"schemaVersion\":\"1.0\""));
+        assertTrue(report.contains("\"schemaUrl\":\"https://unlaxer.dev/schema/report-v1.json\""));
         assertTrue(report.contains("\"toolVersion\":\""));
         assertTrue(report.contains("\"generatedAt\":\""));
         assertHasNonEmptyJsonField(report, "toolVersion");
@@ -422,6 +432,8 @@ public class CodegenMainTest {
         String report = Files.readString(reportFile);
         assertTrue(report.contains("\"ok\":true"));
         assertTrue(report.contains("\"reportVersion\":1"));
+        assertTrue(report.contains("\"schemaVersion\":\"1.0\""));
+        assertTrue(report.contains("\"schemaUrl\":\"https://unlaxer.dev/schema/report-v1.json\""));
         assertTrue(report.contains("\"toolVersion\":\""));
         assertTrue(report.contains("\"generatedAt\":\""));
         assertHasNonEmptyJsonField(report, "toolVersion");
@@ -433,6 +445,8 @@ public class CodegenMainTest {
 
         Map<String, Object> obj = JsonTestUtil.parseObject(report);
         assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
+        assertEquals("1.0", JsonTestUtil.getString(obj, "schemaVersion"));
+        assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
         assertEquals("generate", JsonTestUtil.getString(obj, "mode"));
         assertTrue(JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "generatedCount"));
@@ -495,6 +509,7 @@ public class CodegenMainTest {
         assertTrue(result.out().contains("Usage: CodegenMain"));
         assertTrue(result.out().contains("--help"));
         assertTrue(result.out().contains("--version"));
+        assertTrue(result.out().contains("--strict"));
     }
 
     @Test
@@ -581,6 +596,7 @@ public class CodegenMainTest {
         assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
         assertTrue(result.err().contains("Usage: CodegenMain"));
         assertTrue(result.err().contains("--report-version 1"));
+        assertTrue(result.err().contains("--strict"));
         assertTrue(result.err().contains("--report-schema-check"));
     }
 
@@ -652,6 +668,73 @@ public class CodegenMainTest {
         );
         assertEquals(CodegenMain.EXIT_OK, result.exitCode());
         assertTrue(result.err().isBlank());
+    }
+
+    @Test
+    public void testStrictOptionIsAccepted() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-strict", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--strict"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.out().contains("Validation succeeded"));
+    }
+
+    @Test
+    public void testWarningsDoNotFailWithoutStrict() throws Exception {
+        String source = """
+            grammar WarnOnly {
+              @package: org.example.warn
+              @mapping(RootNode, params=[value])
+              Start ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-warning-nonstrict", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.err().contains("Validation warnings:"));
+        assertTrue(result.err().contains("W-GENERAL-NO-ROOT"));
+    }
+
+    @Test
+    public void testWarningsFailWithStrictMode() throws Exception {
+        String source = """
+            grammar WarnOnly {
+              @package: org.example.warn
+              @mapping(RootNode, params=[value])
+              Start ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-warning-strict", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--strict",
+            "--report-format", "json"
+        );
+        assertEquals(CodegenMain.EXIT_STRICT_VALIDATION_ERROR, result.exitCode());
+        assertTrue(result.err().contains("\"ok\":false"));
+        assertTrue(result.err().contains("\"severity\":\"WARNING\""));
+        assertTrue(result.err().contains("\"code\":\"W-GENERAL-NO-ROOT\""));
     }
 
     @Test

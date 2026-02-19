@@ -34,10 +34,22 @@ public class ReportJsonSchemaCompatibilityTest {
         assertEquals(CodegenMain.EXIT_OK, result.exitCode());
         var obj = JsonTestUtil.parseObject(result.out().trim());
         assertEquals(
-            List.of("reportVersion", "toolVersion", "generatedAt", "mode", "ok", "grammarCount", "issues"),
+            List.of(
+                "reportVersion",
+                "schemaVersion",
+                "schemaUrl",
+                "toolVersion",
+                "generatedAt",
+                "mode",
+                "ok",
+                "grammarCount",
+                "issues"
+            ),
             List.copyOf(obj.keySet())
         );
         assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
+        assertEquals("1.0", JsonTestUtil.getString(obj, "schemaVersion"));
+        assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
         assertEquals(true, JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "grammarCount"));
         assertEquals(List.of(), JsonTestUtil.getArray(obj, "issues"));
@@ -67,6 +79,8 @@ public class ReportJsonSchemaCompatibilityTest {
         assertEquals(
             List.of(
                 "reportVersion",
+                "schemaVersion",
+                "schemaUrl",
                 "toolVersion",
                 "generatedAt",
                 "mode",
@@ -79,6 +93,8 @@ public class ReportJsonSchemaCompatibilityTest {
             List.copyOf(obj.keySet())
         );
         assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
+        assertEquals("1.0", JsonTestUtil.getString(obj, "schemaVersion"));
+        assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
         assertEquals(false, JsonTestUtil.getBoolean(obj, "ok"));
         var severityCounts = JsonTestUtil.getObject(obj, "severityCounts");
         assertEquals(1L, JsonTestUtil.getLong(severityCounts, "ERROR"));
@@ -114,6 +130,8 @@ public class ReportJsonSchemaCompatibilityTest {
         assertEquals(
             List.of(
                 "reportVersion",
+                "schemaVersion",
+                "schemaUrl",
                 "toolVersion",
                 "generatedAt",
                 "mode",
@@ -125,6 +143,8 @@ public class ReportJsonSchemaCompatibilityTest {
             List.copyOf(obj.keySet())
         );
         assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
+        assertEquals("1.0", JsonTestUtil.getString(obj, "schemaVersion"));
+        assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
         assertEquals(true, JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "generatedCount"));
     }

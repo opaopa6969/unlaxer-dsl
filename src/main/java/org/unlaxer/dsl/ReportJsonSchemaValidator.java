@@ -30,9 +30,21 @@ final class ReportJsonSchemaValidator {
         if ("validate".equals(mode) && ok) {
             requireTopLevelOrder(
                 obj,
-                List.of("reportVersion", "toolVersion", "generatedAt", "mode", "ok", "grammarCount", "issues")
+                List.of(
+                    "reportVersion",
+                    "schemaVersion",
+                    "schemaUrl",
+                    "toolVersion",
+                    "generatedAt",
+                    "mode",
+                    "ok",
+                    "grammarCount",
+                    "issues"
+                )
             );
             requireNumber(obj, "reportVersion");
+            requireString(obj, "schemaVersion");
+            requireString(obj, "schemaUrl");
             requireString(obj, "toolVersion");
             requireString(obj, "generatedAt");
             requireNumber(obj, "grammarCount");
@@ -45,6 +57,8 @@ final class ReportJsonSchemaValidator {
                 obj,
                 List.of(
                     "reportVersion",
+                    "schemaVersion",
+                    "schemaUrl",
                     "toolVersion",
                     "generatedAt",
                     "mode",
@@ -56,6 +70,8 @@ final class ReportJsonSchemaValidator {
                 )
             );
             requireNumber(obj, "reportVersion");
+            requireString(obj, "schemaVersion");
+            requireString(obj, "schemaUrl");
             requireString(obj, "toolVersion");
             requireString(obj, "generatedAt");
             requireNumber(obj, "issueCount");
@@ -70,6 +86,8 @@ final class ReportJsonSchemaValidator {
                 obj,
                 List.of(
                     "reportVersion",
+                    "schemaVersion",
+                    "schemaUrl",
                     "toolVersion",
                     "generatedAt",
                     "mode",
@@ -80,6 +98,8 @@ final class ReportJsonSchemaValidator {
                 )
             );
             requireNumber(obj, "reportVersion");
+            requireString(obj, "schemaVersion");
+            requireString(obj, "schemaUrl");
             requireString(obj, "toolVersion");
             requireString(obj, "generatedAt");
             requireNumber(obj, "grammarCount");

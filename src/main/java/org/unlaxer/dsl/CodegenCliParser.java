@@ -18,6 +18,7 @@ final class CodegenCliParser {
         String outputDir = null;
         List<String> generators = List.of("Parser", "LSP", "Launcher");
         boolean validateOnly = false;
+        boolean strict = false;
         boolean help = false;
         boolean version = false;
         String reportFormat = "text";
@@ -53,6 +54,7 @@ final class CodegenCliParser {
                     }
                 }
                 case "--validate-only" -> validateOnly = true;
+                case "--strict" -> strict = true;
                 case "--help", "-h" -> help = true;
                 case "--version", "-v" -> version = true;
                 case "--report-format" -> {
@@ -104,6 +106,7 @@ final class CodegenCliParser {
                 outputDir,
                 generators,
                 validateOnly,
+                strict,
                 help,
                 version,
                 reportFormat,
@@ -122,6 +125,7 @@ final class CodegenCliParser {
             outputDir,
             generators,
             validateOnly,
+            strict,
             help,
             version,
             reportFormat,
@@ -136,6 +140,7 @@ final class CodegenCliParser {
         String outputDir,
         List<String> generators,
         boolean validateOnly,
+        boolean strict,
         boolean help,
         boolean version,
         String reportFormat,

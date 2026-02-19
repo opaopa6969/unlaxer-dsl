@@ -852,7 +852,7 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
 ```
 
 JSON reports always include stable top-level fields:
-`reportVersion`, `toolVersion`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
+`reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
 `toolVersion` uses artifact `Implementation-Version` when available, otherwise `dev`.
 The public v1 JSON schema is documented at `docs/schema/report-v1.json`.
 Validation failure entries in `issues[]` include:
@@ -864,6 +864,7 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 | `--grammar <file>` | Path to `.ubnf` file | (required) |
 | `--output <dir>` | Output root directory (written with package structure) | required unless `--validate-only` |
 | `--generators <list>` | Comma-separated generator names | `Parser,LSP,Launcher` |
+| `--strict` | Treat warnings as validation failures | `false` |
 | `--help`, `-h` | Print usage and exit | `false` |
 | `--version`, `-v` | Print tool version and exit | `false` |
 | `--validate-only` | Run grammar validation only (skip code generation) | `false` |
@@ -884,6 +885,7 @@ Exit codes:
 | `2` | CLI usage/argument error |
 | `3` | Grammar validation failure |
 | `4` | Generation/runtime failure |
+| `5` | Strict validation failure (warnings treated as errors) |
 
 ---
 

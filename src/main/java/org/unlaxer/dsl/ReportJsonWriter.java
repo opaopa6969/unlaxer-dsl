@@ -8,6 +8,8 @@ import java.util.List;
 final class ReportJsonWriter {
 
     private ReportJsonWriter() {}
+    static final String REPORT_SCHEMA_VERSION = "1.0";
+    static final String REPORT_SCHEMA_URL = "https://unlaxer.dev/schema/report-v1.json";
 
     record ValidationIssueRow(
         String grammar,

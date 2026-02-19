@@ -22,6 +22,7 @@ public class CodegenCliParserTest {
         assertEquals("text", options.reportFormat());
         assertEquals(1, options.reportVersion());
         assertTrue(options.validateOnly());
+        assertFalse(options.strict());
         assertFalse(options.reportSchemaCheck());
         assertFalse(options.help());
         assertFalse(options.version());
@@ -39,7 +40,18 @@ public class CodegenCliParserTest {
 
         assertEquals("json", options.reportFormat());
         assertEquals(1, options.reportVersion());
+        assertFalse(options.strict());
         assertTrue(options.reportSchemaCheck());
+    }
+
+    @Test
+    public void testParseStrictOption() throws Exception {
+        var options = CodegenCliParser.parse(new String[] {
+            "--grammar", "a.ubnf",
+            "--validate-only",
+            "--strict"
+        });
+        assertTrue(options.strict());
     }
 
     @Test

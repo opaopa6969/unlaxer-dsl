@@ -1052,7 +1052,7 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
 ```
 
 JSON レポートは安定したトップレベル項目として
-`reportVersion`, `toolVersion`, `generatedAt`（UTC ISO-8601）, `mode`（`validate` / `generate`）を常に含む。
+`reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `generatedAt`（UTC ISO-8601）, `mode`（`validate` / `generate`）を常に含む。
 `toolVersion` は取得可能なら artifact の `Implementation-Version`、未設定時は `dev` を使う。
 公開される v1 JSON schema は `docs/schema/report-v1.json` を参照。
 バリデーション失敗時の `issues[]` 要素は
@@ -1064,6 +1064,7 @@ JSON レポートは安定したトップレベル項目として
 | `--grammar <file>` | `.ubnf` ファイルのパス | （必須） |
 | `--output <dir>` | 出力ルートディレクトリ（package 構造で書き出す） | `--validate-only` 以外では必須 |
 | `--generators <list>` | カンマ区切りの生成器名 | `Parser,LSP,Launcher` |
+| `--strict` | warning をバリデーション失敗として扱う | `false` |
 | `--help`, `-h` | 使用方法を表示して終了 | `false` |
 | `--version`, `-v` | ツールバージョンを表示して終了 | `false` |
 | `--validate-only` | 文法検証のみ実行（コード生成をスキップ） | `false` |
@@ -1084,6 +1085,7 @@ JSON レポートは安定したトップレベル項目として
 | `2` | CLI 引数/使用方法エラー |
 | `3` | 文法バリデーション失敗 |
 | `4` | 生成処理/実行時エラー |
+| `5` | strict モードで warning により失敗 |
 
 ---
 
