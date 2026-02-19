@@ -1265,6 +1265,62 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testArgsHashChangesWhenFailOnPolicyChanges() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-argshash-failon", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-argshash-failon-out");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        RunResult conflict = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--report-format", "json",
+            "--fail-on", "conflict"
+        );
+        RunResult skipped = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--report-format", "json",
+            "--fail-on", "skipped"
+        );
+
+        assertEquals(CodegenMain.EXIT_OK, conflict.exitCode());
+        assertEquals(CodegenMain.EXIT_OK, skipped.exitCode());
+        String hash1 = extractJsonStringField(conflict.out(), "argsHash");
+        String hash2 = extractJsonStringField(skipped.out(), "argsHash");
+        assertFalse(hash1.equals(hash2));
+    }
+
+    @Test
+    public void testArgsHashChangesWhenManifestFormatChanges() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-argshash-manifest-format", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-argshash-manifest-format-out");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        RunResult jsonManifest = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--report-format", "json",
+            "--manifest-format", "json"
+        );
+        RunResult ndjsonManifest = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--report-format", "json",
+            "--manifest-format", "ndjson"
+        );
+
+        assertEquals(CodegenMain.EXIT_OK, jsonManifest.exitCode());
+        assertEquals(CodegenMain.EXIT_OK, ndjsonManifest.exitCode());
+        String hash1 = extractJsonStringField(jsonManifest.out(), "argsHash");
+        String hash2 = extractJsonStringField(ndjsonManifest.out(), "argsHash");
+        assertFalse(hash1.equals(hash2));
+    }
+
+    @Test
     public void testCleanOutputRejectsUnsafeRootPath() throws Exception {
         String source = """
             grammar Valid {
