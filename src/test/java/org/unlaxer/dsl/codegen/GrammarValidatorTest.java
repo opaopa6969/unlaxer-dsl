@@ -359,6 +359,7 @@ public class GrammarValidatorTest {
             fail("expected validation error");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("body is not canonical"));
+            assertTrue(e.getMessage().contains("[hint:"));
         }
     }
 

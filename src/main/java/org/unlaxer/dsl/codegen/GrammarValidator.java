@@ -118,39 +118,51 @@ public final class GrammarValidator {
     ) {
         String assocName = hasRightAssoc ? "@rightAssoc" : "@leftAssoc";
         if (hasLeftAssoc && hasRightAssoc) {
-            errors.add("rule " + rule.name() + " cannot use both @leftAssoc and @rightAssoc");
+            addError(errors,
+                "rule " + rule.name() + " cannot use both @leftAssoc and @rightAssoc",
+                "Keep exactly one associativity annotation per rule.");
             return;
         }
 
         Set<String> captures = collectCaptureNames(rule.body());
 
         if (mapping == null) {
-            errors.add("rule " + rule.name() + " uses " + assocName + " but has no @mapping");
+            addError(errors,
+                "rule " + rule.name() + " uses " + assocName + " but has no @mapping",
+                "Add @mapping(ClassName, params=[left, op, right]) to this rule.");
         } else {
             Set<String> params = new LinkedHashSet<>(mapping.paramNames());
             for (String required : List.of("left", "op", "right")) {
                 if (!params.contains(required)) {
-                    errors.add("rule " + rule.name() + " uses " + assocName + " but @mapping("
-                        + mapping.className() + ") params does not contain '" + required + "'");
+                    addError(errors,
+                        "rule " + rule.name() + " uses " + assocName + " but @mapping("
+                            + mapping.className() + ") params does not contain '" + required + "'",
+                        "Include left/op/right in @mapping params.");
                 }
             }
         }
 
         for (String required : List.of("left", "op", "right")) {
             if (!captures.contains(required)) {
-                errors.add("rule " + rule.name() + " uses " + assocName + " but capture @"
-                    + required + " is missing");
+                addError(errors,
+                    "rule " + rule.name() + " uses " + assocName + " but capture @"
+                        + required + " is missing",
+                    "Add @" + required + " capture in the rule body.");
             }
         }
 
         if (!containsRepeat(rule.body())) {
-            errors.add("rule " + rule.name() + " uses " + assocName + " but has no repeat segment");
+            addError(errors,
+                "rule " + rule.name() + " uses " + assocName + " but has no repeat segment",
+                "Use canonical operator pattern: Base { Op Right }.");
         }
 
         if (hasRightAssoc && !isCanonicalRightAssocShape(rule)) {
-            errors.add("rule " + rule.name()
-                + " uses @rightAssoc but body is not canonical: expected Base { Op "
-                + rule.name() + " }");
+            addError(errors,
+                "rule " + rule.name()
+                    + " uses @rightAssoc but body is not canonical: expected Base { Op "
+                    + rule.name() + " }",
+                "Rewrite right-assoc rule as Base { op " + rule.name() + " }.");
         }
     }
 
@@ -183,11 +195,15 @@ public final class GrammarValidator {
         List<String> errors
     ) {
         if (precedenceAnnotations.size() > 1) {
-            errors.add("rule " + rule.name() + " has duplicate @precedence annotations");
+            addError(errors,
+                "rule " + rule.name() + " has duplicate @precedence annotations",
+                "Keep a single @precedence(level=...) annotation.");
         }
         for (PrecedenceAnnotation p : precedenceAnnotations) {
             if (p.level() < 0) {
-                errors.add("rule " + rule.name() + " has invalid @precedence level: " + p.level());
+                addError(errors,
+                    "rule " + rule.name() + " has invalid @precedence level: " + p.level(),
+                    "Use a non-negative integer (e.g. @precedence(level=10)).");
             }
         }
         if (hasLeftAssoc && hasRightAssoc) {
@@ -195,7 +211,9 @@ public final class GrammarValidator {
             return;
         }
         if (!precedenceAnnotations.isEmpty() && !hasLeftAssoc && !hasRightAssoc) {
-            errors.add("rule " + rule.name() + " uses @precedence but has no @leftAssoc/@rightAssoc");
+            addError(errors,
+                "rule " + rule.name() + " uses @precedence but has no @leftAssoc/@rightAssoc",
+                "Add one associativity annotation alongside @precedence.");
         }
     }
 
@@ -222,9 +240,11 @@ public final class GrammarValidator {
                     continue;
                 }
                 if (refPrecedence <= precedence) {
-                    errors.add("rule " + rule.name() + " precedence " + precedence
-                        + " must be lower than referenced operator rule "
-                        + refName + " precedence " + refPrecedence);
+                    addError(errors,
+                        "rule " + rule.name() + " precedence " + precedence
+                            + " must be lower than referenced operator rule "
+                            + refName + " precedence " + refPrecedence,
+                        "Decrease " + rule.name() + " level or increase " + refName + " level.");
                 }
             }
         }
@@ -239,8 +259,10 @@ public final class GrammarValidator {
             }
             Integer level = findPrecedenceLevel(rule);
             if (level == null) {
-                errors.add("rule " + rule.name() + " uses @" + assoc.toLowerCase()
-                    + "Assoc but has no @precedence");
+                addError(errors,
+                    "rule " + rule.name() + " uses @" + assoc.toLowerCase()
+                        + "Assoc but has no @precedence",
+                    "Add @precedence(level=...) to this operator rule.");
                 continue;
             }
             String existing = assocByLevel.get(level);
@@ -249,10 +271,16 @@ public final class GrammarValidator {
                 continue;
             }
             if (!existing.equals(assoc)) {
-                errors.add("precedence level " + level
-                    + " mixes associativity: " + existing + " and " + assoc);
+                addError(errors,
+                    "precedence level " + level
+                        + " mixes associativity: " + existing + " and " + assoc,
+                    "Use one associativity per precedence level.");
             }
         }
+    }
+
+    private static void addError(List<String> errors, String message, String hint) {
+        errors.add(message + " [hint: " + hint + "]");
     }
 
     private static boolean hasAssoc(RuleDecl rule) {
