@@ -2,7 +2,6 @@ package org.unlaxer.dsl;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -327,226 +326,18 @@ final class ReportJsonSchemaValidator {
     }
 
     private static Map<String, Object> parseObject(String json) {
-        Parser p = new Parser(json);
-        Object v;
         try {
-            v = p.parseValue();
-            p.skipWhitespace();
+            return JsonMiniParser.parseObject(json, "E-REPORT-SCHEMA");
         } catch (ReportSchemaValidationException e) {
             throw e;
         } catch (RuntimeException e) {
             fail("E-REPORT-SCHEMA-PARSE", e.getMessage());
             return Map.of();
         }
-
-        if (!p.isEnd()) {
-            fail("E-REPORT-SCHEMA-PARSE", "unexpected trailing characters");
-        }
-        if (!(v instanceof Map<?, ?> m)) {
-            fail("E-REPORT-SCHEMA-PARSE", "expected JSON object");
-        }
-        @SuppressWarnings("unchecked")
-        Map<String, Object> out = (Map<String, Object>) v;
-        return out;
     }
 
     private static void fail(String code, String message) {
         throw new ReportSchemaValidationException(code, message);
     }
 
-    private static final class Parser {
-        private final String s;
-        private int i;
-
-        private Parser(String s) {
-            this.s = s;
-            this.i = 0;
-        }
-
-        private boolean isEnd() {
-            return i >= s.length();
-        }
-
-        private void skipWhitespace() {
-            while (!isEnd()) {
-                char c = s.charAt(i);
-                if (c == ' ' || c == '\n' || c == '\r' || c == '\t') {
-                    i++;
-                } else {
-                    break;
-                }
-            }
-        }
-
-        private Object parseValue() {
-            skipWhitespace();
-            if (isEnd()) {
-                fail("E-REPORT-SCHEMA-PARSE", "unexpected end");
-            }
-            char c = s.charAt(i);
-            return switch (c) {
-                case '{' -> parseObject();
-                case '[' -> parseArray();
-                case '"' -> parseString();
-                case 't' -> parseLiteral("true", Boolean.TRUE);
-                case 'f' -> parseLiteral("false", Boolean.FALSE);
-                case 'n' -> parseLiteral("null", null);
-                default -> {
-                    if (c == '-' || Character.isDigit(c)) {
-                        yield parseNumber();
-                    }
-                    fail("E-REPORT-SCHEMA-PARSE", "unexpected char: " + c);
-                    yield null;
-                }
-            };
-        }
-
-        private Map<String, Object> parseObject() {
-            expect('{');
-            skipWhitespace();
-            Map<String, Object> obj = new LinkedHashMap<>();
-            if (peek('}')) {
-                expect('}');
-                return obj;
-            }
-            while (true) {
-                String key = parseString();
-                skipWhitespace();
-                expect(':');
-                Object value = parseValue();
-                obj.put(key, value);
-                skipWhitespace();
-                if (peek('}')) {
-                    expect('}');
-                    break;
-                }
-                expect(',');
-            }
-            return obj;
-        }
-
-        private List<Object> parseArray() {
-            expect('[');
-            skipWhitespace();
-            List<Object> arr = new ArrayList<>();
-            if (peek(']')) {
-                expect(']');
-                return arr;
-            }
-            while (true) {
-                arr.add(parseValue());
-                skipWhitespace();
-                if (peek(']')) {
-                    expect(']');
-                    break;
-                }
-                expect(',');
-            }
-            return arr;
-        }
-
-        private String parseString() {
-            expect('"');
-            StringBuilder sb = new StringBuilder();
-            while (!isEnd()) {
-                char c = s.charAt(i++);
-                if (c == '"') {
-                    return sb.toString();
-                }
-                if (c == '\\') {
-                    if (isEnd()) {
-                        fail("E-REPORT-SCHEMA-PARSE", "invalid escape");
-                    }
-                    char e = s.charAt(i++);
-                    switch (e) {
-                        case '"' -> sb.append('"');
-                        case '\\' -> sb.append('\\');
-                        case '/' -> sb.append('/');
-                        case 'b' -> sb.append('\b');
-                        case 'f' -> sb.append('\f');
-                        case 'n' -> sb.append('\n');
-                        case 'r' -> sb.append('\r');
-                        case 't' -> sb.append('\t');
-                        case 'u' -> {
-                            if (i + 4 > s.length()) {
-                                fail("E-REPORT-SCHEMA-PARSE", "invalid unicode escape");
-                            }
-                            String hex = s.substring(i, i + 4);
-                            try {
-                                sb.append((char) Integer.parseInt(hex, 16));
-                            } catch (NumberFormatException ex) {
-                                fail("E-REPORT-SCHEMA-PARSE", "invalid unicode escape: " + hex);
-                            }
-                            i += 4;
-                        }
-                        default -> fail("E-REPORT-SCHEMA-PARSE", "invalid escape: \\" + e);
-                    }
-                } else {
-                    sb.append(c);
-                }
-            }
-            fail("E-REPORT-SCHEMA-PARSE", "unterminated string");
-            return null;
-        }
-
-        private Object parseLiteral(String text, Object value) {
-            if (s.startsWith(text, i)) {
-                i += text.length();
-                return value;
-            }
-            fail("E-REPORT-SCHEMA-PARSE", "invalid literal");
-            return null;
-        }
-
-        private Number parseNumber() {
-            int start = i;
-            if (peek('-')) {
-                i++;
-            }
-            while (!isEnd() && Character.isDigit(s.charAt(i))) {
-                i++;
-            }
-            boolean isDecimal = false;
-            if (!isEnd() && s.charAt(i) == '.') {
-                isDecimal = true;
-                i++;
-                while (!isEnd() && Character.isDigit(s.charAt(i))) {
-                    i++;
-                }
-            }
-            if (!isEnd() && (s.charAt(i) == 'e' || s.charAt(i) == 'E')) {
-                isDecimal = true;
-                i++;
-                if (!isEnd() && (s.charAt(i) == '+' || s.charAt(i) == '-')) {
-                    i++;
-                }
-                while (!isEnd() && Character.isDigit(s.charAt(i))) {
-                    i++;
-                }
-            }
-            String token = s.substring(start, i);
-            try {
-                if (isDecimal) {
-                    return Double.parseDouble(token);
-                }
-                return Long.parseLong(token);
-            } catch (NumberFormatException e) {
-                fail("E-REPORT-SCHEMA-PARSE", "invalid number: " + token);
-                return 0;
-            }
-        }
-
-        private boolean peek(char c) {
-            skipWhitespace();
-            return !isEnd() && s.charAt(i) == c;
-        }
-
-        private void expect(char c) {
-            skipWhitespace();
-            if (isEnd() || s.charAt(i) != c) {
-                fail("E-REPORT-SCHEMA-PARSE", "expected '" + c + "'");
-            }
-            i++;
-        }
-    }
 }
