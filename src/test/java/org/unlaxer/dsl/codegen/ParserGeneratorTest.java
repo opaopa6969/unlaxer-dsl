@@ -249,6 +249,8 @@ public class ParserGeneratorTest {
             source.contains("getOperatorSpec(String ruleName)"));
         assertTrue("should generate operator rule predicate",
             source.contains("isOperatorRule(String ruleName)"));
+        assertTrue("should generate next-higher-precedence helper",
+            source.contains("getNextHigherPrecedence(String ruleName)"));
         assertTrue("should generate operator spec table",
             source.contains("getOperatorSpecs()"));
     }

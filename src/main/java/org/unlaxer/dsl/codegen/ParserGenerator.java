@@ -815,6 +815,13 @@ public class ParserGenerator implements CodeGenerator {
         sb.append("            .orElse(Assoc.NONE);\n");
         sb.append("    }\n\n");
 
+        sb.append("    public static java.util.Optional<OperatorSpec> getNextHigherPrecedence(String ruleName) {\n");
+        sb.append("        return getOperatorSpec(ruleName)\n");
+        sb.append("            .flatMap(current -> OPERATOR_SPECS.stream()\n");
+        sb.append("                .filter(s -> s.precedence() > current.precedence())\n");
+        sb.append("                .findFirst());\n");
+        sb.append("    }\n\n");
+
         return sb.toString();
     }
 

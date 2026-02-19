@@ -51,6 +51,13 @@ public class SnapshotParsers {
             .orElse(Assoc.NONE);
     }
 
+    public static java.util.Optional<OperatorSpec> getNextHigherPrecedence(String ruleName) {
+        return getOperatorSpec(ruleName)
+            .flatMap(current -> OPERATOR_SPECS.stream()
+                .filter(s -> s.precedence() > current.precedence())
+                .findFirst());
+    }
+
     // --- Base Chain (No Auto Delimiter) ---
     public static abstract class SnapshotPlainLazyChain extends LazyChain {
         private static final long serialVersionUID = 1L;

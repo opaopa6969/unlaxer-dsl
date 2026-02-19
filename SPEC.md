@@ -55,6 +55,7 @@ Current behavior:
 - Parser generator emits operator metadata APIs: `getPrecedence(ruleName)` and `getAssociativity(ruleName)`.
 - Parser generator emits sorted operator specs: `getOperatorSpecs()`.
 - Parser generator emits `OperatorSpec` lookup helpers: `getOperatorSpec(ruleName)` and `isOperatorRule(ruleName)`.
+- Parser generator emits precedence-step helper: `getNextHigherPrecedence(ruleName)`.
 
 ### `@whitespace`
 
