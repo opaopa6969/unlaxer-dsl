@@ -21,51 +21,12 @@ public final class SnapshotFixtureWriter {
 
     private SnapshotFixtureWriter() {}
 
-    private static final String SNAPSHOT_GRAMMAR = """
-        grammar Snapshot {
-          @package: org.example.snapshot
-          @whitespace: javaStyle
-
-          token NUMBER = NumberParser
-
-          @root
-          @mapping(ExprNode, params=[left, op, right])
-          @leftAssoc
-          @precedence(level=10)
-          Expr ::= Term @left { '+' @op Term @right } ;
-
-          @mapping(TermNode, params=[left, op, right])
-          @leftAssoc
-          @precedence(level=20)
-          Term ::= Factor @left { '*' @op Factor @right } ;
-
-          Factor ::= NUMBER ;
-        }
-        """;
-
-    private static final String RIGHT_ASSOC_SNAPSHOT_GRAMMAR = """
-        grammar SnapshotRightAssoc {
-          @package: org.example.snapshot
-          @whitespace: javaStyle
-
-          token NUMBER = NumberParser
-
-          @root
-          @mapping(PowNode, params=[left, op, right])
-          @rightAssoc
-          @precedence(level=30)
-          Expr ::= Atom @left { '^' @op Expr @right } ;
-
-          Atom ::= NUMBER ;
-        }
-        """;
-
     public static void main(String[] args) throws Exception {
         Path outputDir = resolveOutputDir(args);
         Files.createDirectories(outputDir);
 
-        GrammarDecl snapshot = UBNFMapper.parse(SNAPSHOT_GRAMMAR).grammars().get(0);
-        GrammarDecl rightAssoc = UBNFMapper.parse(RIGHT_ASSOC_SNAPSHOT_GRAMMAR).grammars().get(0);
+        GrammarDecl snapshot = UBNFMapper.parse(SnapshotFixtureData.SNAPSHOT_GRAMMAR).grammars().get(0);
+        GrammarDecl rightAssoc = UBNFMapper.parse(SnapshotFixtureData.RIGHT_ASSOC_SNAPSHOT_GRAMMAR).grammars().get(0);
 
         Files.writeString(outputDir.resolve("ast_snapshot.java.txt"),
             new ASTGenerator().generate(snapshot).source());
