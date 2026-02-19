@@ -51,7 +51,9 @@ final class SnapshotFixtureData {
         "parser_snapshot.java.txt",
         "mapper_snapshot.java.txt",
         "lsp_snapshot.java.txt",
+        "lsp_launcher_snapshot.java.txt",
         "dap_snapshot.java.txt",
+        "dap_launcher_snapshot.java.txt",
         "parser_right_assoc_snapshot.java.txt",
         "mapper_right_assoc_snapshot.java.txt"
     );

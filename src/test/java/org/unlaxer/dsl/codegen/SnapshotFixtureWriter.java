@@ -38,8 +38,12 @@ public final class SnapshotFixtureWriter {
             new MapperGenerator().generate(snapshot).source());
         Files.writeString(outputDir.resolve("lsp_snapshot.java.txt"),
             new LSPGenerator().generate(snapshot).source());
+        Files.writeString(outputDir.resolve("lsp_launcher_snapshot.java.txt"),
+            new LSPLauncherGenerator().generate(snapshot).source());
         Files.writeString(outputDir.resolve("dap_snapshot.java.txt"),
             new DAPGenerator().generate(snapshot).source());
+        Files.writeString(outputDir.resolve("dap_launcher_snapshot.java.txt"),
+            new DAPLauncherGenerator().generate(snapshot).source());
 
         Files.writeString(outputDir.resolve("parser_right_assoc_snapshot.java.txt"),
             new ParserGenerator().generate(rightAssoc).source());

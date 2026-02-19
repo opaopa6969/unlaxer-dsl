@@ -106,3 +106,4 @@ Current behavior:
 - `SnapshotFixtureWriter` supports `--output-dir <path>` for safe dry-runs from tests or local verification.
 - `SnapshotFixtureData` keeps snapshot grammars and fixture file lists in one place.
 - `SnapshotFixtureGoldenConsistencyTest` verifies writer output matches committed fixtures.
+- Fixtures currently cover AST/Parser/Mapper/Evaluator/LSP/LSPLauncher/DAP/DAPLauncher (plus right-assoc parser/mapper variants).

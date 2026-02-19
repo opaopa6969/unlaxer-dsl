@@ -60,6 +60,22 @@ public class CodegenSnapshotTest {
     }
 
     @Test
+    public void testLspLauncherGeneratorSnapshot() throws Exception {
+        GrammarDecl grammar = parseGrammar(SnapshotFixtureData.SNAPSHOT_GRAMMAR);
+        String actual = new LSPLauncherGenerator().generate(grammar).source();
+        String expected = Files.readString(Path.of("src/test/resources/golden/lsp_launcher_snapshot.java.txt"));
+        assertEquals(normalize(expected), normalize(actual));
+    }
+
+    @Test
+    public void testDapLauncherGeneratorSnapshot() throws Exception {
+        GrammarDecl grammar = parseGrammar(SnapshotFixtureData.SNAPSHOT_GRAMMAR);
+        String actual = new DAPLauncherGenerator().generate(grammar).source();
+        String expected = Files.readString(Path.of("src/test/resources/golden/dap_launcher_snapshot.java.txt"));
+        assertEquals(normalize(expected), normalize(actual));
+    }
+
+    @Test
     public void testAstGeneratorSnapshot() throws Exception {
         GrammarDecl grammar = parseGrammar(SnapshotFixtureData.SNAPSHOT_GRAMMAR);
         String actual = new ASTGenerator().generate(grammar).source();
