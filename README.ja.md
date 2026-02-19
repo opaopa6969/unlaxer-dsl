@@ -106,6 +106,12 @@ golden snapshot の再生成：
 ./scripts/check-scripts.sh
 ```
 
+ローカルの一括チェック（scripts + tests + spec freshness）：
+
+```bash
+./scripts/check-all.sh
+```
+
 ---
 
 ## クイックスタート

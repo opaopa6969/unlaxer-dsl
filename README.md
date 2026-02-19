@@ -95,6 +95,12 @@ Check shell scripts (shebang + syntax):
 ./scripts/check-scripts.sh
 ```
 
+Run all local checks (scripts + tests + spec freshness):
+
+```bash
+./scripts/check-all.sh
+```
+
 ---
 
 ## Quick Start
