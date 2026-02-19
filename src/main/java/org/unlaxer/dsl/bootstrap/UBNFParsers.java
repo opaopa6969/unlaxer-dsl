@@ -44,7 +44,7 @@ import org.unlaxer.util.cache.SupplierBoundCache;
  * TokenDecl     ::= 'token' IDENTIFIER '=' CLASS_NAME
  * RuleDecl      ::= Annotation* IDENTIFIER '::=' RuleBody
  * Annotation    ::= '@root' | '@mapping(...)' | '@whitespace[(...)]'
- *                 | '@leftAssoc' | '@precedence(level=INTEGER)' | '@' IDENTIFIER
+ *                 | '@leftAssoc' | '@rightAssoc' | '@precedence(level=INTEGER)' | '@' IDENTIFIER
  * RuleBody      ::= ChoiceBody
  * ChoiceBody    ::= SequenceBody { '|' SequenceBody }
  * SequenceBody  ::= AnnotatedElement+
@@ -481,6 +481,20 @@ public class UBNFParsers {
     }
 
     /**
+     * RightAssocAnnotation: '@rightAssoc'
+     */
+    public static class RightAssocAnnotationParser extends UBNFLazyChain {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Parsers getLazyParsers() {
+            return new Parsers(
+                new WordParser("@rightAssoc")
+            );
+        }
+    }
+
+    /**
      * PrecedenceAnnotation: '@precedence' '(' 'level' '=' UNSIGNED_INTEGER ')'
      */
     public static class PrecedenceAnnotationParser extends UBNFLazyChain {
@@ -517,7 +531,8 @@ public class UBNFParsers {
 
     /**
      * Annotation: RootAnnotation | MappingAnnotation | WhitespaceAnnotation
-     *           | LeftAssocAnnotation | PrecedenceAnnotation | SimpleAnnotation
+     *           | LeftAssocAnnotation | RightAssocAnnotation
+     *           | PrecedenceAnnotation | SimpleAnnotation
      */
     public static class AnnotationParser extends LazyChoice {
         private static final long serialVersionUID = 1L;
@@ -529,6 +544,7 @@ public class UBNFParsers {
                 Parser.get(MappingAnnotationParser.class),
                 Parser.get(WhitespaceAnnotationParser.class),
                 Parser.get(LeftAssocAnnotationParser.class),
+                Parser.get(RightAssocAnnotationParser.class),
                 Parser.get(PrecedenceAnnotationParser.class),
                 Parser.get(SimpleAnnotationParser.class)
             );

@@ -22,6 +22,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.MappingAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.OptionalElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.PrecedenceAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RepeatElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.RightAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RootAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleDecl;
@@ -215,6 +216,8 @@ public class UBNFMapper {
                 result.add(toWhitespaceAnnotation(child));
             } else if (child.parser.getClass() == UBNFParsers.LeftAssocAnnotationParser.class) {
                 result.add(new LeftAssocAnnotation());
+            } else if (child.parser.getClass() == UBNFParsers.RightAssocAnnotationParser.class) {
+                result.add(new RightAssocAnnotation());
             } else if (child.parser.getClass() == UBNFParsers.PrecedenceAnnotationParser.class) {
                 result.add(toPrecedenceAnnotation(child));
             } else if (child.parser.getClass() == UBNFParsers.SimpleAnnotationParser.class) {

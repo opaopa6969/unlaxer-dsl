@@ -175,7 +175,7 @@ public class GrammarValidatorTest {
             GrammarValidator.validateOrThrow(grammar);
             fail("expected validation error");
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("uses @precedence but has no @leftAssoc"));
+            assertTrue(e.getMessage().contains("uses @precedence but has no @leftAssoc/@rightAssoc"));
         }
     }
 
@@ -199,6 +199,49 @@ public class GrammarValidatorTest {
             fail("expected validation error");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("duplicate @precedence annotations"));
+        }
+    }
+
+    @Test
+    public void testRightAssocWithoutMappingFails() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @rightAssoc\n"
+                + "  Expr ::= Term @left { '^' @op Term @right } ;\n"
+                + "  Term ::= 'n' ;\n"
+                + "}"
+        );
+
+        try {
+            GrammarValidator.validateOrThrow(grammar);
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("uses @rightAssoc but has no @mapping"));
+        }
+    }
+
+    @Test
+    public void testBothAssocFails() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @mapping(ExprNode, params=[left, op, right])\n"
+                + "  @leftAssoc\n"
+                + "  @rightAssoc\n"
+                + "  @precedence(level=10)\n"
+                + "  Expr ::= Term @left { '^' @op Term @right } ;\n"
+                + "  Term ::= 'n' ;\n"
+                + "}"
+        );
+
+        try {
+            GrammarValidator.validateOrThrow(grammar);
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("cannot use both @leftAssoc and @rightAssoc"));
         }
     }
 

@@ -114,6 +114,12 @@ public class UBNFParsersTest {
     }
 
     @Test
+    public void testAnnotation_rightAssoc() {
+        Parsed parsed = parse(Parser.get(UBNFParsers.AnnotationParser.class), "@rightAssoc");
+        assertTrue(parsed.isSucceeded());
+    }
+
+    @Test
     public void testAnnotation_precedence() {
         Parsed parsed = parse(Parser.get(UBNFParsers.AnnotationParser.class), "@precedence(level=10)");
         assertTrue(parsed.isSucceeded());

@@ -28,13 +28,20 @@ Current behavior:
 - It records intent but does not currently change parser generation behavior.
 - Future work: introduce operator-precedence/associativity aware generation.
 
+### `@rightAssoc`
+
+- Current status: **declarative only**.
+- It uses the same capture/mapping contract as `@leftAssoc` (`left`, `op`, `right`).
+- It is mutually exclusive with `@leftAssoc` on the same rule.
+
 ### `@precedence(level=...)`
 
 Contract:
 
 1. `level` is an integer (`0` or greater).
 2. A rule may declare `@precedence` at most once.
-3. `@precedence` currently requires `@leftAssoc` on the same rule.
+3. `@precedence` currently requires either `@leftAssoc` or `@rightAssoc` on the same rule.
+4. `@leftAssoc` and `@rightAssoc` cannot be used together on one rule.
 
 Current behavior:
 

@@ -11,6 +11,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.MappingAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.OptionalElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.PrecedenceAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RepeatElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.RightAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.SequenceBody;
@@ -37,6 +38,7 @@ public final class GrammarValidator {
         for (RuleDecl rule : grammar.rules()) {
             MappingAnnotation mapping = null;
             boolean hasLeftAssoc = false;
+            boolean hasRightAssoc = false;
             List<PrecedenceAnnotation> precedenceAnnotations = new ArrayList<>();
 
             for (Annotation annotation : rule.annotations()) {
@@ -44,6 +46,8 @@ public final class GrammarValidator {
                     mapping = m;
                 } else if (annotation instanceof LeftAssocAnnotation) {
                     hasLeftAssoc = true;
+                } else if (annotation instanceof RightAssocAnnotation) {
+                    hasRightAssoc = true;
                 } else if (annotation instanceof PrecedenceAnnotation p) {
                     precedenceAnnotations.add(p);
                 } else if (annotation instanceof WhitespaceAnnotation w) {
@@ -54,10 +58,10 @@ public final class GrammarValidator {
             if (mapping != null) {
                 validateMapping(rule, mapping, errors);
             }
-            if (hasLeftAssoc) {
-                validateLeftAssoc(rule, mapping, errors);
+            if (hasLeftAssoc || hasRightAssoc) {
+                validateAssoc(rule, mapping, hasLeftAssoc, hasRightAssoc, errors);
             }
-            validatePrecedence(rule, hasLeftAssoc, precedenceAnnotations, errors);
+            validatePrecedence(rule, hasLeftAssoc, hasRightAssoc, precedenceAnnotations, errors);
         }
 
         if (!errors.isEmpty()) {
@@ -100,16 +104,28 @@ public final class GrammarValidator {
         }
     }
 
-    private static void validateLeftAssoc(RuleDecl rule, MappingAnnotation mapping, List<String> errors) {
+    private static void validateAssoc(
+        RuleDecl rule,
+        MappingAnnotation mapping,
+        boolean hasLeftAssoc,
+        boolean hasRightAssoc,
+        List<String> errors
+    ) {
+        String assocName = hasRightAssoc ? "@rightAssoc" : "@leftAssoc";
+        if (hasLeftAssoc && hasRightAssoc) {
+            errors.add("rule " + rule.name() + " cannot use both @leftAssoc and @rightAssoc");
+            return;
+        }
+
         Set<String> captures = collectCaptureNames(rule.body());
 
         if (mapping == null) {
-            errors.add("rule " + rule.name() + " uses @leftAssoc but has no @mapping");
+            errors.add("rule " + rule.name() + " uses " + assocName + " but has no @mapping");
         } else {
             Set<String> params = new LinkedHashSet<>(mapping.paramNames());
             for (String required : List.of("left", "op", "right")) {
                 if (!params.contains(required)) {
-                    errors.add("rule " + rule.name() + " uses @leftAssoc but @mapping("
+                    errors.add("rule " + rule.name() + " uses " + assocName + " but @mapping("
                         + mapping.className() + ") params does not contain '" + required + "'");
                 }
             }
@@ -117,13 +133,13 @@ public final class GrammarValidator {
 
         for (String required : List.of("left", "op", "right")) {
             if (!captures.contains(required)) {
-                errors.add("rule " + rule.name() + " uses @leftAssoc but capture @"
+                errors.add("rule " + rule.name() + " uses " + assocName + " but capture @"
                     + required + " is missing");
             }
         }
 
         if (!containsRepeat(rule.body())) {
-            errors.add("rule " + rule.name() + " uses @leftAssoc but has no repeat segment");
+            errors.add("rule " + rule.name() + " uses " + assocName + " but has no repeat segment");
         }
     }
 
@@ -151,6 +167,7 @@ public final class GrammarValidator {
     private static void validatePrecedence(
         RuleDecl rule,
         boolean hasLeftAssoc,
+        boolean hasRightAssoc,
         List<PrecedenceAnnotation> precedenceAnnotations,
         List<String> errors
     ) {
@@ -162,8 +179,12 @@ public final class GrammarValidator {
                 errors.add("rule " + rule.name() + " has invalid @precedence level: " + p.level());
             }
         }
-        if (!precedenceAnnotations.isEmpty() && !hasLeftAssoc) {
-            errors.add("rule " + rule.name() + " uses @precedence but has no @leftAssoc");
+        if (hasLeftAssoc && hasRightAssoc) {
+            // already reported by validateAssoc, but keep precedence checks deterministic.
+            return;
+        }
+        if (!precedenceAnnotations.isEmpty() && !hasLeftAssoc && !hasRightAssoc) {
+            errors.add("rule " + rule.name() + " uses @precedence but has no @leftAssoc/@rightAssoc");
         }
     }
 
