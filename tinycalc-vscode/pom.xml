@@ -42,6 +42,11 @@
             <artifactId>org.eclipse.lsp4j.jsonrpc</artifactId>
             <version>${lsp4j.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.eclipse.lsp4j</groupId>
+            <artifactId>org.eclipse.lsp4j.debug</artifactId>
+            <version>${lsp4j.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -68,7 +73,7 @@
                                 <argument>--output</argument>
                                 <argument>${generated.sources.dir}</argument>
                                 <argument>--generators</argument>
-                                <argument>Parser,LSP,Launcher</argument>
+                                <argument>Parser,LSP,Launcher,DAP,DAPLauncher</argument>
                             </arguments>
                             <includeProjectDependencies>true</includeProjectDependencies>
                             <includePluginDependencies>false</includePluginDependencies>

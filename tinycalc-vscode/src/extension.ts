@@ -20,6 +20,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     ? configuredJar
     : getBundledJarPath(context);
 
+  // --- LSP server ---
   const serverOptions: ServerOptions = {
     command: javaPath,
     args: [...jvmArgs, "--enable-preview", "-jar", jarPath],
@@ -45,6 +46,29 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       void client?.stop();
     }
   });
+
+  // --- DAP adapter ---
+  // Uses -cp (not -jar) so we can specify TinyCalcDapLauncher as the main class
+  // while reusing the same fat jar that contains all classes.
+  const dapFactory: vscode.DebugAdapterDescriptorFactory = {
+    createDebugAdapterDescriptor(
+      _session: vscode.DebugSession
+    ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+      return new vscode.DebugAdapterExecutable(
+        javaPath,
+        [
+          ...jvmArgs,
+          "--enable-preview",
+          "-cp", jarPath,
+          "org.unlaxer.tinycalc.generated.TinyCalcDapLauncher"
+        ]
+      );
+    }
+  };
+
+  context.subscriptions.push(
+    vscode.debug.registerDebugAdapterDescriptorFactory("tinycalc", dapFactory)
+  );
 }
 
 export async function deactivate(): Promise<void> {

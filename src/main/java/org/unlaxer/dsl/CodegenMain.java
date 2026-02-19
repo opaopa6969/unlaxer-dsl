@@ -22,7 +22,7 @@ import java.util.Map;
  *   --grammar    .ubnf ファイルのパス
  *   --output     生成先ディレクトリ（package 構造で書き出す）
  *   --generators カンマ区切りのジェネレーター名（省略時: Parser,LSP,Launcher）
- *                使用可能: AST, Parser, Mapper, Evaluator, LSP, Launcher
+ *                使用可能: AST, Parser, Mapper, Evaluator, LSP, Launcher, DAP, DAPLauncher
  * </pre>
  */
 public class CodegenMain {
@@ -54,12 +54,14 @@ public class CodegenMain {
         GrammarDecl grammar = UBNFMapper.parse(source).grammars().get(0);
 
         Map<String, CodeGenerator> generatorMap = new LinkedHashMap<>();
-        generatorMap.put("AST",       new ASTGenerator());
-        generatorMap.put("Parser",    new ParserGenerator());
-        generatorMap.put("Mapper",    new MapperGenerator());
-        generatorMap.put("Evaluator", new EvaluatorGenerator());
-        generatorMap.put("LSP",       new LSPGenerator());
-        generatorMap.put("Launcher",  new LSPLauncherGenerator());
+        generatorMap.put("AST",          new ASTGenerator());
+        generatorMap.put("Parser",       new ParserGenerator());
+        generatorMap.put("Mapper",       new MapperGenerator());
+        generatorMap.put("Evaluator",    new EvaluatorGenerator());
+        generatorMap.put("LSP",          new LSPGenerator());
+        generatorMap.put("Launcher",     new LSPLauncherGenerator());
+        generatorMap.put("DAP",          new DAPGenerator());
+        generatorMap.put("DAPLauncher",  new DAPLauncherGenerator());
 
         Path outPath = Path.of(outputDir);
 
@@ -84,7 +86,7 @@ public class CodegenMain {
     private static void printUsage() {
         System.err.println(
             "Usage: CodegenMain --grammar <file.ubnf> --output <dir>" +
-            " [--generators AST,Parser,Mapper,Evaluator,LSP,Launcher]"
+            " [--generators AST,Parser,Mapper,Evaluator,LSP,Launcher,DAP,DAPLauncher]"
         );
     }
 }

@@ -35,6 +35,51 @@
         "path": "./syntaxes/tinycalc.tmLanguage.json"
       }
     ],
+    "debuggers": [
+      {
+        "type": "tinycalc",
+        "label": "TinyCalc Debug",
+        "languages": ["tinycalc"],
+        "configurationAttributes": {
+          "launch": {
+            "required": ["program"],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Path to the .tcalc file to parse and run.",
+                "default": "${file}"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Pause before running (shows source in editor).",
+                "default": false
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "tinycalc",
+            "request": "launch",
+            "name": "Debug TinyCalc File",
+            "program": "${file}",
+            "stopOnEntry": false
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "TinyCalc: Launch",
+            "description": "Parse and validate a TinyCalc file.",
+            "body": {
+              "type": "tinycalc",
+              "request": "launch",
+              "name": "${1:Debug TinyCalc File}",
+              "program": "^\"\\${file}\""
+            }
+          }
+        ]
+      }
+    ],
     "configuration": {
       "title": "TinyCalc LSP",
       "properties": {
