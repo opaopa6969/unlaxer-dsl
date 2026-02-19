@@ -218,8 +218,15 @@ final class CodegenRunner {
 
         Path outPath = Path.of(config.outputDir());
         if (config.cleanOutput() && isUnsafeCleanOutputPath(outPath)) {
-            err.println("Refusing --clean-output for unsafe path: " + outPath.toAbsolutePath().normalize());
-            err.println("Choose a project-scoped output directory.");
+            emitCliRuntimeError(
+                config,
+                out,
+                err,
+                "E-CLI-UNSAFE-CLEAN-OUTPUT",
+                "Refusing --clean-output for unsafe path",
+                outPath.toAbsolutePath().normalize().toString(),
+                null
+            );
             return CodegenMain.EXIT_CLI_ERROR;
         }
 
@@ -234,8 +241,15 @@ final class CodegenRunner {
                 String key = name.trim();
                 CodeGenerator gen = generatorMap.get(key);
                 if (gen == null) {
-                    err.println("Unknown generator: " + name);
-                    err.println("Available: " + String.join(", ", generatorMap.keySet()));
+                    emitCliRuntimeError(
+                        config,
+                        out,
+                        err,
+                        "E-CLI-UNKNOWN-GENERATOR",
+                        "Unknown generator: " + name,
+                        null,
+                        generatorMap.keySet().stream().sorted().toList()
+                    );
                     return CodegenMain.EXIT_CLI_ERROR;
                 }
 
@@ -474,6 +488,61 @@ final class CodegenRunner {
 
     private static String ndjsonReportEvent(String event, String payloadJson) {
         return "{\"event\":\"" + ReportJsonWriter.escapeJson(event) + "\",\"payload\":" + payloadJson + "}";
+    }
+
+    private static String ndjsonCliErrorEvent(
+        String code,
+        String message,
+        String detail,
+        List<String> availableGenerators
+    ) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"event\":\"cli-error\"")
+            .append(",\"code\":\"").append(ReportJsonWriter.escapeJson(code)).append("\"")
+            .append(",\"message\":\"").append(ReportJsonWriter.escapeJson(message)).append("\"")
+            .append(",\"detail\":");
+        if (detail == null) {
+            sb.append("null");
+        } else {
+            sb.append("\"").append(ReportJsonWriter.escapeJson(detail)).append("\"");
+        }
+        sb.append(",\"availableGenerators\":");
+        if (availableGenerators == null || availableGenerators.isEmpty()) {
+            sb.append("[]");
+        } else {
+            sb.append("[");
+            for (int i = 0; i < availableGenerators.size(); i++) {
+                if (i > 0) {
+                    sb.append(",");
+                }
+                sb.append("\"").append(ReportJsonWriter.escapeJson(availableGenerators.get(i))).append("\"");
+            }
+            sb.append("]");
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
+    private static void emitCliRuntimeError(
+        CodegenCliParser.CliOptions config,
+        PrintStream out,
+        PrintStream err,
+        String code,
+        String message,
+        String detail,
+        List<String> availableGenerators
+    ) {
+        if ("ndjson".equals(config.reportFormat())) {
+            out.println(ndjsonCliErrorEvent(code, message, detail, availableGenerators));
+            return;
+        }
+        err.println(message);
+        if (detail != null && !detail.isBlank()) {
+            err.println("Detail: " + detail);
+        }
+        if (availableGenerators != null && !availableGenerators.isEmpty()) {
+            err.println("Available: " + String.join(", ", availableGenerators));
+        }
     }
 
     private static boolean shouldFailOn(CodegenCliParser.CliOptions config, String key) {

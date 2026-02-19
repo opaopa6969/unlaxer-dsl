@@ -501,6 +501,26 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testUnknownGeneratorNdjsonEmitsCliErrorEventOnStdout() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-unknown-gen-ndjson", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-unknown-gen-ndjson-out");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "Nope",
+            "--report-format", "ndjson"
+        );
+
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+        assertTrue(result.out().contains("\"event\":\"cli-error\""));
+        assertTrue(result.out().contains("\"code\":\"E-CLI-UNKNOWN-GENERATOR\""));
+        assertTrue(result.out().contains("\"availableGenerators\":["));
+        assertTrue(result.err().isBlank());
+    }
+
+    @Test
     public void testEmptyGeneratorsValueReturnsCliErrorCode() throws Exception {
         String source = """
             grammar Valid {
@@ -1599,6 +1619,25 @@ public class CodegenMainTest {
         );
         assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
         assertTrue(result.err().contains("Refusing --clean-output for unsafe path"));
+    }
+
+    @Test
+    public void testCleanOutputRejectsUnsafeRootPathInNdjson() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-clean-unsafe-ndjson", ".ubnf");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", "/",
+            "--generators", "AST",
+            "--clean-output",
+            "--report-format", "ndjson"
+        );
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+        assertTrue(result.out().contains("\"event\":\"cli-error\""));
+        assertTrue(result.out().contains("\"code\":\"E-CLI-UNSAFE-CLEAN-OUTPUT\""));
+        assertTrue(result.out().contains("\"detail\":\"/\""));
+        assertTrue(result.err().isBlank());
     }
 
     @Test

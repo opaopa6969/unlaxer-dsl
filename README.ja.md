@@ -1091,6 +1091,7 @@ manifest schema は `docs/schema/manifest-v1.json` と `docs/schema/manifest-v1.
 JSON ペイロードには `warningsCount` が含まれ、`issues[]` を走査せず warning 件数を確認できる。
 生成JSONには `writtenCount`, `skippedCount`, `conflictCount`, `dryRunCount` も含まれ、ポリシー失敗時は `failReasonCode` も含まれる。
 `ndjson` は 1 行 1 JSON（file イベント + summary イベント）でストリーミング連携しやすい。
+`ndjson` は実行時の CLI 失敗（例: 未知の generator）で `cli-error` イベントも出力する。
 `ndjson` モードでは `stdout` は JSON 行のみ（人間向け進捗テキストは出力しない）。
 `ndjson` の生成モードでは conflict/fail-on の人間向けメッセージを `stderr` に出さない。
 `ndjson` の検証失敗経路でも `stderr` は JSON 行のみ。

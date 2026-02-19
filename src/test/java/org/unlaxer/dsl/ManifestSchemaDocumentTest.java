@@ -19,6 +19,7 @@ public class ManifestSchemaDocumentTest {
         Map<String, Object> schema = JsonTestUtil.parseObject(json);
         Map<String, Object> properties = JsonTestUtil.getObject(schema, "properties");
         assertTrue(properties.containsKey("failReasonCode"));
+        assertTrue(schema.containsKey("allOf"));
     }
 
     @Test
@@ -34,5 +35,15 @@ public class ManifestSchemaDocumentTest {
         }
         assertTrue(titles.contains("file-event"));
         assertTrue(titles.contains("manifest-summary"));
+
+        for (Object o : oneOf) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> item = (Map<String, Object>) o;
+            if ("manifest-summary".equals(JsonTestUtil.getString(item, "title"))) {
+                assertTrue(item.containsKey("allOf"));
+                return;
+            }
+        }
+        throw new IllegalStateException("manifest-summary schema not found");
     }
 }

@@ -170,6 +170,28 @@ public class ReportNdjsonSchemaDocumentConsistencyTest {
         assertEquals(fileKeys, cleaned.keySet());
     }
 
+    @Test
+    public void testCliErrorEventMatchesSchemaDocument() throws Exception {
+        Map<String, Object> schema = loadSchemaDocument();
+        Set<String> expectedKeys = requiredKeys(schemaVariant(schema, "cli-error"));
+
+        Path grammarFile = Files.createTempFile("ndjson-schema-doc-cli-error", ".ubnf");
+        Path outputDir = Files.createTempDirectory("ndjson-schema-doc-cli-error-out");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "Nope",
+            "--report-format", "ndjson"
+        );
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+
+        Map<String, Object> event = JsonTestUtil.parseObject(lastJsonLine(result.out()));
+        assertEquals(expectedKeys, event.keySet());
+        assertEquals("cli-error", JsonTestUtil.getString(event, "event"));
+    }
+
     private static Set<String> requiredKeys(Map<String, Object> variant) {
         List<Object> required = JsonTestUtil.getArray(variant, "required");
         Set<String> keys = new LinkedHashSet<>();

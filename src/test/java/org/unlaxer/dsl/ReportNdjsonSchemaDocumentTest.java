@@ -32,6 +32,7 @@ public class ReportNdjsonSchemaDocumentTest {
         assertTrue(titles.contains("strict-failure"));
         assertTrue(titles.contains("warnings"));
         assertTrue(titles.contains("generate-summary"));
+        assertTrue(titles.contains("cli-error"));
     }
 
     @Test

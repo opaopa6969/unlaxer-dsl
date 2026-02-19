@@ -64,6 +64,27 @@
         "event": { "const": "generate-summary" },
         "payload": { "$ref": "https://unlaxer.dev/schema/report-v1.json" }
       }
+    },
+    {
+      "title": "cli-error",
+      "type": "object",
+      "required": ["event", "code", "message", "detail", "availableGenerators"],
+      "additionalProperties": false,
+      "properties": {
+        "event": { "const": "cli-error" },
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "detail": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "minLength": 1 }
+          ]
+        },
+        "availableGenerators": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
     }
   ]
 }

@@ -891,6 +891,7 @@ When `--report-schema-check` fails, error messages are prefixed with `E-REPORT-S
 JSON payloads expose `warningsCount` so clients can detect warnings without scanning `issues[]`.
 Generation JSON payloads also expose `writtenCount`, `skippedCount`, `conflictCount`, and `dryRunCount`, with `failReasonCode` on policy failure.
 `ndjson` emits one JSON object per line (file events + summary event) for streaming-friendly integrations.
+`ndjson` also emits `cli-error` events for runtime CLI failures (for example unknown generator names).
 In `ndjson` mode, `stdout` is JSON-lines only (no human progress text).
 In `ndjson` generation mode, conflict/fail-on human messages are suppressed from `stderr`.
 In `ndjson` validation failure paths, `stderr` is also JSON-lines only.
