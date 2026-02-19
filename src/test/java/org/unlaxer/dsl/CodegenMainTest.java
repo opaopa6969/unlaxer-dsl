@@ -1409,6 +1409,34 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testArgsHashIgnoresHelpAndVersionFlagsInSemanticConfig() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-argshash-help-version", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-argshash-help-version-out");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        var base = CodegenCliParser.parse(new String[] {
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--report-format", "json"
+        });
+        var withHelpVersion = CodegenCliParser.parse(new String[] {
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--report-format", "json",
+            "--help",
+            "--version"
+        });
+
+        var method = CodegenMain.class.getDeclaredMethod("argsHash", CodegenCliParser.CliOptions.class);
+        method.setAccessible(true);
+        String hashBase = (String) method.invoke(null, base);
+        String hashWithFlags = (String) method.invoke(null, withHelpVersion);
+        assertEquals(hashBase, hashWithFlags);
+    }
+
+    @Test
     public void testCleanOutputRejectsUnsafeRootPath() throws Exception {
         String source = """
             grammar Valid {
