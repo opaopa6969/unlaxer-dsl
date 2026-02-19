@@ -21,6 +21,7 @@ Contract:
 Current behavior:
 
 - Violations fail fast during code generation (`GrammarValidator.validateOrThrow`) with a clear error message, stable error code, and short fix hint.
+- `GrammarValidator.validate(grammar)` returns structured issues (`code`, `message`, `hint`) without throwing.
 
 ### `@leftAssoc`
 

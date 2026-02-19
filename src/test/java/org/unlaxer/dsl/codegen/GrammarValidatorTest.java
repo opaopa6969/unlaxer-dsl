@@ -2,6 +2,7 @@ package org.unlaxer.dsl.codegen;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
@@ -221,6 +222,25 @@ public class GrammarValidatorTest {
             assertTrue(e.getMessage().contains("uses @rightAssoc but has no @mapping"));
             assertTrue(e.getMessage().contains("[code: E-ASSOC-NO-MAPPING]"));
         }
+    }
+
+    @Test
+    public void testValidateReturnsStructuredIssues() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @rightAssoc\n"
+                + "  Expr ::= Term @left { '^' @op Term @right } ;\n"
+                + "  Term ::= 'n' ;\n"
+                + "}"
+        );
+
+        var issues = GrammarValidator.validate(grammar);
+        assertTrue(!issues.isEmpty());
+        assertEquals("E-ASSOC-NO-MAPPING", issues.get(0).code());
+        assertTrue(issues.get(0).message().contains("uses @rightAssoc but has no @mapping"));
+        assertTrue(issues.get(0).hint().contains("@mapping"));
     }
 
     @Test

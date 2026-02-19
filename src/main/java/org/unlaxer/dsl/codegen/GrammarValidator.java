@@ -33,8 +33,14 @@ public final class GrammarValidator {
 
     private GrammarValidator() {}
 
-    public static void validateOrThrow(GrammarDecl grammar) {
-        List<String> errors = new ArrayList<>();
+    public record ValidationIssue(String code, String message, String hint) {
+        public String format() {
+            return message + " [code: " + code + "] [hint: " + hint + "]";
+        }
+    }
+
+    public static List<ValidationIssue> validate(GrammarDecl grammar) {
+        List<ValidationIssue> errors = new ArrayList<>();
 
         validateGlobalWhitespace(grammar, errors);
 
@@ -69,15 +75,20 @@ public final class GrammarValidator {
         validatePrecedenceTopology(grammar, errors);
         validateAssociativityConsistency(grammar, errors);
 
-        if (!errors.isEmpty()) {
+        return List.copyOf(errors);
+    }
+
+    public static void validateOrThrow(GrammarDecl grammar) {
+        List<ValidationIssue> issues = validate(grammar);
+        if (!issues.isEmpty()) {
             throw new IllegalArgumentException(
                 "Grammar validation failed for " + grammar.name() + ":\n - "
-                    + String.join("\n - ", errors)
+                    + String.join("\n - ", issues.stream().map(ValidationIssue::format).toList())
             );
         }
     }
 
-    private static void validateMapping(RuleDecl rule, MappingAnnotation mapping, List<String> errors) {
+    private static void validateMapping(RuleDecl rule, MappingAnnotation mapping, List<ValidationIssue> errors) {
         List<String> params = mapping.paramNames();
         Set<String> paramSet = new LinkedHashSet<>();
         Set<String> duplicateParams = new LinkedHashSet<>();
@@ -123,7 +134,7 @@ public final class GrammarValidator {
         MappingAnnotation mapping,
         boolean hasLeftAssoc,
         boolean hasRightAssoc,
-        List<String> errors
+        List<ValidationIssue> errors
     ) {
         String assocName = hasRightAssoc ? "@rightAssoc" : "@leftAssoc";
         if (hasLeftAssoc && hasRightAssoc) {
@@ -181,7 +192,7 @@ public final class GrammarValidator {
         }
     }
 
-    private static void validateGlobalWhitespace(GrammarDecl grammar, List<String> errors) {
+    private static void validateGlobalWhitespace(GrammarDecl grammar, List<ValidationIssue> errors) {
         grammar.settings().stream()
             .filter(s -> "whitespace".equals(s.key()))
             .forEach(s -> {
@@ -197,7 +208,7 @@ public final class GrammarValidator {
             });
     }
 
-    private static void validateRuleWhitespace(RuleDecl rule, WhitespaceAnnotation w, List<String> errors) {
+    private static void validateRuleWhitespace(RuleDecl rule, WhitespaceAnnotation w, List<ValidationIssue> errors) {
         String style = w.style().orElse("javaStyle").trim();
         if (!style.equalsIgnoreCase("javaStyle") && !style.equalsIgnoreCase("none")) {
             addError(errors,
@@ -213,7 +224,7 @@ public final class GrammarValidator {
         boolean hasLeftAssoc,
         boolean hasRightAssoc,
         List<PrecedenceAnnotation> precedenceAnnotations,
-        List<String> errors
+        List<ValidationIssue> errors
     ) {
         if (precedenceAnnotations.size() > 1) {
             addError(errors,
@@ -241,7 +252,7 @@ public final class GrammarValidator {
         }
     }
 
-    private static void validatePrecedenceTopology(GrammarDecl grammar, List<String> errors) {
+    private static void validatePrecedenceTopology(GrammarDecl grammar, List<ValidationIssue> errors) {
         var ruleMap = grammar.rules().stream()
             .collect(java.util.stream.Collectors.toMap(RuleDecl::name, r -> r, (a, b) -> a));
 
@@ -275,7 +286,7 @@ public final class GrammarValidator {
         }
     }
 
-    private static void validateAssociativityConsistency(GrammarDecl grammar, List<String> errors) {
+    private static void validateAssociativityConsistency(GrammarDecl grammar, List<ValidationIssue> errors) {
         Map<Integer, String> assocByLevel = new LinkedHashMap<>();
         for (RuleDecl rule : grammar.rules()) {
             String assoc = getAssocKind(rule);
@@ -306,8 +317,8 @@ public final class GrammarValidator {
         }
     }
 
-    private static void addError(List<String> errors, String message, String hint, String code) {
-        errors.add(message + " [code: " + code + "] [hint: " + hint + "]");
+    private static void addError(List<ValidationIssue> errors, String message, String hint, String code) {
+        errors.add(new ValidationIssue(code, message, hint));
     }
 
     private static boolean hasAssoc(RuleDecl rule) {
