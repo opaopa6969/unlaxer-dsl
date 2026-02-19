@@ -25,6 +25,22 @@ public class CliErrorCodeContractTest {
     }
 
     @Test
+    public void testUnsupportedReportVersionErrorCodeMatchesPatternInNdjson() throws Exception {
+        Path grammarFile = Files.createTempFile("cli-error-contract-report-version", ".ubnf");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "ndjson",
+            "--report-version", "2"
+        );
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+        assertCliErrorCodePattern(result.out());
+        assertTrue(result.err().isBlank());
+    }
+
+    @Test
     public void testUnknownGeneratorErrorCodeMatchesPatternInNdjson() throws Exception {
         Path grammarFile = Files.createTempFile("cli-error-contract-unknown-generator", ".ubnf");
         Path outputDir = Files.createTempDirectory("cli-error-contract-unknown-generator-out");
@@ -70,6 +86,23 @@ public class CliErrorCodeContractTest {
             "--report-file", reportFile.toString()
         );
         assertEquals(CodegenMain.EXIT_GENERATION_ERROR, result.exitCode());
+        assertCliErrorCodePattern(result.out());
+        assertTrue(result.err().isBlank());
+    }
+
+    @Test
+    public void testUnsafeCleanOutputErrorCodeMatchesPatternInNdjson() throws Exception {
+        Path grammarFile = Files.createTempFile("cli-error-contract-unsafe-clean", ".ubnf");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", "/",
+            "--generators", "AST",
+            "--clean-output",
+            "--report-format", "ndjson"
+        );
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
         assertCliErrorCodePattern(result.out());
         assertTrue(result.err().isBlank());
     }
