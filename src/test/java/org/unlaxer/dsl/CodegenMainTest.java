@@ -465,6 +465,30 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testEmptyGeneratorsValueReturnsCliErrorCode() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-empty-gens", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-empty-gens-out");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", " ,  , "
+        );
+
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+        assertTrue(result.err().contains("No generators specified"));
+    }
+
+    @Test
     public void testMissingGrammarReturnsCliErrorCode() {
         RunResult result = runCodegen("--validate-only");
         assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
