@@ -101,3 +101,4 @@ Current behavior:
 
 - Snapshot fixtures are stored under `src/test/resources/golden/`.
 - `org.unlaxer.dsl.codegen.SnapshotFixtureWriter` rewrites all fixtures from the current generators.
+- `SnapshotFixtureWriter` supports `--output-dir <path>` for safe dry-runs from tests or local verification.

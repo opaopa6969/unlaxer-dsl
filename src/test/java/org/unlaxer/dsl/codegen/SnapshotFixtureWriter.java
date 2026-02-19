@@ -61,28 +61,40 @@ public final class SnapshotFixtureWriter {
         """;
 
     public static void main(String[] args) throws Exception {
-        Path goldenDir = Path.of("src/test/resources/golden");
-        Files.createDirectories(goldenDir);
+        Path outputDir = resolveOutputDir(args);
+        Files.createDirectories(outputDir);
 
         GrammarDecl snapshot = UBNFMapper.parse(SNAPSHOT_GRAMMAR).grammars().get(0);
         GrammarDecl rightAssoc = UBNFMapper.parse(RIGHT_ASSOC_SNAPSHOT_GRAMMAR).grammars().get(0);
 
-        Files.writeString(goldenDir.resolve("ast_snapshot.java.txt"),
+        Files.writeString(outputDir.resolve("ast_snapshot.java.txt"),
             new ASTGenerator().generate(snapshot).source());
-        Files.writeString(goldenDir.resolve("evaluator_snapshot.java.txt"),
+        Files.writeString(outputDir.resolve("evaluator_snapshot.java.txt"),
             new EvaluatorGenerator().generate(snapshot).source());
-        Files.writeString(goldenDir.resolve("parser_snapshot.java.txt"),
+        Files.writeString(outputDir.resolve("parser_snapshot.java.txt"),
             new ParserGenerator().generate(snapshot).source());
-        Files.writeString(goldenDir.resolve("mapper_snapshot.java.txt"),
+        Files.writeString(outputDir.resolve("mapper_snapshot.java.txt"),
             new MapperGenerator().generate(snapshot).source());
-        Files.writeString(goldenDir.resolve("lsp_snapshot.java.txt"),
+        Files.writeString(outputDir.resolve("lsp_snapshot.java.txt"),
             new LSPGenerator().generate(snapshot).source());
-        Files.writeString(goldenDir.resolve("dap_snapshot.java.txt"),
+        Files.writeString(outputDir.resolve("dap_snapshot.java.txt"),
             new DAPGenerator().generate(snapshot).source());
 
-        Files.writeString(goldenDir.resolve("parser_right_assoc_snapshot.java.txt"),
+        Files.writeString(outputDir.resolve("parser_right_assoc_snapshot.java.txt"),
             new ParserGenerator().generate(rightAssoc).source());
-        Files.writeString(goldenDir.resolve("mapper_right_assoc_snapshot.java.txt"),
+        Files.writeString(outputDir.resolve("mapper_right_assoc_snapshot.java.txt"),
             new MapperGenerator().generate(rightAssoc).source());
+    }
+
+    private static Path resolveOutputDir(String[] args) {
+        if (args == null || args.length == 0) {
+            return Path.of("src/test/resources/golden");
+        }
+        if (args.length == 2 && "--output-dir".equals(args[0])) {
+            return Path.of(args[1]);
+        }
+        throw new IllegalArgumentException(
+            "Usage: SnapshotFixtureWriter [--output-dir <path>]"
+        );
     }
 }
