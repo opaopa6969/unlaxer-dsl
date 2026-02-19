@@ -45,7 +45,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check docs are synchronized
-        run: ./scripts/check-doc-sync.sh
+        run: ./scripts/spec/check-doc-sync.sh
 
   spec-check:
     runs-on: ubuntu-latest
@@ -68,4 +68,4 @@ jobs:
         run: mvn -q -DincludeScope=runtime dependency:build-classpath -Dmdep.outputFile=target/runtime.classpath
 
       - name: Check SPEC JSON examples are up to date
-        run: ./scripts/check-spec-json-examples.sh
+        run: ./scripts/spec/check-json-examples.sh

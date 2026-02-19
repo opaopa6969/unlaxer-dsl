@@ -80,13 +80,13 @@ Refresh golden snapshots:
 Refresh JSON report examples in `SPEC.md`:
 
 ```bash
-./scripts/refresh-spec-json-examples.sh
+./scripts/spec/refresh-json-examples.sh
 ```
 
 Check `SPEC.md` JSON examples are current (for CI):
 
 ```bash
-./scripts/check-spec-json-examples.sh
+./scripts/spec/check-json-examples.sh
 ```
 
 Check shell scripts (shebang + syntax):
@@ -98,7 +98,7 @@ Check shell scripts (shebang + syntax):
 Check CLI option docs are synchronized across docs:
 
 ```bash
-./scripts/check-doc-sync.sh
+./scripts/spec/check-doc-sync.sh
 ```
 
 Run all local checks (scripts + tests + spec freshness):
@@ -860,6 +860,7 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 | `--validate-only` | Run grammar validation only (skip code generation) | `false` |
 | `--report-format text\|json` | Output/report format | `text` |
 | `--report-file <path>` | Write report payload to a file | (none) |
+| `--report-version 1` | JSON report schema version | `1` |
 
 Available generator names: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 

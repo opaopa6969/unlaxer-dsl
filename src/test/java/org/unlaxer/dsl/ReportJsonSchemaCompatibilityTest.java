@@ -6,8 +6,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
@@ -34,10 +32,15 @@ public class ReportJsonSchemaCompatibilityTest {
         );
 
         assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        var obj = JsonTestUtil.parseObject(result.out().trim());
         assertEquals(
             List.of("reportVersion", "toolVersion", "generatedAt", "mode", "ok", "grammarCount", "issues"),
-            extractTopLevelKeys(result.out().trim())
+            List.copyOf(obj.keySet())
         );
+        assertEquals(1L, obj.get("reportVersion"));
+        assertEquals(Boolean.TRUE, obj.get("ok"));
+        assertEquals(1L, obj.get("grammarCount"));
+        assertEquals(List.of(), obj.get("issues"));
     }
 
     @Test
@@ -60,6 +63,7 @@ public class ReportJsonSchemaCompatibilityTest {
         );
 
         assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        var obj = JsonTestUtil.parseObject(result.err().trim());
         assertEquals(
             List.of(
                 "reportVersion",
@@ -72,8 +76,16 @@ public class ReportJsonSchemaCompatibilityTest {
                 "categoryCounts",
                 "issues"
             ),
-            extractTopLevelKeys(result.err().trim())
+            List.copyOf(obj.keySet())
         );
+        assertEquals(1L, obj.get("reportVersion"));
+        assertEquals(Boolean.FALSE, obj.get("ok"));
+        @SuppressWarnings("unchecked")
+        var severityCounts = (java.util.Map<String, Object>) obj.get("severityCounts");
+        assertEquals(1L, severityCounts.get("ERROR"));
+        @SuppressWarnings("unchecked")
+        var issues = (java.util.List<Object>) obj.get("issues");
+        assertEquals(1, issues.size());
     }
 
     @Test
@@ -100,6 +112,7 @@ public class ReportJsonSchemaCompatibilityTest {
         assertEquals(CodegenMain.EXIT_OK, result.exitCode());
         String[] lines = result.out().trim().split("\\R");
         String json = lines[lines.length - 1];
+        var obj = JsonTestUtil.parseObject(json);
         assertEquals(
             List.of(
                 "reportVersion",
@@ -111,8 +124,11 @@ public class ReportJsonSchemaCompatibilityTest {
                 "generatedCount",
                 "generatedFiles"
             ),
-            extractTopLevelKeys(json)
+            List.copyOf(obj.keySet())
         );
+        assertEquals(1L, obj.get("reportVersion"));
+        assertEquals(Boolean.TRUE, obj.get("ok"));
+        assertEquals(1L, obj.get("generatedCount"));
     }
 
     private static RunResult runCodegen(String... args) {
@@ -120,73 +136,6 @@ public class ReportJsonSchemaCompatibilityTest {
         ByteArrayOutputStream err = new ByteArrayOutputStream();
         int exitCode = CodegenMain.run(args, new PrintStream(out), new PrintStream(err));
         return new RunResult(exitCode, out.toString(), err.toString());
-    }
-
-    private static List<String> extractTopLevelKeys(String json) {
-        String s = json.trim();
-        if (s.isEmpty() || s.charAt(0) != '{' || s.charAt(s.length() - 1) != '}') {
-            throw new IllegalArgumentException("not a JSON object: " + json);
-        }
-        List<String> keys = new ArrayList<>();
-        int depth = 0;
-        boolean inString = false;
-        boolean escape = false;
-        boolean expectingKey = false;
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (inString) {
-                if (escape) {
-                    escape = false;
-                } else if (c == '\\') {
-                    escape = true;
-                } else if (c == '"') {
-                    inString = false;
-                }
-                continue;
-            }
-            if (c == '"') {
-                if (depth == 1 && expectingKey) {
-                    int j = i + 1;
-                    boolean keyEscape = false;
-                    StringBuilder key = new StringBuilder();
-                    while (j < s.length()) {
-                        char kc = s.charAt(j);
-                        if (keyEscape) {
-                            keyEscape = false;
-                            key.append(kc);
-                        } else if (kc == '\\') {
-                            keyEscape = true;
-                        } else if (kc == '"') {
-                            break;
-                        } else {
-                            key.append(kc);
-                        }
-                        j++;
-                    }
-                    keys.add(key.toString());
-                    expectingKey = false;
-                    i = j;
-                    continue;
-                }
-                inString = true;
-                continue;
-            }
-            if (c == '{' || c == '[') {
-                depth++;
-                if (c == '{' && depth == 1) {
-                    expectingKey = true;
-                }
-                continue;
-            }
-            if (c == '}' || c == ']') {
-                depth--;
-                continue;
-            }
-            if (c == ',' && depth == 1) {
-                expectingKey = true;
-            }
-        }
-        return keys;
     }
 
     private record RunResult(int exitCode, String out, String err) {}

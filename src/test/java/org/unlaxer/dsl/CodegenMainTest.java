@@ -10,6 +10,8 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -226,6 +228,13 @@ public class CodegenMainTest {
         assertTrue(out.contains("\"ok\":true"));
         assertTrue(out.contains("\"grammarCount\":1"));
         assertTrue(out.endsWith("\"issues\":[]}"));
+
+        Map<String, Object> obj = JsonTestUtil.parseObject(out);
+        assertEquals(1L, obj.get("reportVersion"));
+        assertEquals("validate", obj.get("mode"));
+        assertEquals(Boolean.TRUE, obj.get("ok"));
+        assertEquals(1L, obj.get("grammarCount"));
+        assertEquals(List.of(), obj.get("issues"));
     }
 
     @Test
@@ -265,6 +274,23 @@ public class CodegenMainTest {
         assertTrue(msg.contains("\"severity\":\"ERROR\""));
         assertTrue(msg.contains("\"category\":\"MAPPING\""));
         assertTrue(msg.contains("\"issues\":["));
+
+        Map<String, Object> obj = JsonTestUtil.parseObject(msg);
+        assertEquals(1L, obj.get("reportVersion"));
+        assertEquals("validate", obj.get("mode"));
+        assertEquals(Boolean.FALSE, obj.get("ok"));
+        assertEquals(1L, obj.get("issueCount"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> severityCounts = (Map<String, Object>) obj.get("severityCounts");
+        assertEquals(1L, severityCounts.get("ERROR"));
+        @SuppressWarnings("unchecked")
+        List<Object> issues = (List<Object>) obj.get("issues");
+        assertEquals(1, issues.size());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> issue = (Map<String, Object>) issues.get(0);
+        assertEquals("E-MAPPING-MISSING-CAPTURE", issue.get("code"));
+        assertEquals("ERROR", issue.get("severity"));
+        assertEquals("MAPPING", issue.get("category"));
     }
 
     @Test
@@ -405,6 +431,15 @@ public class CodegenMainTest {
         assertTrue(report.contains("\"generatedCount\":1"));
         assertTrue(report.contains("\"generatedFiles\":["));
         assertTrue(report.contains("ValidAST.java"));
+
+        Map<String, Object> obj = JsonTestUtil.parseObject(report);
+        assertEquals(1L, obj.get("reportVersion"));
+        assertEquals("generate", obj.get("mode"));
+        assertEquals(Boolean.TRUE, obj.get("ok"));
+        assertEquals(1L, obj.get("generatedCount"));
+        @SuppressWarnings("unchecked")
+        List<Object> files = (List<Object>) obj.get("generatedFiles");
+        assertEquals(1, files.size());
     }
 
     @Test
@@ -436,6 +471,53 @@ public class CodegenMainTest {
         RunResult result = runCodegen("--validate-only");
         assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
         assertTrue(result.err().contains("Usage: CodegenMain"));
+    }
+
+    @Test
+    public void testUnsupportedReportVersionReturnsCliErrorCode() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-report-version-invalid", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "json",
+            "--report-version", "2"
+        );
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+        assertTrue(result.err().contains("Unsupported --report-version"));
+    }
+
+    @Test
+    public void testReportVersion1OptionIsAccepted() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-report-version-v1", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "json",
+            "--report-version", "1"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        Map<String, Object> obj = JsonTestUtil.parseObject(result.out().trim());
+        assertEquals(1L, obj.get("reportVersion"));
     }
 
     @Test

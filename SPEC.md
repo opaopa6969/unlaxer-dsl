@@ -82,6 +82,7 @@ Current behavior:
 - `--validate-only` runs grammar validation without writing generated sources.
 - `--report-format json` emits machine-readable validation output (especially useful with `--validate-only`).
 - `--report-file <path>` writes the final report payload (text/json) to a file.
+- `--report-version 1` selects JSON schema version (currently only version `1` is supported).
 - In normal generation mode with `--report-format json`, CLI emits generation summary (`generatedCount`, `generatedFiles`).
 - JSON report schema includes stable top-level fields:
   `reportVersion`, `toolVersion`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
@@ -101,7 +102,7 @@ Current behavior:
 Regenerate from live CLI output:
 
 ```bash
-./scripts/refresh-spec-json-examples.sh
+./scripts/spec/refresh-json-examples.sh
 ```
 
 <!-- JSON_REPORT_EXAMPLES_START -->

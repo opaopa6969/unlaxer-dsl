@@ -37,7 +37,7 @@ public class CodegenMain {
     static final int EXIT_VALIDATION_ERROR = 3;
     static final int EXIT_GENERATION_ERROR = 4;
 
-    private static final int REPORT_VERSION = 1;
+    private static final int DEFAULT_REPORT_VERSION = 1;
     private static final String TOOL_VERSION = resolveToolVersion();
 
     public static void main(String[] args) {
@@ -79,6 +79,7 @@ public class CodegenMain {
         boolean validateOnly = false;
         String reportFormat = "text";
         String reportFile = null;
+        int reportVersion = DEFAULT_REPORT_VERSION;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -119,6 +120,26 @@ public class CodegenMain {
                     }
                     reportFile = args[++i];
                 }
+                case "--report-version" -> {
+                    if (i + 1 >= args.length) {
+                        throw new CliUsageException("Missing value for --report-version", true);
+                    }
+                    String raw = args[++i].trim();
+                    try {
+                        reportVersion = Integer.parseInt(raw);
+                    } catch (NumberFormatException e) {
+                        throw new CliUsageException(
+                            "Unsupported --report-version: " + raw + "\nAllowed values: 1",
+                            false
+                        );
+                    }
+                    if (reportVersion != 1) {
+                        throw new CliUsageException(
+                            "Unsupported --report-version: " + reportVersion + "\nAllowed values: 1",
+                            false
+                        );
+                    }
+                }
                 default -> throw new CliUsageException("Unknown argument: " + args[i], true);
             }
         }
@@ -127,7 +148,15 @@ public class CodegenMain {
             throw new CliUsageException(null, true);
         }
 
-        return new CliConfig(grammarFile, outputDir, generators, validateOnly, reportFormat, reportFile);
+        return new CliConfig(
+            grammarFile,
+            outputDir,
+            generators,
+            validateOnly,
+            reportFormat,
+            reportFile,
+            reportVersion
+        );
     }
 
     private static int execute(CliConfig config, PrintStream out, PrintStream err, Clock clock) throws IOException {
@@ -168,7 +197,7 @@ public class CodegenMain {
             List<ReportJsonWriter.ValidationIssueRow> sortedRows = sortValidationRows(validationRows);
             if ("json".equals(config.reportFormat())) {
                 String json = ReportJsonWriter.validationFailure(
-                    REPORT_VERSION,
+                    config.reportVersion(),
                     TOOL_VERSION,
                     generatedAt,
                     sortedRows
@@ -190,7 +219,7 @@ public class CodegenMain {
         if (config.validateOnly()) {
             if ("json".equals(config.reportFormat())) {
                 String json = ReportJsonWriter.validationSuccess(
-                    REPORT_VERSION,
+                    config.reportVersion(),
                     TOOL_VERSION,
                     generatedAt,
                     file.grammars().size()
@@ -230,7 +259,7 @@ public class CodegenMain {
 
         if ("json".equals(config.reportFormat())) {
             String json = ReportJsonWriter.generationSuccess(
-                REPORT_VERSION,
+                config.reportVersion(),
                 TOOL_VERSION,
                 generatedAt,
                 file.grammars().size(),
@@ -255,6 +284,7 @@ public class CodegenMain {
                 + " [--validate-only]"
                 + " [--report-format text|json]"
                 + " [--report-file <path>]"
+                + " [--report-version 1]"
         );
     }
 
@@ -308,7 +338,8 @@ public class CodegenMain {
         List<String> generators,
         boolean validateOnly,
         String reportFormat,
-        String reportFile
+        String reportFile,
+        int reportVersion
     ) {}
 
     private static final class CliUsageException extends Exception {

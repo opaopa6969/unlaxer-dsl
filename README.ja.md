@@ -91,13 +91,13 @@ golden snapshot の再生成：
 `SPEC.md` の JSON レポート例を再生成：
 
 ```bash
-./scripts/refresh-spec-json-examples.sh
+./scripts/spec/refresh-json-examples.sh
 ```
 
 `SPEC.md` の JSON レポート例が最新か確認（CI向け）：
 
 ```bash
-./scripts/check-spec-json-examples.sh
+./scripts/spec/check-json-examples.sh
 ```
 
 シェルスクリプトのチェック（shebang + 構文）：
@@ -109,7 +109,7 @@ golden snapshot の再生成：
 CLI オプション記述のドキュメント同期チェック：
 
 ```bash
-./scripts/check-doc-sync.sh
+./scripts/spec/check-doc-sync.sh
 ```
 
 ローカルの一括チェック（scripts + tests + spec freshness）：
@@ -1060,6 +1060,7 @@ JSON レポートは安定したトップレベル項目として
 | `--validate-only` | 文法検証のみ実行（コード生成をスキップ） | `false` |
 | `--report-format text\|json` | 出力/レポート形式 | `text` |
 | `--report-file <path>` | レポート内容をファイル出力 | （なし） |
+| `--report-version 1` | JSON レポートスキーマのバージョン | `1` |
 
 使用可能な生成器名: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 

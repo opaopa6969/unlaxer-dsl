@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 SPEC_FILE="$ROOT_DIR/SPEC.md"
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -35,30 +35,31 @@ grammar Invalid {
 GRAMMAR
 
 if [[ "$SKIP_BUILD" == "true" ]]; then
-  echo "[refresh-spec-json-examples] Skipping build; using existing target/classes."
+  echo "[spec/refresh-json-examples] Skipping build; using existing target/classes."
 else
-  echo "[refresh-spec-json-examples] Compiling project..."
+  echo "[spec/refresh-json-examples] Compiling project..."
   (
     cd "$ROOT_DIR"
     mvn -q -DskipTests compile
   )
 fi
 if [[ ! -f "$RUNTIME_CP_FILE" ]]; then
-  echo "[refresh-spec-json-examples] Building runtime classpath..."
+  echo "[spec/refresh-json-examples] Building runtime classpath..."
   (
     cd "$ROOT_DIR"
     mvn -q -DincludeScope=runtime dependency:build-classpath -Dmdep.outputFile="$RUNTIME_CP_FILE"
   )
 else
-  echo "[refresh-spec-json-examples] Reusing runtime classpath: $RUNTIME_CP_FILE"
+  echo "[spec/refresh-json-examples] Reusing runtime classpath: $RUNTIME_CP_FILE"
 fi
 
 MAIN_CP="$ROOT_DIR/target/classes"
 if [[ ! -d "$MAIN_CP" ]]; then
-  echo "[refresh-spec-json-examples] ERROR: $MAIN_CP not found. Run mvn compile first." >&2
+  echo "[spec/refresh-json-examples] ERROR: $MAIN_CP not found. Run mvn compile first." >&2
+  echo "[spec/refresh-json-examples] Fix: run 'mvn -q -DskipTests compile'." >&2
   exit 1
 fi
-echo "[refresh-spec-json-examples] Using classes: $MAIN_CP"
+echo "[spec/refresh-json-examples] Using classes: $MAIN_CP"
 RUNTIME_CP="$(cat "$RUNTIME_CP_FILE")"
 JAVA_CP="$MAIN_CP:$RUNTIME_CP"
 
@@ -79,7 +80,7 @@ java -cp "$JAVA_CP" org.unlaxer.dsl.CodegenMain \
 STATUS=$?
 set -e
 if [[ $STATUS -eq 0 ]]; then
-  echo "[refresh-spec-json-examples] ERROR: expected validate failure command to fail." >&2
+  echo "[spec/refresh-json-examples] ERROR: expected validate failure command to fail." >&2
   exit 1
 fi
 
@@ -128,7 +129,8 @@ START_MARKER='<!-- JSON_REPORT_EXAMPLES_START -->'
 END_MARKER='<!-- JSON_REPORT_EXAMPLES_END -->'
 
 if ! grep -q "^${START_MARKER}$" "$SPEC_FILE" || ! grep -q "^${END_MARKER}$" "$SPEC_FILE"; then
-  echo "[refresh-spec-json-examples] ERROR: marker block not found in SPEC.md" >&2
+  echo "[spec/refresh-json-examples] ERROR: marker block not found in SPEC.md" >&2
+  echo "[spec/refresh-json-examples] Fix: ensure SPEC.md includes JSON_REPORT_EXAMPLES_START/END markers." >&2
   exit 1
 fi
 
@@ -155,4 +157,4 @@ in_block {
 
 mv "$TMP_FILE" "$SPEC_FILE"
 
-echo "[refresh-spec-json-examples] Updated SPEC.md JSON examples."
+echo "[spec/refresh-json-examples] Updated SPEC.md JSON examples."
