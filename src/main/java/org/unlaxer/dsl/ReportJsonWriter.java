@@ -52,7 +52,11 @@ final class ReportJsonWriter {
         String generatedAt,
         int grammarCount,
         List<String> generatedFiles,
-        int warningsCount
+        int warningsCount,
+        int writtenCount,
+        int skippedCount,
+        int conflictCount,
+        int dryRunCount
     ) {
         return switch (reportVersion) {
             case 1 -> ReportJsonWriterV1.generationSuccess(
@@ -60,7 +64,11 @@ final class ReportJsonWriter {
                 generatedAt,
                 grammarCount,
                 generatedFiles,
-                warningsCount
+                warningsCount,
+                writtenCount,
+                skippedCount,
+                conflictCount,
+                dryRunCount
             );
             default -> throw unsupportedVersion(reportVersion);
         };

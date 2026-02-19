@@ -58,6 +58,7 @@ public class CodegenRunnerTest {
             false,
             false,
             false,
+            false,
             "json",
             null,
             1,
@@ -101,6 +102,13 @@ public class CodegenRunnerTest {
         @Override
         public boolean exists(Path path) {
             return files.containsKey(path.toString()) || writes.containsKey(path.toString());
+        }
+
+        @Override
+        public boolean deleteIfExists(Path path) {
+            boolean removedFile = files.remove(path.toString()) != null;
+            boolean removedWrite = writes.remove(path.toString()) != null;
+            return removedFile || removedWrite;
         }
 
         @Override

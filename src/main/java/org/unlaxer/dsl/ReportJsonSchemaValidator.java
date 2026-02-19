@@ -99,6 +99,10 @@ final class ReportJsonSchemaValidator {
                     "grammarCount",
                     "generatedCount",
                     "warningsCount",
+                    "writtenCount",
+                    "skippedCount",
+                    "conflictCount",
+                    "dryRunCount",
                     "generatedFiles"
                 )
             );
@@ -110,6 +114,10 @@ final class ReportJsonSchemaValidator {
             requireNumber(obj, "grammarCount");
             requireNumber(obj, "generatedCount");
             requireNumber(obj, "warningsCount");
+            requireNumber(obj, "writtenCount");
+            requireNumber(obj, "skippedCount");
+            requireNumber(obj, "conflictCount");
+            requireNumber(obj, "dryRunCount");
             requireArray(obj, "generatedFiles");
             return;
         }

@@ -79,6 +79,7 @@ Current behavior:
 - Missing values for `--grammar`, `--output`, or `--generators` are treated as CLI errors.
 - `--generators` values are comma-split with whitespace trimming; empty entries are rejected as CLI errors.
 - `--dry-run` previews generated file paths without writing outputs.
+- `--clean-output` removes planned target files before generation starts.
 - `--overwrite never|if-different|always` controls overwrite behavior for existing files.
 - `--help`/`-h` prints usage and exits with code `0`.
 - `--version`/`-v` prints resolved tool version and exits with code `0`.
@@ -87,6 +88,7 @@ Current behavior:
 - Validation failures are aggregated across grammar blocks and reported in one error.
 - `--validate-only` runs grammar validation without writing generated sources.
 - `--report-format json` emits machine-readable validation output (especially useful with `--validate-only`).
+- `--report-format ndjson` emits newline-delimited JSON events (`file` events plus summary report event).
 - `--report-file <path>` writes the final report payload (text/json) to a file.
 - `--report-version 1` selects JSON schema version (currently only version `1` is supported).
 - `--report-schema-check` validates JSON payload schema before emitting/writing reports.
@@ -96,6 +98,7 @@ Current behavior:
 - JSON report schema includes stable top-level fields:
   `reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
 - JSON report payloads include `warningsCount` for warning aggregation.
+- Generation success payloads include overwrite/dry-run stats: `writtenCount`, `skippedCount`, `conflictCount`, `dryRunCount`.
 - `toolVersion` is sourced from artifact `Implementation-Version`; fallback is `dev`.
 - Validation failure `issues[]` entries include structured metadata:
   `rule`, `code`, `severity`, `category`, `message`, and `hint` (plus `grammar`).
@@ -132,7 +135,7 @@ Validate failure:
 Generate success:
 
 ```json
-{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","generatedAt":"<generatedAt>","mode":"generate","ok":true,"grammarCount":1,"generatedCount":1,"warningsCount":0,"generatedFiles":["/path/to/out/org/example/valid/ValidAST.java"]}
+{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","generatedAt":"<generatedAt>","mode":"generate","ok":true,"grammarCount":1,"generatedCount":1,"warningsCount":0,"writtenCount":1,"skippedCount":0,"conflictCount":0,"dryRunCount":0,"generatedFiles":["/path/to/out/org/example/valid/ValidAST.java"]}
 ```
 <!-- JSON_REPORT_EXAMPLES_END -->
 

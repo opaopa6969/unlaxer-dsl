@@ -13,6 +13,7 @@ EXPECTED_FLAGS=(
   '--generators'
   '--validate-only'
   '--dry-run'
+  '--clean-output'
   '--overwrite'
   '--strict'
   '--help'

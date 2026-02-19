@@ -143,6 +143,10 @@ public class ReportJsonSchemaCompatibilityTest {
                 "grammarCount",
                 "generatedCount",
                 "warningsCount",
+                "writtenCount",
+                "skippedCount",
+                "conflictCount",
+                "dryRunCount",
                 "generatedFiles"
             ),
             List.copyOf(obj.keySet())
@@ -153,6 +157,10 @@ public class ReportJsonSchemaCompatibilityTest {
         assertEquals(true, JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "generatedCount"));
         assertEquals(0L, JsonTestUtil.getLong(obj, "warningsCount"));
+        assertEquals(1L, JsonTestUtil.getLong(obj, "writtenCount"));
+        assertEquals(0L, JsonTestUtil.getLong(obj, "skippedCount"));
+        assertEquals(0L, JsonTestUtil.getLong(obj, "conflictCount"));
+        assertEquals(0L, JsonTestUtil.getLong(obj, "dryRunCount"));
     }
 
     private static RunResult runCodegen(String... args) {

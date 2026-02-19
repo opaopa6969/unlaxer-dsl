@@ -446,6 +446,10 @@ public class CodegenMainTest {
         assertTrue(report.contains("\"mode\":\"generate\""));
         assertTrue(report.contains("\"generatedCount\":1"));
         assertTrue(report.contains("\"warningsCount\":0"));
+        assertTrue(report.contains("\"writtenCount\":1"));
+        assertTrue(report.contains("\"skippedCount\":0"));
+        assertTrue(report.contains("\"conflictCount\":0"));
+        assertTrue(report.contains("\"dryRunCount\":0"));
         assertTrue(report.contains("\"generatedFiles\":["));
         assertTrue(report.contains("ValidAST.java"));
 
@@ -457,6 +461,10 @@ public class CodegenMainTest {
         assertTrue(JsonTestUtil.getBoolean(obj, "ok"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "generatedCount"));
         assertEquals(0L, JsonTestUtil.getLong(obj, "warningsCount"));
+        assertEquals(1L, JsonTestUtil.getLong(obj, "writtenCount"));
+        assertEquals(0L, JsonTestUtil.getLong(obj, "skippedCount"));
+        assertEquals(0L, JsonTestUtil.getLong(obj, "conflictCount"));
+        assertEquals(0L, JsonTestUtil.getLong(obj, "dryRunCount"));
         List<Object> files = JsonTestUtil.getArray(obj, "generatedFiles");
         assertEquals(1, files.size());
     }
@@ -518,7 +526,9 @@ public class CodegenMainTest {
         assertTrue(result.out().contains("--version"));
         assertTrue(result.out().contains("--strict"));
         assertTrue(result.out().contains("--dry-run"));
+        assertTrue(result.out().contains("--clean-output"));
         assertTrue(result.out().contains("--overwrite"));
+        assertTrue(result.out().contains("text|json|ndjson"));
         assertTrue(result.out().contains("--warnings-as-json"));
     }
 
@@ -608,6 +618,7 @@ public class CodegenMainTest {
         assertTrue(result.err().contains("--report-version 1"));
         assertTrue(result.err().contains("--strict"));
         assertTrue(result.err().contains("--dry-run"));
+        assertTrue(result.err().contains("--clean-output"));
         assertTrue(result.err().contains("--overwrite"));
         assertTrue(result.err().contains("--report-schema-check"));
         assertTrue(result.err().contains("--warnings-as-json"));
@@ -840,6 +851,36 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testCleanOutputAllowsOverwriteNever() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-clean-output", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-clean-output-out");
+        Files.writeString(grammarFile, source);
+        Path ast = outputDir.resolve("org/example/valid/ValidAST.java");
+        Files.createDirectories(ast.getParent());
+        Files.writeString(ast, "// stale content");
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--clean-output",
+            "--overwrite", "never"
+        );
+
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.out().contains("Generated: "));
+        assertFalse(Files.readString(ast).contains("stale content"));
+    }
+
+    @Test
     public void testWarningsFailWithStrictMode() throws Exception {
         String source = """
             grammar WarnOnly {
@@ -861,6 +902,60 @@ public class CodegenMainTest {
         assertTrue(result.err().contains("\"ok\":false"));
         assertTrue(result.err().contains("\"severity\":\"WARNING\""));
         assertTrue(result.err().contains("\"code\":\"W-GENERAL-NO-ROOT\""));
+    }
+
+    @Test
+    public void testNdjsonValidateOnlyOutput() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-validate", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "ndjson"
+        );
+
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        String out = result.out().trim();
+        assertTrue(out.startsWith("{\"event\":\"validate-success\",\"payload\":{"));
+        assertTrue(out.contains("\"mode\":\"validate\""));
+        assertTrue(out.contains("\"warningsCount\":0"));
+    }
+
+    @Test
+    public void testNdjsonGenerationOutputIncludesFileEventsAndSummary() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-generate", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-ndjson-generate-out");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--report-format", "ndjson"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        String out = result.out();
+        assertTrue(out.contains("\"event\":\"file\""));
+        assertTrue(out.contains("\"action\":\"written\""));
+        assertTrue(out.contains("\"event\":\"generate-summary\""));
+        assertTrue(out.contains("\"writtenCount\":1"));
     }
 
     @Test

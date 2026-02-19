@@ -1065,12 +1065,13 @@ JSON レポートは安定したトップレベル項目として
 | `--output <dir>` | 出力ルートディレクトリ（package 構造で書き出す） | `--validate-only` 以外では必須 |
 | `--generators <list>` | カンマ区切りの生成器名 | `Parser,LSP,Launcher` |
 | `--dry-run` | 生成ファイルを書き込まずに出力先だけ確認する | `false` |
+| `--clean-output` | 生成予定ファイルを事前に削除してから生成する | `false` |
 | `--overwrite never\|if-different\|always` | 既存ファイル上書きポリシー | `always` |
 | `--strict` | warning をバリデーション失敗として扱う | `false` |
 | `--help`, `-h` | 使用方法を表示して終了 | `false` |
 | `--version`, `-v` | ツールバージョンを表示して終了 | `false` |
 | `--validate-only` | 文法検証のみ実行（コード生成をスキップ） | `false` |
-| `--report-format text\|json` | 出力/レポート形式 | `text` |
+| `--report-format text\|json\|ndjson` | 出力/レポート形式 | `text` |
 | `--report-file <path>` | レポート内容をファイル出力 | （なし） |
 | `--report-version 1` | JSON レポートスキーマのバージョン | `1` |
 | `--report-schema-check` | JSON ペイロードを出力前にスキーマ検証する | `false` |
@@ -1081,6 +1082,8 @@ JSON レポートは安定したトップレベル項目として
 `--report-schema-check` で失敗した場合のメッセージは `E-REPORT-SCHEMA-*` で始まる。
 `--warnings-as-json` は warning をバリデーション失敗JSONと同じ形で出力する。
 JSON ペイロードには `warningsCount` が含まれ、`issues[]` を走査せず warning 件数を確認できる。
+生成JSONには `writtenCount`, `skippedCount`, `conflictCount`, `dryRunCount` も含まれる。
+`ndjson` は 1 行 1 JSON（file イベント + summary イベント）でストリーミング連携しやすい。
 
 終了コード:
 

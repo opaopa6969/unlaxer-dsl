@@ -37,6 +37,7 @@ final class CodegenRunner {
     interface FileSystemPort {
         String readString(Path path) throws IOException;
         boolean exists(Path path);
+        boolean deleteIfExists(Path path) throws IOException;
         void createDirectories(Path path) throws IOException;
         void writeString(Path path, String content) throws IOException;
     }
@@ -78,7 +79,10 @@ final class CodegenRunner {
 
         if (hasErrors || (config.strict() && hasWarnings)) {
             int exitCode = hasErrors ? CodegenMain.EXIT_VALIDATION_ERROR : CodegenMain.EXIT_STRICT_VALIDATION_ERROR;
-            boolean emitJson = "json".equals(config.reportFormat()) || (config.warningsAsJson() && !hasErrors);
+            boolean emitJson =
+                "json".equals(config.reportFormat())
+                    || "ndjson".equals(config.reportFormat())
+                    || (config.warningsAsJson() && !hasErrors);
             if (emitJson) {
                 String json = warningJson != null
                     ? warningJson
@@ -90,7 +94,11 @@ final class CodegenRunner {
                     );
                 validateJsonIfRequested(config, json, true);
                 writeReportIfNeeded(config.reportFile(), json, fs);
-                err.println(json);
+                if ("ndjson".equals(config.reportFormat())) {
+                    err.println(ndjsonReportEvent(hasErrors ? "validate-failure" : "strict-failure", json));
+                } else {
+                    err.println(json);
+                }
                 return exitCode;
             }
 
@@ -107,16 +115,20 @@ final class CodegenRunner {
         }
 
         if (hasWarnings) {
-            if (config.warningsAsJson()) {
+            if (config.warningsAsJson() || "ndjson".equals(config.reportFormat())) {
                 validateJsonIfRequested(config, warningJson, config.reportSchemaCheck());
-                err.println(warningJson);
+                if ("ndjson".equals(config.reportFormat())) {
+                    err.println(ndjsonReportEvent("warnings", warningJson));
+                } else {
+                    err.println(warningJson);
+                }
             } else {
                 emitWarnings(err, sortedRows);
             }
         }
 
         if (config.validateOnly()) {
-            if ("json".equals(config.reportFormat())) {
+            if ("json".equals(config.reportFormat()) || "ndjson".equals(config.reportFormat())) {
                 String json = ReportJsonWriter.validationSuccess(
                     config.reportVersion(),
                     toolVersion,
@@ -125,7 +137,11 @@ final class CodegenRunner {
                     warningsCount
                 );
                 validateJsonIfRequested(config, json, true);
-                out.println(json);
+                if ("ndjson".equals(config.reportFormat())) {
+                    out.println(ndjsonReportEvent("validate-success", json));
+                } else {
+                    out.println(json);
+                }
                 writeReportIfNeeded(config.reportFile(), json, fs);
             } else {
                 String text = "Validation succeeded for " + file.grammars().size() + " grammar(s).";
@@ -137,6 +153,10 @@ final class CodegenRunner {
 
         Path outPath = Path.of(config.outputDir());
         List<String> generatedFiles = new ArrayList<>();
+        int writtenCount = 0;
+        int skippedCount = 0;
+        int conflictCount = 0;
+        int dryRunCount = 0;
 
         for (GrammarDecl grammar : file.grammars()) {
             for (String name : config.generators()) {
@@ -151,36 +171,60 @@ final class CodegenRunner {
                 CodeGenerator.GeneratedSource src = gen.generate(grammar);
                 Path pkgDir = outPath.resolve(src.packageName().replace('.', '/'));
                 Path javaFile = pkgDir.resolve(src.className() + ".java");
+                if (config.cleanOutput() && !config.dryRun()) {
+                    fs.deleteIfExists(javaFile);
+                }
                 WriteAction action = writeGeneratedSource(config, fs, pkgDir, javaFile, src.source());
                 if (action == WriteAction.CONFLICT) {
+                    conflictCount++;
                     err.println("Refusing to overwrite existing file: " + javaFile);
                     err.println("Use --overwrite if-different or --overwrite always, or pass --dry-run.");
                     return CodegenMain.EXIT_GENERATION_ERROR;
                 }
                 if (action == WriteAction.SKIPPED) {
+                    skippedCount++;
                     out.println("Skipped (unchanged): " + javaFile);
+                    if ("ndjson".equals(config.reportFormat())) {
+                        out.println(ndjsonFileEvent("skipped", javaFile.toString()));
+                    }
                     continue;
                 }
                 if (action == WriteAction.DRY_RUN) {
+                    dryRunCount++;
                     out.println("Dry-run: would generate " + javaFile);
+                    if ("ndjson".equals(config.reportFormat())) {
+                        out.println(ndjsonFileEvent("dry-run", javaFile.toString()));
+                    }
                 } else {
+                    writtenCount++;
                     out.println("Generated: " + javaFile);
+                    if ("ndjson".equals(config.reportFormat())) {
+                        out.println(ndjsonFileEvent("written", javaFile.toString()));
+                    }
                 }
                 generatedFiles.add(javaFile.toString());
             }
         }
 
-        if ("json".equals(config.reportFormat())) {
+        if ("json".equals(config.reportFormat()) || "ndjson".equals(config.reportFormat())) {
             String json = ReportJsonWriter.generationSuccess(
                 config.reportVersion(),
                 toolVersion,
                 generatedAt,
                 file.grammars().size(),
                 generatedFiles,
-                warningsCount
+                warningsCount,
+                writtenCount,
+                skippedCount,
+                conflictCount,
+                dryRunCount
             );
             validateJsonIfRequested(config, json, true);
-            out.println(json);
+            if ("ndjson".equals(config.reportFormat())) {
+                out.println(ndjsonReportEvent("generate-summary", json));
+            } else {
+                out.println(json);
+            }
             writeReportIfNeeded(config.reportFile(), json, fs);
         } else if (config.reportFile() != null) {
             String text = "Generated files:\n" + generatedFiles.stream()
@@ -275,6 +319,18 @@ final class CodegenRunner {
         }
     }
 
+    private static String ndjsonFileEvent(String action, String filePath) {
+        return "{\"event\":\"file\",\"action\":\""
+            + ReportJsonWriter.escapeJson(action)
+            + "\",\"path\":\""
+            + ReportJsonWriter.escapeJson(filePath)
+            + "\"}";
+    }
+
+    private static String ndjsonReportEvent(String event, String payloadJson) {
+        return "{\"event\":\"" + ReportJsonWriter.escapeJson(event) + "\",\"payload\":" + payloadJson + "}";
+    }
+
     private static void validateJsonIfRequested(
         CodegenCliParser.CliOptions config,
         String json,
@@ -307,6 +363,11 @@ final class CodegenRunner {
         @Override
         public boolean exists(Path path) {
             return Files.exists(path);
+        }
+
+        @Override
+        public boolean deleteIfExists(Path path) throws IOException {
+            return Files.deleteIfExists(path);
         }
 
         @Override

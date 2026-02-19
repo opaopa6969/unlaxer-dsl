@@ -76,7 +76,11 @@ final class ReportJsonWriterV1 {
         String generatedAt,
         int grammarCount,
         List<String> generatedFiles,
-        int warningsCount
+        int warningsCount,
+        int writtenCount,
+        int skippedCount,
+        int conflictCount,
+        int dryRunCount
     ) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"reportVersion\":1")
@@ -88,6 +92,10 @@ final class ReportJsonWriterV1 {
             .append(grammarCount)
             .append(",\"generatedCount\":").append(generatedFiles.size())
             .append(",\"warningsCount\":").append(warningsCount)
+            .append(",\"writtenCount\":").append(writtenCount)
+            .append(",\"skippedCount\":").append(skippedCount)
+            .append(",\"conflictCount\":").append(conflictCount)
+            .append(",\"dryRunCount\":").append(dryRunCount)
             .append(",\"generatedFiles\":[");
 
         for (int i = 0; i < generatedFiles.size(); i++) {

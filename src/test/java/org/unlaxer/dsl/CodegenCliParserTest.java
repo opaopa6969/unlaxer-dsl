@@ -23,6 +23,7 @@ public class CodegenCliParserTest {
         assertEquals(1, options.reportVersion());
         assertTrue(options.validateOnly());
         assertFalse(options.dryRun());
+        assertFalse(options.cleanOutput());
         assertFalse(options.strict());
         assertFalse(options.reportSchemaCheck());
         assertFalse(options.warningsAsJson());
@@ -68,6 +69,18 @@ public class CodegenCliParserTest {
         });
         assertTrue(options.dryRun());
         assertEquals("if-different", options.overwrite());
+    }
+
+    @Test
+    public void testParseCleanOutputAndNdjsonFormat() throws Exception {
+        var options = CodegenCliParser.parse(new String[] {
+            "--grammar", "a.ubnf",
+            "--output", "out",
+            "--clean-output",
+            "--report-format", "ndjson"
+        });
+        assertTrue(options.cleanOutput());
+        assertEquals("ndjson", options.reportFormat());
     }
 
     @Test

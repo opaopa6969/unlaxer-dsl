@@ -88,6 +88,10 @@
         "grammarCount",
         "generatedCount",
         "warningsCount",
+        "writtenCount",
+        "skippedCount",
+        "conflictCount",
+        "dryRunCount",
         "generatedFiles"
       ],
       "additionalProperties": false,
@@ -102,6 +106,10 @@
         "grammarCount": { "type": "integer", "minimum": 0 },
         "generatedCount": { "type": "integer", "minimum": 0 },
         "warningsCount": { "type": "integer", "minimum": 0 },
+        "writtenCount": { "type": "integer", "minimum": 0 },
+        "skippedCount": { "type": "integer", "minimum": 0 },
+        "conflictCount": { "type": "integer", "minimum": 0 },
+        "dryRunCount": { "type": "integer", "minimum": 0 },
         "generatedFiles": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }

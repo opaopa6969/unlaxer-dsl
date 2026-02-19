@@ -19,6 +19,7 @@ final class CodegenCliParser {
         List<String> generators = List.of("Parser", "LSP", "Launcher");
         boolean validateOnly = false;
         boolean dryRun = false;
+        boolean cleanOutput = false;
         boolean strict = false;
         boolean help = false;
         boolean version = false;
@@ -58,6 +59,7 @@ final class CodegenCliParser {
                 }
                 case "--validate-only" -> validateOnly = true;
                 case "--dry-run" -> dryRun = true;
+                case "--clean-output" -> cleanOutput = true;
                 case "--strict" -> strict = true;
                 case "--help", "-h" -> help = true;
                 case "--version", "-v" -> version = true;
@@ -66,9 +68,9 @@ final class CodegenCliParser {
                         throw new UsageException("Missing value for --report-format", true);
                     }
                     reportFormat = args[++i].trim().toLowerCase();
-                    if (!"text".equals(reportFormat) && !"json".equals(reportFormat)) {
+                    if (!"text".equals(reportFormat) && !"json".equals(reportFormat) && !"ndjson".equals(reportFormat)) {
                         throw new UsageException(
-                            "Unsupported --report-format: " + reportFormat + "\nAllowed values: text, json",
+                            "Unsupported --report-format: " + reportFormat + "\nAllowed values: text, json, ndjson",
                             false
                         );
                     }
@@ -124,6 +126,7 @@ final class CodegenCliParser {
                 generators,
                 validateOnly,
                 dryRun,
+                cleanOutput,
                 strict,
                 help,
                 version,
@@ -146,6 +149,7 @@ final class CodegenCliParser {
             generators,
             validateOnly,
             dryRun,
+            cleanOutput,
             strict,
             help,
             version,
@@ -164,6 +168,7 @@ final class CodegenCliParser {
         List<String> generators,
         boolean validateOnly,
         boolean dryRun,
+        boolean cleanOutput,
         boolean strict,
         boolean help,
         boolean version,
