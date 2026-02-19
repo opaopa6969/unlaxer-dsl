@@ -86,6 +86,28 @@ public class ReportNdjsonSchemaDocumentConsistencyTest {
     }
 
     @Test
+    public void testWarningsEventMatchesSchemaDocument() throws Exception {
+        Map<String, Object> schema = loadSchemaDocument();
+        Set<String> expectedKeys = requiredKeys(schemaVariant(schema, "warnings"));
+
+        Path grammarFile = Files.createTempFile("ndjson-schema-doc-warnings", ".ubnf");
+        Files.writeString(grammarFile, CliFixtureData.WARN_ONLY_GRAMMAR);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--fail-on", "none",
+            "--report-format", "ndjson"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+
+        Map<String, Object> event = JsonTestUtil.parseObject(lastJsonLine(result.err()));
+        assertEquals(expectedKeys, event.keySet());
+        assertEquals("warnings", JsonTestUtil.getString(event, "event"));
+        ReportJsonSchemaValidator.validate(1, JsonTestUtil.toJson(JsonTestUtil.getObject(event, "payload")));
+    }
+
+    @Test
     public void testGenerateSummaryAndFileEventMatchSchemaDocument() throws Exception {
         Map<String, Object> schema = loadSchemaDocument();
         Set<String> fileKeys = requiredKeys(schemaVariant(schema, "file-event"));
@@ -112,6 +134,40 @@ public class ReportNdjsonSchemaDocumentConsistencyTest {
         assertEquals(summaryKeys, last.keySet());
         assertEquals("generate-summary", JsonTestUtil.getString(last, "event"));
         ReportJsonSchemaValidator.validate(1, JsonTestUtil.toJson(JsonTestUtil.getObject(last, "payload")));
+    }
+
+    @Test
+    public void testFileEventCleanedActionMatchesSchemaDocument() throws Exception {
+        Map<String, Object> schema = loadSchemaDocument();
+        Set<String> fileKeys = requiredKeys(schemaVariant(schema, "file-event"));
+
+        Path grammarFile = Files.createTempFile("ndjson-schema-doc-cleaned", ".ubnf");
+        Path outputDir = Files.createTempDirectory("ndjson-schema-doc-cleaned-out");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+        Path ast = outputDir.resolve("org/example/valid/ValidAST.java");
+        Files.createDirectories(ast.getParent());
+        Files.writeString(ast, "// stale");
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--clean-output",
+            "--report-format", "ndjson"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+
+        List<String> jsonLines = jsonLines(result.out());
+        Map<String, Object> cleaned = null;
+        for (String line : jsonLines) {
+            Map<String, Object> event = JsonTestUtil.parseObject(line);
+            if ("file".equals(event.get("event")) && "cleaned".equals(event.get("action"))) {
+                cleaned = event;
+                break;
+            }
+        }
+        assertTrue("cleaned file event should exist", cleaned != null);
+        assertEquals(fileKeys, cleaned.keySet());
     }
 
     private static Set<String> requiredKeys(Map<String, Object> variant) {
