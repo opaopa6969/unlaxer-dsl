@@ -1,6 +1,7 @@
 package org.unlaxer.dsl;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,5 +43,32 @@ public class CodegenMainTest {
 
         assertTrue("first grammar AST should be generated", Files.exists(firstAst));
         assertTrue("second grammar AST should be generated", Files.exists(secondAst));
+    }
+
+    @Test
+    public void testFailsOnInvalidMappingContract() throws Exception {
+        String source = """
+            grammar Invalid {
+              @package: org.example.invalid
+              @root
+              @mapping(RootNode, params=[value, missing])
+              Invalid ::= 'x' @value ;
+            }
+            """;
+
+        Path grammarFile = Files.createTempFile("codegen-main-invalid", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-invalid-out");
+        Files.writeString(grammarFile, source);
+
+        try {
+            CodegenMain.main(new String[] {
+                "--grammar", grammarFile.toString(),
+                "--output", outputDir.toString(),
+                "--generators", "AST"
+            });
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("has no matching capture"));
+        }
     }
 }

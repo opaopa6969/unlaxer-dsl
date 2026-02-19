@@ -1,5 +1,6 @@
 # unlaxer-dsl
 [English](README.md) | [日本語](README.ja.md)
+[仕様メモ](SPEC.md)
 
 UBNF（Unlaxer BNF）記法で書いた文法定義から、Java のパーサー・AST・マッパー・エバリュエーター・LSP サーバー・DAP デバッグアダプターを自動生成し、VS Code 拡張（VSIX）までビルドできるツールです。
 
@@ -270,8 +271,8 @@ Expression ::= Term @left { ( '+' @op | '-' @op ) Term @right } ;
 | `@root` | このルールがパースのエントリーポイント（ルート）であることを宣言。`getRootParser()` が返すクラスになる |
 | `@mapping(ClassName)` | パースツリーをマップする AST クラス名を指定 |
 | `@mapping(ClassName, params=[a, b, c])` | AST クラス名とフィールド名を指定。フィールド型はキャプチャ名から自動推論される |
-| `@leftAssoc` | 左結合演算子であることを宣言（現時点ではパーサー生成に影響しないが意図を記録する） |
-| `@whitespace` | このルールの空白処理を個別に制御（オプション） |
+| `@leftAssoc` | 左結合演算子であることを宣言（left/op/right の capture・params 契約として検証される。パーサー生成自体は現状 grammar 駆動） |
+| `@whitespace` | このルールの空白処理を個別に制御（global 設定より優先、オプション） |
 
 ---
 

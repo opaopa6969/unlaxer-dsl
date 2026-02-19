@@ -16,6 +16,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.SequenceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.StringSettingValue;
 import org.unlaxer.dsl.bootstrap.UBNFAST.TerminalElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.TokenDecl;
+import org.unlaxer.dsl.bootstrap.UBNFAST.WhitespaceAnnotation;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -44,6 +45,8 @@ public class ParserGenerator implements CodeGenerator {
         final Map<String, String> tokenParserMap;  // token name -> parser class name
         final Set<String> ruleNames;
         final Map<String, List<String>> helpers = new LinkedHashMap<>(); // rule -> helper codes
+        final Map<String, Boolean> useDelimitedChainByRule = new LinkedHashMap<>();
+        boolean hasDelimitedChain = false;
         final Map<String, int[]> helperCounters = new LinkedHashMap<>(); // rule -> [repeat,opt,group]
         boolean needsCPPComment = false;
         final List<String> delimitorClasses = new ArrayList<>();
@@ -135,12 +138,11 @@ public class ParserGenerator implements CodeGenerator {
         // クラス宣言
         sb.append("public class ").append(className).append(" {\n\n");
 
-        // スペースデリミタクラス
-        sb.append(generateDelimitorClass(ctx));
-
-        // 基底チェーンクラス（@whitespace 設定がある場合）
-        if (!ctx.delimitorClasses.isEmpty()) {
-            sb.append(generateBaseChainClass(ctx));
+        // チェーンクラス
+        sb.append(generatePlainChainClass(ctx));
+        if (ctx.hasDelimitedChain) {
+            sb.append(generateDelimitorClass(ctx));
+            sb.append(generateDelimitedChainClass(ctx));
         }
 
         // Phase 2: 各ルールのヘルパー + ルールクラスを出力
@@ -205,25 +207,46 @@ public class ParserGenerator implements CodeGenerator {
     private GenContext createContext(GrammarDecl grammar) {
         GenContext ctx = new GenContext(grammar);
 
-        // @whitespace 設定を解析
-        boolean hasWhitespace = grammar.settings().stream()
+        boolean hasGlobalWhitespace = grammar.settings().stream()
             .anyMatch(s -> "whitespace".equals(s.key()));
-        if (hasWhitespace) {
-            ctx.delimitorClasses.add("SpaceParser.class");
-        }
 
-        // @comment 設定を解析（block setting with "line" key）
-        boolean hasComment = grammar.settings().stream()
+        boolean hasGlobalComment = grammar.settings().stream()
             .anyMatch(s -> "comment".equals(s.key()) && s.value() instanceof BlockSettingValue bv
                 && bv.entries().stream().anyMatch(kv -> "line".equals(kv.key())));
-        if (hasComment) {
+
+        boolean anyRuleRequestsDelimited = grammar.rules().stream()
+            .map(this::getRuleWhitespaceStyle)
+            .anyMatch(style -> style != null && !"none".equals(style));
+
+        ctx.hasDelimitedChain = hasGlobalWhitespace || hasGlobalComment || anyRuleRequestsDelimited;
+
+        if (ctx.hasDelimitedChain && (hasGlobalWhitespace || anyRuleRequestsDelimited)) {
+            ctx.delimitorClasses.add("SpaceParser.class");
+        }
+        if (hasGlobalComment) {
             ctx.needsCPPComment = true;
             ctx.delimitorClasses.add("CPPComment.class");
+        }
+
+        for (RuleDecl rule : grammar.rules()) {
+            String style = getRuleWhitespaceStyle(rule); // null => inherit global
+            boolean useDelimited = style == null
+                ? (hasGlobalWhitespace || hasGlobalComment)
+                : !"none".equals(style);
+            ctx.useDelimitedChainByRule.put(rule.name(), useDelimited);
         }
 
         return ctx;
     }
 
+    private String getRuleWhitespaceStyle(RuleDecl rule) {
+        return rule.annotations().stream()
+            .filter(a -> a instanceof WhitespaceAnnotation)
+            .map(a -> (WhitespaceAnnotation) a)
+            .reduce((first, second) -> second)
+            .map(w -> w.style().orElse("javaStyle").trim().toLowerCase())
+            .orElse(null);
+    }
     // =========================================================================
     // デリミタ・基底チェーン生成
     // =========================================================================
@@ -257,13 +280,34 @@ public class ParserGenerator implements CodeGenerator {
         return sb.toString();
     }
 
-    private String generateBaseChainClass(GenContext ctx) {
+    private String generatePlainChainClass(GenContext ctx) {
+        String gn = ctx.grammarName;
+        String chainName = gn + "PlainLazyChain";
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("    // --- Base Chain (No Auto Delimiter) ---\n");
+        sb.append("    public static abstract class ").append(chainName).append(" extends LazyChain {\n");
+        sb.append("        private static final long serialVersionUID = 1L;\n");
+        sb.append("        @Override\n");
+        sb.append("        public void prepareChildren(Parsers c) {\n");
+        sb.append("            if (!c.isEmpty()) return;\n");
+        sb.append("            for (Parser p : getLazyParsers()) { c.add(p); }\n");
+        sb.append("        }\n");
+        sb.append("        public abstract Parsers getLazyParsers();\n");
+        sb.append("        @Override\n");
+        sb.append("        public java.util.Optional<RecursiveMode> getNotAstNodeSpecifier() { return java.util.Optional.empty(); }\n");
+        sb.append("    }\n\n");
+
+        return sb.toString();
+    }
+
+    private String generateDelimitedChainClass(GenContext ctx) {
         String gn = ctx.grammarName;
         String delimitorName = gn + "SpaceDelimitor";
         String chainName = gn + "LazyChain";
         StringBuilder sb = new StringBuilder();
 
-        sb.append("    // --- Base Chain ---\n");
+        sb.append("    // --- Base Chain (Auto Delimiter) ---\n");
         sb.append("    public static abstract class ").append(chainName).append(" extends LazyChain {\n");
         sb.append("        private static final long serialVersionUID = 1L;\n");
         sb.append("        private static final ").append(delimitorName).append(" SPACE = createSpace();\n");
@@ -284,6 +328,14 @@ public class ParserGenerator implements CodeGenerator {
         sb.append("    }\n\n");
 
         return sb.toString();
+    }
+
+    private String getChainClassName(GenContext ctx, String ruleName) {
+        boolean useDelimited = ctx.useDelimitedChainByRule.getOrDefault(ruleName, false);
+        if (useDelimited && ctx.hasDelimitedChain) {
+            return ctx.grammarName + "LazyChain";
+        }
+        return ctx.grammarName + "PlainLazyChain";
     }
 
     // =========================================================================
@@ -361,7 +413,6 @@ public class ParserGenerator implements CodeGenerator {
      */
     private String generateHelperCode(GenContext ctx, String ruleName, String helperName, RuleBody body) {
         boolean isChoice = isMultiChoice(body);
-        String gn = ctx.grammarName;
         StringBuilder sb = new StringBuilder();
         String indent = "    ";
 
@@ -369,7 +420,7 @@ public class ParserGenerator implements CodeGenerator {
         if (isChoice) {
             sb.append(" extends LazyChoice {\n");
         } else {
-            sb.append(" extends ").append(gn).append("LazyChain {\n");
+            sb.append(" extends ").append(getChainClassName(ctx, ruleName)).append(" {\n");
         }
         sb.append(indent).append("    private static final long serialVersionUID = 1L;\n");
         sb.append(indent).append("    @Override\n");
@@ -394,7 +445,6 @@ public class ParserGenerator implements CodeGenerator {
     private String generateRuleClass(GenContext ctx, RuleDecl rule) {
         String ruleName = rule.name();
         String className = ruleName + "Parser";
-        String gn = ctx.grammarName;
         boolean isChoice = isMultiChoice(rule.body());
 
         StringBuilder sb = new StringBuilder();
@@ -404,7 +454,7 @@ public class ParserGenerator implements CodeGenerator {
         if (isChoice) {
             sb.append(" extends LazyChoice {\n");
         } else {
-            sb.append(" extends ").append(gn).append("LazyChain {\n");
+            sb.append(" extends ").append(getChainClassName(ctx, ruleName)).append(" {\n");
         }
         sb.append(indent).append("    private static final long serialVersionUID = 1L;\n");
         sb.append(indent).append("    @Override\n");
@@ -471,10 +521,10 @@ public class ParserGenerator implements CodeGenerator {
         }
 
         // 複数要素 → 匿名 TinyCalcLazyChain
-        String gn = ctx.grammarName;
+        String chainClass = getChainClassName(ctx, ruleName);
         String innerIndent = baseIndent + "    ";
         StringBuilder sb = new StringBuilder();
-        sb.append("new ").append(gn).append("LazyChain() {\n");
+        sb.append("new ").append(chainClass).append("() {\n");
         sb.append(innerIndent).append("private static final long serialVersionUID = 1L;\n");
         sb.append(innerIndent).append("@Override\n");
         sb.append(innerIndent).append("public Parsers getLazyParsers() {\n");

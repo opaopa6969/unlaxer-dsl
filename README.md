@@ -1,5 +1,6 @@
 # unlaxer-dsl
 [English](README.md) | [日本語](README.ja.md)
+[Specification](SPEC.md)
 
 A tool that automatically generates Java parsers, ASTs, mappers, and evaluators from grammar definitions written in UBNF (Unlaxer BNF) notation.
 
@@ -254,8 +255,8 @@ Place annotations immediately before a rule declaration.
 | `@root` | Declares this rule as the parse entry point (root). Its class is returned by `getRootParser()` |
 | `@mapping(ClassName)` | Specifies AST class name for mapping parse tree |
 | `@mapping(ClassName, params=[a, b, c])` | Specifies AST class name and field names. Field types are inferred from capture names |
-| `@leftAssoc` | Declares a left-associative operator (currently records intent; does not affect parser generation) |
-| `@whitespace` | Controls whitespace handling for this rule individually (optional) |
+| `@leftAssoc` | Declares a left-associative operator (validated as a contract for left/op/right captures and params; parser generation is still grammar-driven) |
+| `@whitespace` | Controls whitespace for this rule; it overrides global whitespace settings (optional) |
 
 ---
 

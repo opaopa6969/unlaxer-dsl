@@ -8,6 +8,7 @@ import org.unlaxer.dsl.codegen.CodeGenerator;
 import org.unlaxer.dsl.codegen.DAPGenerator;
 import org.unlaxer.dsl.codegen.DAPLauncherGenerator;
 import org.unlaxer.dsl.codegen.EvaluatorGenerator;
+import org.unlaxer.dsl.codegen.GrammarValidator;
 import org.unlaxer.dsl.codegen.LSPGenerator;
 import org.unlaxer.dsl.codegen.LSPLauncherGenerator;
 import org.unlaxer.dsl.codegen.MapperGenerator;
@@ -86,6 +87,7 @@ public class CodegenMain {
         Path outPath = Path.of(outputDir);
 
         for (GrammarDecl grammar : file.grammars()) {
+            GrammarValidator.validateOrThrow(grammar);
             for (String name : generators) {
                 String key = name.trim();
                 CodeGenerator gen = generatorMap.get(key);
