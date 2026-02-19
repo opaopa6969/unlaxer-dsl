@@ -1094,6 +1094,7 @@ JSON ペイロードには `warningsCount` が含まれ、`issues[]` を走査�
 `ndjson` モードでは `stdout` は JSON 行のみ（人間向け進捗テキストは出力しない）。
 `ndjson` の生成モードでは conflict/fail-on の人間向けメッセージを `stderr` に出さない。
 `ndjson` の検証失敗経路でも `stderr` は JSON 行のみ。
+`ndjson` の生成失敗経路ではイベントは `stdout` に出力し、`stderr` は空になる。
 `ndjson` で `--report-file` を使う場合、ファイルには NDJSON イベント包みではなく生の JSON payload を保存する。
 warning のみで成功する検証実行（`--fail-on none`）では、ファイルには最終的な `validate` 成功 payload を保存する。
 `--fail-on warnings-count>=N` で warning 件数が `N` 以上なら失敗させられる。

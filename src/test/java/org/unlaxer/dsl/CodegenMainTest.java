@@ -1238,6 +1238,7 @@ public class CodegenMainTest {
         assertEquals(CodegenMain.EXIT_GENERATION_ERROR, result.exitCode());
         assertFalse(result.err().contains("Conflict (not overwritten):"));
         assertFalse(result.err().contains("Fail-on policy triggered:"));
+        assertTrue(result.err().isBlank());
 
         List<String> outLines = List.of(result.out().trim().split("\\R"));
         for (String line : outLines) {

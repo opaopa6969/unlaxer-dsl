@@ -894,6 +894,7 @@ Generation JSON payloads also expose `writtenCount`, `skippedCount`, `conflictCo
 In `ndjson` mode, `stdout` is JSON-lines only (no human progress text).
 In `ndjson` generation mode, conflict/fail-on human messages are suppressed from `stderr`.
 In `ndjson` validation failure paths, `stderr` is also JSON-lines only.
+In `ndjson` generation failure paths, events are emitted to `stdout` and `stderr` remains empty.
 When `--report-file` is used with `ndjson`, the file stores the raw JSON payload (not the NDJSON event wrapper).
 For warning-only validate runs (`--fail-on none`), the file stores the final `validate` success payload.
 `--fail-on warnings-count>=N` fails when warning count reaches/exceeds `N`.

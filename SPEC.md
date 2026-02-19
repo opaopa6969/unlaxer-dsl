@@ -93,6 +93,7 @@ Current behavior:
 - In `ndjson` mode, `stdout` remains JSON-lines only (human progress text is suppressed).
 - In `ndjson` generation mode, conflict/fail-on human error messages are suppressed from `stderr`.
 - In `ndjson` validation failure paths, `stderr` also remains JSON-lines only.
+- In `ndjson` generation failure paths, events are emitted to `stdout` and `stderr` remains empty.
 - With `--report-file` and `ndjson`, the persisted report content is the raw JSON payload (without NDJSON event wrapper).
 - For warning-only successful validation (`--fail-on none`), `--report-file` stores the final `validate` success payload.
 - `--report-file <path>` writes the final report payload (text/json) to a file.
