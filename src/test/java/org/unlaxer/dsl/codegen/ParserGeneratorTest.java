@@ -220,6 +220,19 @@ public class ParserGeneratorTest {
     }
 
     @Test
+    public void testGeneratesOperatorMetadataApi() {
+        String source = generate(RIGHT_ASSOC_GRAMMAR);
+        assertTrue("should generate associativity enum",
+            source.contains("enum Assoc { LEFT, RIGHT, NONE }"));
+        assertTrue("should generate precedence lookup",
+            source.contains("getPrecedence(String ruleName)"));
+        assertTrue("should map Expr precedence",
+            source.contains("case \"Expr\" -> PRECEDENCE_EXPR;"));
+        assertTrue("should map Expr associativity to RIGHT",
+            source.contains("case \"Expr\" -> Assoc.RIGHT;"));
+    }
+
+    @Test
     public void testContainsOptional() {
         String source = generate(TINYCALC_GRAMMAR);
         // VariableDeclaration has [ 'set' Expression @init ] -> Optional

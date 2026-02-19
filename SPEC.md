@@ -50,6 +50,7 @@ Current behavior:
 
 - Violations fail fast during code generation (`GrammarValidator.validateOrThrow`) with a clear error message.
 - Parser generator emits `PRECEDENCE_<RULE_NAME>` constants for annotated rules.
+- Parser generator emits operator metadata APIs: `getPrecedence(ruleName)` and `getAssociativity(ruleName)`.
 
 ### `@whitespace`
 

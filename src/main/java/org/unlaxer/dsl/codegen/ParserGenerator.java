@@ -6,6 +6,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.BlockSettingValue;
 import org.unlaxer.dsl.bootstrap.UBNFAST.ChoiceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GroupElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.LeftAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.OptionalElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.PrecedenceAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RepeatElement;
@@ -142,6 +143,7 @@ public class ParserGenerator implements CodeGenerator {
         // クラス宣言
         sb.append("public class ").append(className).append(" {\n\n");
         sb.append(generatePrecedenceConstants(grammar));
+        sb.append(generateOperatorMetadata(grammar));
 
         // チェーンクラス
         sb.append(generatePlainChainClass(ctx));
@@ -749,6 +751,55 @@ public class ParserGenerator implements CodeGenerator {
             .reduce((first, second) -> second)
             .map(PrecedenceAnnotation::level)
             .orElse(null);
+    }
+
+    private String generateOperatorMetadata(GrammarDecl grammar) {
+        List<RuleDecl> operatorRules = grammar.rules().stream()
+            .filter(this::hasAssocAnnotation)
+            .toList();
+        if (operatorRules.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("    public enum Assoc { LEFT, RIGHT, NONE }\n\n");
+
+        sb.append("    public static int getPrecedence(String ruleName) {\n");
+        sb.append("        return switch (ruleName) {\n");
+        for (RuleDecl rule : operatorRules) {
+            Integer level = findPrecedenceLevel(rule);
+            if (level != null) {
+                sb.append("            case \"").append(rule.name()).append("\" -> PRECEDENCE_")
+                    .append(rule.name().toUpperCase()).append(";\n");
+            } else {
+                sb.append("            case \"").append(rule.name()).append("\" -> -1;\n");
+            }
+        }
+        sb.append("            default -> -1;\n");
+        sb.append("        };\n");
+        sb.append("    }\n\n");
+
+        sb.append("    public static Assoc getAssociativity(String ruleName) {\n");
+        sb.append("        return switch (ruleName) {\n");
+        for (RuleDecl rule : operatorRules) {
+            sb.append("            case \"").append(rule.name()).append("\" -> Assoc.")
+                .append(getAssocName(rule)).append(";\n");
+        }
+        sb.append("            default -> Assoc.NONE;\n");
+        sb.append("        };\n");
+        sb.append("    }\n\n");
+
+        return sb.toString();
+    }
+
+    private boolean hasAssocAnnotation(RuleDecl rule) {
+        return rule.annotations().stream().anyMatch(a ->
+            a instanceof LeftAssocAnnotation || a instanceof RightAssocAnnotation);
+    }
+
+    private String getAssocName(RuleDecl rule) {
+        boolean right = rule.annotations().stream().anyMatch(a -> a instanceof RightAssocAnnotation);
+        return right ? "RIGHT" : "LEFT";
     }
 
     /** ルートルール名を返す（@root アノテーション付き） */
