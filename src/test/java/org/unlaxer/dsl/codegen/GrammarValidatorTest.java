@@ -340,6 +340,28 @@ public class GrammarValidatorTest {
         }
     }
 
+    @Test
+    public void testRightAssocNonCanonicalShapeFails() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @mapping(PowNode, params=[left, op, right])\n"
+                + "  @rightAssoc\n"
+                + "  @precedence(level=30)\n"
+                + "  Expr ::= Atom @left { '^' @op Atom @right } ;\n"
+                + "  Atom ::= 'n' ;\n"
+                + "}"
+        );
+
+        try {
+            GrammarValidator.validateOrThrow(grammar);
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("body is not canonical"));
+        }
+    }
+
     private GrammarDecl parseGrammar(String source) {
         return UBNFMapper.parse(source).grammars().get(0);
     }

@@ -146,6 +146,12 @@ public final class GrammarValidator {
         if (!containsRepeat(rule.body())) {
             errors.add("rule " + rule.name() + " uses " + assocName + " but has no repeat segment");
         }
+
+        if (hasRightAssoc && !isCanonicalRightAssocShape(rule)) {
+            errors.add("rule " + rule.name()
+                + " uses @rightAssoc but body is not canonical: expected Base { Op "
+                + rule.name() + " }");
+        }
     }
 
     private static void validateGlobalWhitespace(GrammarDecl grammar, List<String> errors) {
@@ -372,6 +378,31 @@ public final class GrammarValidator {
             case GroupElement group -> containsRepeat(group.body());
             case OptionalElement opt -> containsRepeat(opt.body());
             default -> false;
+        };
+    }
+
+    private static boolean isCanonicalRightAssocShape(RuleDecl rule) {
+        SequenceBody top = getSingleSequence(rule.body());
+        if (top == null || top.elements().size() != 2) {
+            return false;
+        }
+        AtomicElement second = top.elements().get(1).element();
+        if (!(second instanceof RepeatElement repeat)) {
+            return false;
+        }
+        SequenceBody repSeq = getSingleSequence(repeat.body());
+        if (repSeq == null || repSeq.elements().size() != 2) {
+            return false;
+        }
+        AtomicElement repRight = repSeq.elements().get(1).element();
+        return repRight instanceof RuleRefElement ref && rule.name().equals(ref.name());
+    }
+
+    private static SequenceBody getSingleSequence(RuleBody body) {
+        return switch (body) {
+            case SequenceBody seq -> seq;
+            case ChoiceBody choice when choice.alternatives().size() == 1 -> choice.alternatives().get(0);
+            default -> null;
         };
     }
 }

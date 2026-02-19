@@ -71,4 +71,34 @@ public class CodegenMainTest {
             assertTrue(e.getMessage().contains("has no matching capture"));
         }
     }
+
+    @Test
+    public void testFailsOnNonCanonicalRightAssoc() throws Exception {
+        String source = """
+            grammar InvalidRightAssoc {
+              @package: org.example.invalid
+              @root
+              @mapping(PowNode, params=[left, op, right])
+              @rightAssoc
+              @precedence(level=30)
+              Expr ::= Atom @left { '^' @op Atom @right } ;
+              Atom ::= 'n' ;
+            }
+            """;
+
+        Path grammarFile = Files.createTempFile("codegen-main-invalid-rightassoc", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-invalid-rightassoc-out");
+        Files.writeString(grammarFile, source);
+
+        try {
+            CodegenMain.main(new String[] {
+                "--grammar", grammarFile.toString(),
+                "--output", outputDir.toString(),
+                "--generators", "Parser"
+            });
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("body is not canonical"));
+        }
+    }
 }

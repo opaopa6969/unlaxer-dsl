@@ -33,7 +33,7 @@ Current behavior:
 - It uses the same capture/mapping contract as `@leftAssoc` (`left`, `op`, `right`).
 - It is mutually exclusive with `@leftAssoc` on the same rule.
 - Canonical shape `Base { Op Self }` is generated as right-recursive choice (`Base Op Self | Base`).
-- Non-canonical shapes currently fall back to grammar-driven generation.
+- Non-canonical shapes are rejected by validator.
 - Mapper generator emits `foldRightAssoc<Class>` helper skeletons for right-associative mappings.
 
 ### `@precedence(level=...)`
