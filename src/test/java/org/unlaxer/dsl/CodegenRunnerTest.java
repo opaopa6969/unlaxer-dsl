@@ -64,7 +64,8 @@ public class CodegenRunnerTest {
             1,
             false,
             false,
-            "always"
+            "always",
+            "conflict"
         );
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ByteArrayOutputStream err = new ByteArrayOutputStream();

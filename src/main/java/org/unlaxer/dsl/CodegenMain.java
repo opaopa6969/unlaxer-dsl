@@ -67,6 +67,7 @@ public class CodegenMain {
                 + " [--dry-run]"
                 + " [--clean-output]"
                 + " [--overwrite never|if-different|always]"
+                + " [--fail-on none|warning|skipped|conflict]"
                 + " [--strict]"
                 + " [--report-format text|json|ndjson]"
                 + " [--report-file <path>]"

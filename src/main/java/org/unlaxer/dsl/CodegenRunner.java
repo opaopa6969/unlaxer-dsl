@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
@@ -77,7 +78,7 @@ final class CodegenRunner {
             ? ReportJsonWriter.validationFailure(config.reportVersion(), toolVersion, generatedAt, sortedRows)
             : null;
 
-        if (hasErrors || (config.strict() && hasWarnings)) {
+        if (hasErrors || (shouldFailOn(config, "warning") && hasWarnings)) {
             int exitCode = hasErrors ? CodegenMain.EXIT_VALIDATION_ERROR : CodegenMain.EXIT_STRICT_VALIDATION_ERROR;
             boolean emitJson =
                 "json".equals(config.reportFormat())
@@ -152,6 +153,11 @@ final class CodegenRunner {
         }
 
         Path outPath = Path.of(config.outputDir());
+        if (config.cleanOutput() && isUnsafeCleanOutputPath(outPath)) {
+            err.println("Refusing --clean-output for unsafe path: " + outPath.toAbsolutePath().normalize());
+            err.println("Choose a project-scoped output directory.");
+            return CodegenMain.EXIT_CLI_ERROR;
+        }
         List<String> generatedFiles = new ArrayList<>();
         int writtenCount = 0;
         int skippedCount = 0;
@@ -177,9 +183,11 @@ final class CodegenRunner {
                 WriteAction action = writeGeneratedSource(config, fs, pkgDir, javaFile, src.source());
                 if (action == WriteAction.CONFLICT) {
                     conflictCount++;
-                    err.println("Refusing to overwrite existing file: " + javaFile);
-                    err.println("Use --overwrite if-different or --overwrite always, or pass --dry-run.");
-                    return CodegenMain.EXIT_GENERATION_ERROR;
+                    err.println("Conflict (not overwritten): " + javaFile);
+                    if ("ndjson".equals(config.reportFormat())) {
+                        out.println(ndjsonFileEvent("conflict", javaFile.toString()));
+                    }
+                    continue;
                 }
                 if (action == WriteAction.SKIPPED) {
                     skippedCount++;
@@ -204,6 +212,15 @@ final class CodegenRunner {
                 }
                 generatedFiles.add(javaFile.toString());
             }
+        }
+
+        if (shouldFailOn(config, "skipped") && skippedCount > 0) {
+            err.println("Fail-on policy triggered: skipped=" + skippedCount);
+            return CodegenMain.EXIT_GENERATION_ERROR;
+        }
+        if (shouldFailOn(config, "conflict") && conflictCount > 0) {
+            err.println("Fail-on policy triggered: conflict=" + conflictCount);
+            return CodegenMain.EXIT_GENERATION_ERROR;
         }
 
         if ("json".equals(config.reportFormat()) || "ndjson".equals(config.reportFormat())) {
@@ -331,6 +348,13 @@ final class CodegenRunner {
         return "{\"event\":\"" + ReportJsonWriter.escapeJson(event) + "\",\"payload\":" + payloadJson + "}";
     }
 
+    private static boolean shouldFailOn(CodegenCliParser.CliOptions config, String key) {
+        if ("warning".equals(key)) {
+            return config.strict() || "warning".equals(config.failOn());
+        }
+        return Objects.equals(config.failOn(), key);
+    }
+
     private static void validateJsonIfRequested(
         CodegenCliParser.CliOptions config,
         String json,
@@ -423,5 +447,18 @@ final class CodegenRunner {
             case "never" -> WriteAction.CONFLICT;
             default -> throw new IllegalArgumentException("Unsupported overwrite policy: " + config.overwrite());
         };
+    }
+
+    private static boolean isUnsafeCleanOutputPath(Path outPath) {
+        Path normalized = outPath.toAbsolutePath().normalize();
+        if (normalized.getParent() == null) {
+            return true;
+        }
+        Path home = Path.of(System.getProperty("user.home", ".")).toAbsolutePath().normalize();
+        if (normalized.equals(home)) {
+            return true;
+        }
+        Path cwd = Path.of("").toAbsolutePath().normalize();
+        return normalized.equals(cwd);
     }
 }

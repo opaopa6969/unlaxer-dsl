@@ -855,6 +855,7 @@ JSON reports always include stable top-level fields:
 `reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
 `toolVersion` uses artifact `Implementation-Version` when available, otherwise `dev`.
 The public v1 JSON schema is documented at `docs/schema/report-v1.json`.
+NDJSON event schema is documented at `docs/schema/report-v1.ndjson.json`.
 Validation failure entries in `issues[]` include:
 `grammar`, `rule`, `code`, `severity`, `category`, `message`, and `hint`.
 Validation failure reports also include `severityCounts` and `categoryCounts` summaries.
@@ -867,6 +868,7 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 | `--dry-run` | Preview generated file paths without writing files | `false` |
 | `--clean-output` | Delete planned target files before generation | `false` |
 | `--overwrite never\|if-different\|always` | Overwrite policy for existing files | `always` |
+| `--fail-on none\|warning\|skipped\|conflict` | Additional failure policy trigger | `conflict` |
 | `--strict` | Treat warnings as validation failures | `false` |
 | `--help`, `-h` | Print usage and exit | `false` |
 | `--version`, `-v` | Print tool version and exit | `false` |

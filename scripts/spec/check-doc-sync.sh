@@ -15,6 +15,7 @@ EXPECTED_FLAGS=(
   '--dry-run'
   '--clean-output'
   '--overwrite'
+  '--fail-on'
   '--strict'
   '--help'
   '--version'

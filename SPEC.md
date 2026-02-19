@@ -81,6 +81,7 @@ Current behavior:
 - `--dry-run` previews generated file paths without writing outputs.
 - `--clean-output` removes planned target files before generation starts.
 - `--overwrite never|if-different|always` controls overwrite behavior for existing files.
+- `--fail-on none|warning|skipped|conflict` applies extra failure policy checks after execution.
 - `--help`/`-h` prints usage and exits with code `0`.
 - `--version`/`-v` prints resolved tool version and exits with code `0`.
 - `--strict` treats validation warnings as failures (exit code `5`).
@@ -110,6 +111,7 @@ Current behavior:
 - JSON payload creation is centralized in `ReportJsonWriter` and versioned via `ReportJsonWriterV1`.
 - `ReportJsonSchemaCompatibilityTest` pins top-level JSON schema order/keys for report version 1.
 - The public JSON schema contract for v1 lives at `docs/schema/report-v1.json`.
+- NDJSON event schema contract lives at `docs/schema/report-v1.ndjson.json`.
 - `CodegenMain.runWithClock(...)` exists for deterministic timestamp testing.
 
 ### JSON Report Examples

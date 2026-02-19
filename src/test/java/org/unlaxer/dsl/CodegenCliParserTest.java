@@ -28,6 +28,7 @@ public class CodegenCliParserTest {
         assertFalse(options.reportSchemaCheck());
         assertFalse(options.warningsAsJson());
         assertEquals("always", options.overwrite());
+        assertEquals("conflict", options.failOn());
         assertFalse(options.help());
         assertFalse(options.version());
     }
@@ -84,6 +85,16 @@ public class CodegenCliParserTest {
     }
 
     @Test
+    public void testParseFailOnPolicy() throws Exception {
+        var options = CodegenCliParser.parse(new String[] {
+            "--grammar", "a.ubnf",
+            "--output", "out",
+            "--fail-on", "skipped"
+        });
+        assertEquals("skipped", options.failOn());
+    }
+
+    @Test
     public void testParseWarningsAsJsonOption() throws Exception {
         var options = CodegenCliParser.parse(new String[] {
             "--grammar", "a.ubnf",
@@ -105,6 +116,21 @@ public class CodegenCliParserTest {
         } catch (CodegenCliParser.UsageException e) {
             assertFalse(e.showUsage());
             assertTrue(e.getMessage().contains("Unsupported --overwrite"));
+        }
+    }
+
+    @Test
+    public void testRejectUnsupportedFailOnPolicy() {
+        try {
+            CodegenCliParser.parse(new String[] {
+                "--grammar", "a.ubnf",
+                "--output", "out",
+                "--fail-on", "error"
+            });
+            fail("expected parser usage error");
+        } catch (CodegenCliParser.UsageException e) {
+            assertFalse(e.showUsage());
+            assertTrue(e.getMessage().contains("Unsupported --fail-on"));
         }
     }
 

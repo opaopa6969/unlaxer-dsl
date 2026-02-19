@@ -1055,6 +1055,7 @@ JSON レポートは安定したトップレベル項目として
 `reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `generatedAt`（UTC ISO-8601）, `mode`（`validate` / `generate`）を常に含む。
 `toolVersion` は取得可能なら artifact の `Implementation-Version`、未設定時は `dev` を使う。
 公開される v1 JSON schema は `docs/schema/report-v1.json` を参照。
+NDJSON イベント schema は `docs/schema/report-v1.ndjson.json` を参照。
 バリデーション失敗時の `issues[]` 要素は
 `grammar`, `rule`, `code`, `severity`, `category`, `message`, `hint` を含む。
 失敗レポートには `severityCounts` と `categoryCounts` の集計も含む。
@@ -1067,6 +1068,7 @@ JSON レポートは安定したトップレベル項目として
 | `--dry-run` | 生成ファイルを書き込まずに出力先だけ確認する | `false` |
 | `--clean-output` | 生成予定ファイルを事前に削除してから生成する | `false` |
 | `--overwrite never\|if-different\|always` | 既存ファイル上書きポリシー | `always` |
+| `--fail-on none\|warning\|skipped\|conflict` | 追加の失敗判定ポリシー | `conflict` |
 | `--strict` | warning をバリデーション失敗として扱う | `false` |
 | `--help`, `-h` | 使用方法を表示して終了 | `false` |
 | `--version`, `-v` | ツールバージョンを表示して終了 | `false` |

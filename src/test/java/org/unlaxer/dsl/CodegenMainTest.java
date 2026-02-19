@@ -528,6 +528,7 @@ public class CodegenMainTest {
         assertTrue(result.out().contains("--dry-run"));
         assertTrue(result.out().contains("--clean-output"));
         assertTrue(result.out().contains("--overwrite"));
+        assertTrue(result.out().contains("--fail-on"));
         assertTrue(result.out().contains("text|json|ndjson"));
         assertTrue(result.out().contains("--warnings-as-json"));
     }
@@ -620,6 +621,7 @@ public class CodegenMainTest {
         assertTrue(result.err().contains("--dry-run"));
         assertTrue(result.err().contains("--clean-output"));
         assertTrue(result.err().contains("--overwrite"));
+        assertTrue(result.err().contains("--fail-on"));
         assertTrue(result.err().contains("--report-schema-check"));
         assertTrue(result.err().contains("--warnings-as-json"));
     }
@@ -815,8 +817,38 @@ public class CodegenMainTest {
         );
 
         assertEquals(CodegenMain.EXIT_GENERATION_ERROR, result.exitCode());
-        assertTrue(result.err().contains("Refusing to overwrite existing file"));
+        assertTrue(result.err().contains("Conflict (not overwritten):"));
+        assertTrue(result.err().contains("Fail-on policy triggered: conflict=1"));
         assertEquals("// existing", Files.readString(ast));
+    }
+
+    @Test
+    public void testOverwriteNeverCanPassWithFailOnNone() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-overwrite-never-pass", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-overwrite-never-pass-out");
+        Files.writeString(grammarFile, source);
+        Path ast = outputDir.resolve("org/example/valid/ValidAST.java");
+        Files.createDirectories(ast.getParent());
+        Files.writeString(ast, "// existing");
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--overwrite", "never",
+            "--fail-on", "none",
+            "--report-format", "json"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.out().contains("\"conflictCount\":1"));
     }
 
     @Test
@@ -905,6 +937,28 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testFailOnWarningWithoutStrict() throws Exception {
+        String source = """
+            grammar WarnOnly {
+              @package: org.example.warn
+              @mapping(RootNode, params=[value])
+              Start ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-warning-failon", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--fail-on", "warning",
+            "--report-format", "json"
+        );
+        assertEquals(CodegenMain.EXIT_STRICT_VALIDATION_ERROR, result.exitCode());
+        assertTrue(result.err().contains("\"severity\":\"WARNING\""));
+    }
+
+    @Test
     public void testNdjsonValidateOnlyOutput() throws Exception {
         String source = """
             grammar Valid {
@@ -956,6 +1010,61 @@ public class CodegenMainTest {
         assertTrue(out.contains("\"action\":\"written\""));
         assertTrue(out.contains("\"event\":\"generate-summary\""));
         assertTrue(out.contains("\"writtenCount\":1"));
+    }
+
+    @Test
+    public void testFailOnSkippedReturnsGenerationError() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-failon-skipped", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-failon-skipped-out");
+        Files.writeString(grammarFile, source);
+
+        RunResult first = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST"
+        );
+        assertEquals(CodegenMain.EXIT_OK, first.exitCode());
+
+        RunResult second = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--overwrite", "if-different",
+            "--fail-on", "skipped"
+        );
+        assertEquals(CodegenMain.EXIT_GENERATION_ERROR, second.exitCode());
+        assertTrue(second.err().contains("Fail-on policy triggered: skipped=1"));
+    }
+
+    @Test
+    public void testCleanOutputRejectsUnsafeRootPath() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-clean-unsafe", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", "/",
+            "--generators", "AST",
+            "--clean-output"
+        );
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+        assertTrue(result.err().contains("Refusing --clean-output for unsafe path"));
     }
 
     @Test

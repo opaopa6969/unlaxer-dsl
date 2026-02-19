@@ -29,6 +29,7 @@ final class CodegenCliParser {
         boolean reportSchemaCheck = false;
         boolean warningsAsJson = false;
         String overwrite = "always";
+        String failOn = "conflict";
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -115,6 +116,19 @@ final class CodegenCliParser {
                         );
                     }
                 }
+                case "--fail-on" -> {
+                    if (i + 1 >= args.length) {
+                        throw new UsageException("Missing value for --fail-on", true);
+                    }
+                    failOn = args[++i].trim().toLowerCase();
+                    if (!"none".equals(failOn) && !"warning".equals(failOn)
+                        && !"skipped".equals(failOn) && !"conflict".equals(failOn)) {
+                        throw new UsageException(
+                            "Unsupported --fail-on: " + failOn + "\nAllowed values: none, warning, skipped, conflict",
+                            false
+                        );
+                    }
+                }
                 default -> throw new UsageException("Unknown argument: " + args[i], true);
             }
         }
@@ -135,7 +149,8 @@ final class CodegenCliParser {
                 reportVersion,
                 reportSchemaCheck,
                 warningsAsJson,
-                overwrite
+                overwrite,
+                failOn
             );
         }
 
@@ -158,7 +173,8 @@ final class CodegenCliParser {
             reportVersion,
             reportSchemaCheck,
             warningsAsJson,
-            overwrite
+            overwrite,
+            failOn
         );
     }
 
@@ -177,7 +193,8 @@ final class CodegenCliParser {
         int reportVersion,
         boolean reportSchemaCheck,
         boolean warningsAsJson,
-        String overwrite
+        String overwrite,
+        String failOn
     ) {}
 
     static final class UsageException extends Exception {
