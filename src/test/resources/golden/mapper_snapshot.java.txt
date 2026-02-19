@@ -1,0 +1,116 @@
+package org.example.snapshot;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import org.unlaxer.Parsed;
+import org.unlaxer.StringSource;
+import org.unlaxer.Token;
+import org.unlaxer.context.ParseContext;
+import org.unlaxer.parser.Parser;
+
+/**
+ * Snapshot parse tree (Token) -> SnapshotAST mapper.
+ */
+public class SnapshotMapper {
+
+    private SnapshotMapper() {}
+
+    // =========================================================================
+    // Entry Point
+    // =========================================================================
+
+    public static SnapshotAST.ExprNode parse(String source) {
+        // TODO: implement after SnapshotParsers is generated
+        // StringSource stringSource = StringSource.createRootSource(source);
+        // try (ParseContext context = new ParseContext(stringSource)) {
+        //     Parser rootParser = SnapshotParsers.getRootParser();
+        //     Parsed parsed = rootParser.parse(context);
+        //     if (!parsed.isSucceeded()) {
+        //         throw new IllegalArgumentException("Parse failed: " + source);
+        //     }
+        //     return toExprNode(parsed.getRootToken());
+        // }
+        throw new UnsupportedOperationException("SnapshotParsers: not implemented");
+    }
+
+    // =========================================================================
+    // Mapping Methods
+    // =========================================================================
+
+    static SnapshotAST.ExprNode toExprNode(Token token) {
+        // TODO: extract left seed node from token
+        // TODO: extract repeated operators and right operands from token
+        SnapshotAST.ExprNode left = null;
+        List<String> ops = List.of();
+        List<SnapshotAST.ExprNode> rights = List.of();
+        return foldLeftAssocExprNode(left, ops, rights);
+    }
+
+    static SnapshotAST.TermNode toTermNode(Token token) {
+        // TODO: extract left seed node from token
+        // TODO: extract repeated operators and right operands from token
+        SnapshotAST.TermNode left = null;
+        List<String> ops = List.of();
+        List<SnapshotAST.TermNode> rights = List.of();
+        return foldLeftAssocTermNode(left, ops, rights);
+    }
+
+    static SnapshotAST.ExprNode foldLeftAssocExprNode(
+        SnapshotAST.ExprNode left,
+        List<String> ops,
+        List<SnapshotAST.ExprNode> rights
+    ) {
+        if (left == null) return null;
+        if (ops.size() != rights.size()) {
+            throw new IllegalArgumentException("ops/rights length mismatch");
+        }
+        SnapshotAST.ExprNode current = left;
+        for (int i = 0; i < ops.size(); i++) {
+            current = new SnapshotAST.ExprNode(current, ops.get(i), rights.get(i));
+        }
+        return current;
+    }
+
+    static SnapshotAST.TermNode foldLeftAssocTermNode(
+        SnapshotAST.TermNode left,
+        List<String> ops,
+        List<SnapshotAST.TermNode> rights
+    ) {
+        if (left == null) return null;
+        if (ops.size() != rights.size()) {
+            throw new IllegalArgumentException("ops/rights length mismatch");
+        }
+        SnapshotAST.TermNode current = left;
+        for (int i = 0; i < ops.size(); i++) {
+            current = new SnapshotAST.TermNode(current, ops.get(i), rights.get(i));
+        }
+        return current;
+    }
+
+    // =========================================================================
+    // Utilities
+    // =========================================================================
+
+    static List<Token> findDescendants(Token token, Class<? extends Parser> parserClass) {
+        List<Token> results = new ArrayList<>();
+        for (Token child : token.filteredChildren) {
+            if (child.parser.getClass() == parserClass) {
+                results.add(child);
+            } else {
+                results.addAll(findDescendants(child, parserClass));
+            }
+        }
+        return results;
+    }
+
+    static String stripQuotes(String quoted) {
+        if (quoted.length() >= 2
+            && '\'' == quoted.charAt(0)
+            && '\'' == quoted.charAt(quoted.length() - 1)) {
+            return quoted.substring(1, quoted.length() - 1);
+        }
+        return quoted;
+    }
+}

@@ -92,4 +92,3 @@ Current behavior:
 1. Rule-level whitespace override semantics.
 2. Parser generation that actually consumes `@precedence` + associativity metadata.
 3. Explicit token import namespace configuration.
-4. Golden test fixtures for generated source snapshots.
