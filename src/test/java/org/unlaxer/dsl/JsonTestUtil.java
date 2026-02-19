@@ -68,6 +68,55 @@ final class JsonTestUtil {
         return out;
     }
 
+    static String toJson(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof String s) {
+            return "\"" + escapeJson(s) + "\"";
+        }
+        if (value instanceof Number || value instanceof Boolean) {
+            return String.valueOf(value);
+        }
+        if (value instanceof Map<?, ?> map) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("{");
+            boolean first = true;
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (!first) {
+                    sb.append(",");
+                }
+                first = false;
+                sb.append("\"").append(escapeJson(String.valueOf(entry.getKey()))).append("\":");
+                sb.append(toJson(entry.getValue()));
+            }
+            sb.append("}");
+            return sb.toString();
+        }
+        if (value instanceof List<?> list) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("[");
+            for (int i = 0; i < list.size(); i++) {
+                if (i > 0) {
+                    sb.append(",");
+                }
+                sb.append(toJson(list.get(i)));
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+        throw new IllegalArgumentException("unsupported JSON value type: " + value.getClass());
+    }
+
+    private static String escapeJson(String s) {
+        return s
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t");
+    }
+
     private static Object requireKey(Map<String, Object> obj, String key) {
         if (!obj.containsKey(key)) {
             throw new IllegalArgumentException("missing key: " + key);
