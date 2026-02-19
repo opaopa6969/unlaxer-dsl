@@ -100,6 +100,12 @@ golden snapshot の再生成：
 ./scripts/check-spec-json-examples.sh
 ```
 
+シェルスクリプトのチェック（shebang + 構文）：
+
+```bash
+./scripts/check-scripts.sh
+```
+
 ---
 
 ## クイックスタート

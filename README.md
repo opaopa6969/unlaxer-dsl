@@ -89,6 +89,12 @@ Check `SPEC.md` JSON examples are current (for CI):
 ./scripts/check-spec-json-examples.sh
 ```
 
+Check shell scripts (shebang + syntax):
+
+```bash
+./scripts/check-scripts.sh
+```
+
 ---
 
 ## Quick Start
