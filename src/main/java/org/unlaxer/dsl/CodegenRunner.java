@@ -256,7 +256,9 @@ final class CodegenRunner {
                 if (action == WriteAction.CONFLICT) {
                     conflictCount++;
                     fileEvents.add(new FileEvent("conflict", javaFile.toString()));
-                    err.println("Conflict (not overwritten): " + javaFile);
+                    if (!"ndjson".equals(config.reportFormat())) {
+                        err.println("Conflict (not overwritten): " + javaFile);
+                    }
                     if ("ndjson".equals(config.reportFormat())) {
                         out.println(ndjsonFileEvent("conflict", javaFile.toString()));
                     }
@@ -302,6 +304,7 @@ final class CodegenRunner {
         if (!generationOk) {
             emitGenerationPolicyFailureMessage(
                 err,
+                config.reportFormat(),
                 generationFailReason,
                 skippedCount,
                 conflictCount,
@@ -518,11 +521,15 @@ final class CodegenRunner {
 
     private static void emitGenerationPolicyFailureMessage(
         PrintStream err,
+        String reportFormat,
         String failReasonCode,
         int skippedCount,
         int conflictCount,
         int cleanedCount
     ) {
+        if ("ndjson".equals(reportFormat)) {
+            return;
+        }
         switch (failReasonCode) {
             case "FAIL_ON_SKIPPED" -> err.println("Fail-on policy triggered: skipped=" + skippedCount);
             case "FAIL_ON_CONFLICT" -> err.println("Fail-on policy triggered: conflict=" + conflictCount);

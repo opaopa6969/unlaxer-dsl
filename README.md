@@ -892,6 +892,7 @@ JSON payloads expose `warningsCount` so clients can detect warnings without scan
 Generation JSON payloads also expose `writtenCount`, `skippedCount`, `conflictCount`, and `dryRunCount`, with `failReasonCode` on policy failure.
 `ndjson` emits one JSON object per line (file events + summary event) for streaming-friendly integrations.
 In `ndjson` mode, `stdout` is JSON-lines only (no human progress text).
+In `ndjson` generation mode, conflict/fail-on human messages are suppressed from `stderr`.
 `--fail-on warnings-count>=N` fails when warning count reaches/exceeds `N`.
 `--report-schema-check` also validates manifest payloads when `--output-manifest` is used.
 

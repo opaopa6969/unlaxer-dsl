@@ -1142,6 +1142,38 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testNdjsonConflictFailureDoesNotEmitHumanErrorText() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-conflict-failure", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-ndjson-conflict-failure-out");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+        Path ast = outputDir.resolve("org/example/valid/ValidAST.java");
+        Files.createDirectories(ast.getParent());
+        Files.writeString(ast, "// existing");
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--overwrite", "never",
+            "--fail-on", "conflict",
+            "--report-format", "ndjson"
+        );
+        assertEquals(CodegenMain.EXIT_GENERATION_ERROR, result.exitCode());
+        assertFalse(result.err().contains("Conflict (not overwritten):"));
+        assertFalse(result.err().contains("Fail-on policy triggered:"));
+
+        List<String> outLines = List.of(result.out().trim().split("\\R"));
+        for (String line : outLines) {
+            String trimmed = line.trim();
+            assertTrue("ndjson stdout line must be JSON: " + trimmed, trimmed.startsWith("{") && trimmed.endsWith("}"));
+        }
+        assertTrue(result.out().contains("\"event\":\"file\""));
+        assertTrue(result.out().contains("\"action\":\"conflict\""));
+        assertTrue(result.out().contains("\"event\":\"generate-summary\""));
+        assertTrue(result.out().contains("\"failReasonCode\":\"FAIL_ON_CONFLICT\""));
+    }
+
+    @Test
     public void testFailOnWarningsThresholdReturnsStrictValidationError() throws Exception {
         String source = """
             grammar WarnOnly {

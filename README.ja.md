@@ -1092,6 +1092,7 @@ JSON ペイロードには `warningsCount` が含まれ、`issues[]` を走査�
 生成JSONには `writtenCount`, `skippedCount`, `conflictCount`, `dryRunCount` も含まれ、ポリシー失敗時は `failReasonCode` も含まれる。
 `ndjson` は 1 行 1 JSON（file イベント + summary イベント）でストリーミング連携しやすい。
 `ndjson` モードでは `stdout` は JSON 行のみ（人間向け進捗テキストは出力しない）。
+`ndjson` の生成モードでは conflict/fail-on の人間向けメッセージを `stderr` に出さない。
 `--fail-on warnings-count>=N` で warning 件数が `N` 以上なら失敗させられる。
 `--report-schema-check` は `--output-manifest` 指定時に manifest ペイロードも検証する。
 
