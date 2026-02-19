@@ -1592,6 +1592,29 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testNdjsonValidateSuccessReportFileStoresRawJsonPayload() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-validate-success-report-file", ".ubnf");
+        Path reportFile = Files.createTempFile("codegen-main-ndjson-validate-success-report-file", ".json");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "ndjson",
+            "--report-file", reportFile.toString()
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        String stdout = result.out().trim();
+        assertTrue(stdout.startsWith("{\"event\":\"validate-success\",\"payload\":{"));
+
+        String saved = Files.readString(reportFile).trim();
+        assertTrue(saved.startsWith("{\"reportVersion\":1,"));
+        assertFalse(saved.contains("\"event\":\"validate-success\""));
+        assertTrue(saved.contains("\"mode\":\"validate\""));
+        assertTrue(saved.contains("\"ok\":true"));
+    }
+
+    @Test
     public void testNdjsonGenerateFailureReportFileStoresRawJsonPayload() throws Exception {
         Path grammarFile = Files.createTempFile("codegen-main-ndjson-generate-failure-report-file", ".ubnf");
         Path outputDir = Files.createTempDirectory("codegen-main-ndjson-generate-failure-report-file-out");
@@ -1619,6 +1642,31 @@ public class CodegenMainTest {
         assertTrue(saved.contains("\"mode\":\"generate\""));
         assertTrue(saved.contains("\"ok\":false"));
         assertTrue(saved.contains("\"failReasonCode\":\"FAIL_ON_CONFLICT\""));
+    }
+
+    @Test
+    public void testNdjsonGenerateSuccessReportFileStoresRawJsonPayload() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-generate-success-report-file", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-ndjson-generate-success-report-file-out");
+        Path reportFile = Files.createTempFile("codegen-main-ndjson-generate-success-report-file", ".json");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--report-format", "ndjson",
+            "--report-file", reportFile.toString()
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.out().contains("\"event\":\"generate-summary\""));
+
+        String saved = Files.readString(reportFile).trim();
+        assertTrue(saved.startsWith("{\"reportVersion\":1,"));
+        assertFalse(saved.contains("\"event\":\"generate-summary\""));
+        assertTrue(saved.contains("\"mode\":\"generate\""));
+        assertTrue(saved.contains("\"ok\":true"));
+        assertTrue(saved.contains("\"failReasonCode\":null"));
     }
 
     @Test
