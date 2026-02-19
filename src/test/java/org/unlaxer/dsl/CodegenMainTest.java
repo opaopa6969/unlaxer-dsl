@@ -7,7 +7,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -436,10 +438,42 @@ public class CodegenMainTest {
         assertTrue(result.err().contains("Usage: CodegenMain"));
     }
 
+    @Test
+    public void testGeneratedAtUsesProvidedClock() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-clock", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        Clock fixedClock = Clock.fixed(Instant.parse("2026-01-02T03:04:05Z"), ZoneOffset.UTC);
+        RunResult result = runCodegenWithClock(
+            fixedClock,
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "json"
+        );
+
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.out().contains("\"generatedAt\":\"2026-01-02T03:04:05Z\""));
+    }
+
     private static RunResult runCodegen(String... args) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ByteArrayOutputStream err = new ByteArrayOutputStream();
         int exitCode = CodegenMain.run(args, new PrintStream(out), new PrintStream(err));
+        return new RunResult(exitCode, out.toString(), err.toString());
+    }
+
+    private static RunResult runCodegenWithClock(Clock clock, String... args) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        int exitCode = CodegenMain.runWithClock(args, new PrintStream(out), new PrintStream(err), clock);
         return new RunResult(exitCode, out.toString(), err.toString());
     }
 

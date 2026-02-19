@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,9 +48,13 @@ public class CodegenMain {
     }
 
     static int run(String[] args, PrintStream out, PrintStream err) {
+        return runWithClock(args, out, err, Clock.systemUTC());
+    }
+
+    static int runWithClock(String[] args, PrintStream out, PrintStream err, Clock clock) {
         try {
             CliConfig config = parseArgs(args);
-            return execute(config, out, err);
+            return execute(config, out, err, clock);
         } catch (CliUsageException e) {
             if (e.getMessage() != null && !e.getMessage().isBlank()) {
                 err.println(e.getMessage());
@@ -125,7 +130,7 @@ public class CodegenMain {
         return new CliConfig(grammarFile, outputDir, generators, validateOnly, reportFormat, reportFile);
     }
 
-    private static int execute(CliConfig config, PrintStream out, PrintStream err) throws IOException {
+    private static int execute(CliConfig config, PrintStream out, PrintStream err, Clock clock) throws IOException {
         String source = Files.readString(Path.of(config.grammarFile()));
         UBNFFile file = UBNFMapper.parse(source);
 
@@ -157,7 +162,7 @@ public class CodegenMain {
             }
         }
 
-        String generatedAt = Instant.now().toString();
+        String generatedAt = Instant.now(clock).toString();
 
         if (!validationRows.isEmpty()) {
             List<ReportJsonWriter.ValidationIssueRow> sortedRows = sortValidationRows(validationRows);

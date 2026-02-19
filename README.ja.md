@@ -106,6 +106,12 @@ golden snapshot の再生成：
 ./scripts/check-scripts.sh
 ```
 
+CLI オプション記述のドキュメント同期チェック：
+
+```bash
+./scripts/check-doc-sync.sh
+```
+
 ローカルの一括チェック（scripts + tests + spec freshness）：
 
 ```bash

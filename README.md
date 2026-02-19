@@ -95,6 +95,12 @@ Check shell scripts (shebang + syntax):
 ./scripts/check-scripts.sh
 ```
 
+Check CLI option docs are synchronized across docs:
+
+```bash
+./scripts/check-doc-sync.sh
+```
+
 Run all local checks (scripts + tests + spec freshness):
 
 ```bash

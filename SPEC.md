@@ -93,8 +93,9 @@ Current behavior:
 - Validation `issues[]` order is deterministic (sorted by `grammar`, `rule`, `code`, `message`).
 - Process exit codes are explicit:
   `0` success, `2` CLI usage error, `3` validation error, `4` generation/runtime error.
-- JSON payload creation is centralized in `ReportJsonWriter` to keep schema logic in one place.
+- JSON payload creation is centralized in `ReportJsonWriter` and versioned via `ReportJsonWriterV1`.
 - `ReportJsonSchemaCompatibilityTest` pins top-level JSON schema order/keys for report version 1.
+- `CodegenMain.runWithClock(...)` exists for deterministic timestamp testing.
 
 ### JSON Report Examples
 Regenerate from live CLI output:

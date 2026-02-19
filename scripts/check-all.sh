@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
 ./scripts/check-scripts.sh
+./scripts/check-doc-sync.sh
 mvn -q test
 ./scripts/check-spec-json-examples.sh
 
