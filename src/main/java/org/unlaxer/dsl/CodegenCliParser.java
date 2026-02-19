@@ -1,0 +1,124 @@
+package org.unlaxer.dsl;
+
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Parses CodegenMain CLI arguments.
+ */
+final class CodegenCliParser {
+
+    private CodegenCliParser() {}
+
+    static final int DEFAULT_REPORT_VERSION = 1;
+
+    static CliOptions parse(String[] args) throws UsageException {
+        String grammarFile = null;
+        String outputDir = null;
+        List<String> generators = List.of("Parser", "LSP", "Launcher");
+        boolean validateOnly = false;
+        String reportFormat = "text";
+        String reportFile = null;
+        int reportVersion = DEFAULT_REPORT_VERSION;
+
+        for (int i = 0; i < args.length; i++) {
+            switch (args[i]) {
+                case "--grammar" -> {
+                    if (i + 1 >= args.length) {
+                        throw new UsageException("Missing value for --grammar", true);
+                    }
+                    grammarFile = args[++i];
+                }
+                case "--output" -> {
+                    if (i + 1 >= args.length) {
+                        throw new UsageException("Missing value for --output", true);
+                    }
+                    outputDir = args[++i];
+                }
+                case "--generators" -> {
+                    if (i + 1 >= args.length) {
+                        throw new UsageException("Missing value for --generators", true);
+                    }
+                    generators = Arrays.asList(args[++i].split(","));
+                }
+                case "--validate-only" -> validateOnly = true;
+                case "--report-format" -> {
+                    if (i + 1 >= args.length) {
+                        throw new UsageException("Missing value for --report-format", true);
+                    }
+                    reportFormat = args[++i].trim().toLowerCase();
+                    if (!"text".equals(reportFormat) && !"json".equals(reportFormat)) {
+                        throw new UsageException(
+                            "Unsupported --report-format: " + reportFormat + "\nAllowed values: text, json",
+                            false
+                        );
+                    }
+                }
+                case "--report-file" -> {
+                    if (i + 1 >= args.length) {
+                        throw new UsageException("Missing value for --report-file", true);
+                    }
+                    reportFile = args[++i];
+                }
+                case "--report-version" -> {
+                    if (i + 1 >= args.length) {
+                        throw new UsageException("Missing value for --report-version", true);
+                    }
+                    String raw = args[++i].trim();
+                    try {
+                        reportVersion = Integer.parseInt(raw);
+                    } catch (NumberFormatException e) {
+                        throw new UsageException(
+                            "Unsupported --report-version: " + raw + "\nAllowed values: 1",
+                            false
+                        );
+                    }
+                    if (reportVersion != 1) {
+                        throw new UsageException(
+                            "Unsupported --report-version: " + reportVersion + "\nAllowed values: 1",
+                            false
+                        );
+                    }
+                }
+                default -> throw new UsageException("Unknown argument: " + args[i], true);
+            }
+        }
+
+        if (grammarFile == null || (!validateOnly && outputDir == null)) {
+            throw new UsageException(null, true);
+        }
+
+        return new CliOptions(
+            grammarFile,
+            outputDir,
+            generators,
+            validateOnly,
+            reportFormat,
+            reportFile,
+            reportVersion
+        );
+    }
+
+    record CliOptions(
+        String grammarFile,
+        String outputDir,
+        List<String> generators,
+        boolean validateOnly,
+        String reportFormat,
+        String reportFile,
+        int reportVersion
+    ) {}
+
+    static final class UsageException extends Exception {
+        private final boolean showUsage;
+
+        UsageException(String message, boolean showUsage) {
+            super(message);
+            this.showUsage = showUsage;
+        }
+
+        boolean showUsage() {
+            return showUsage;
+        }
+    }
+}

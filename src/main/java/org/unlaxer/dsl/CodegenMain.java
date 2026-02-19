@@ -21,7 +21,6 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,7 +36,6 @@ public class CodegenMain {
     static final int EXIT_VALIDATION_ERROR = 3;
     static final int EXIT_GENERATION_ERROR = 4;
 
-    private static final int DEFAULT_REPORT_VERSION = 1;
     private static final String TOOL_VERSION = resolveToolVersion();
 
     public static void main(String[] args) {
@@ -53,9 +51,9 @@ public class CodegenMain {
 
     static int runWithClock(String[] args, PrintStream out, PrintStream err, Clock clock) {
         try {
-            CliConfig config = parseArgs(args);
+            CodegenCliParser.CliOptions config = CodegenCliParser.parse(args);
             return execute(config, out, err, clock);
-        } catch (CliUsageException e) {
+        } catch (CodegenCliParser.UsageException e) {
             if (e.getMessage() != null && !e.getMessage().isBlank()) {
                 err.println(e.getMessage());
             }
@@ -72,94 +70,12 @@ public class CodegenMain {
         }
     }
 
-    private static CliConfig parseArgs(String[] args) throws CliUsageException {
-        String grammarFile = null;
-        String outputDir = null;
-        List<String> generators = List.of("Parser", "LSP", "Launcher");
-        boolean validateOnly = false;
-        String reportFormat = "text";
-        String reportFile = null;
-        int reportVersion = DEFAULT_REPORT_VERSION;
-
-        for (int i = 0; i < args.length; i++) {
-            switch (args[i]) {
-                case "--grammar" -> {
-                    if (i + 1 >= args.length) {
-                        throw new CliUsageException("Missing value for --grammar", true);
-                    }
-                    grammarFile = args[++i];
-                }
-                case "--output" -> {
-                    if (i + 1 >= args.length) {
-                        throw new CliUsageException("Missing value for --output", true);
-                    }
-                    outputDir = args[++i];
-                }
-                case "--generators" -> {
-                    if (i + 1 >= args.length) {
-                        throw new CliUsageException("Missing value for --generators", true);
-                    }
-                    generators = Arrays.asList(args[++i].split(","));
-                }
-                case "--validate-only" -> validateOnly = true;
-                case "--report-format" -> {
-                    if (i + 1 >= args.length) {
-                        throw new CliUsageException("Missing value for --report-format", true);
-                    }
-                    reportFormat = args[++i].trim().toLowerCase();
-                    if (!"text".equals(reportFormat) && !"json".equals(reportFormat)) {
-                        throw new CliUsageException(
-                            "Unsupported --report-format: " + reportFormat + "\nAllowed values: text, json",
-                            false
-                        );
-                    }
-                }
-                case "--report-file" -> {
-                    if (i + 1 >= args.length) {
-                        throw new CliUsageException("Missing value for --report-file", true);
-                    }
-                    reportFile = args[++i];
-                }
-                case "--report-version" -> {
-                    if (i + 1 >= args.length) {
-                        throw new CliUsageException("Missing value for --report-version", true);
-                    }
-                    String raw = args[++i].trim();
-                    try {
-                        reportVersion = Integer.parseInt(raw);
-                    } catch (NumberFormatException e) {
-                        throw new CliUsageException(
-                            "Unsupported --report-version: " + raw + "\nAllowed values: 1",
-                            false
-                        );
-                    }
-                    if (reportVersion != 1) {
-                        throw new CliUsageException(
-                            "Unsupported --report-version: " + reportVersion + "\nAllowed values: 1",
-                            false
-                        );
-                    }
-                }
-                default -> throw new CliUsageException("Unknown argument: " + args[i], true);
-            }
-        }
-
-        if (grammarFile == null || (!validateOnly && outputDir == null)) {
-            throw new CliUsageException(null, true);
-        }
-
-        return new CliConfig(
-            grammarFile,
-            outputDir,
-            generators,
-            validateOnly,
-            reportFormat,
-            reportFile,
-            reportVersion
-        );
-    }
-
-    private static int execute(CliConfig config, PrintStream out, PrintStream err, Clock clock) throws IOException {
+    private static int execute(
+        CodegenCliParser.CliOptions config,
+        PrintStream out,
+        PrintStream err,
+        Clock clock
+    ) throws IOException {
         String source = Files.readString(Path.of(config.grammarFile()));
         UBNFFile file = UBNFMapper.parse(source);
 
@@ -332,26 +248,4 @@ public class CodegenMain {
         Files.writeString(reportPath, content);
     }
 
-    private record CliConfig(
-        String grammarFile,
-        String outputDir,
-        List<String> generators,
-        boolean validateOnly,
-        String reportFormat,
-        String reportFile,
-        int reportVersion
-    ) {}
-
-    private static final class CliUsageException extends Exception {
-        private final boolean showUsage;
-
-        private CliUsageException(String message, boolean showUsage) {
-            super(message);
-            this.showUsage = showUsage;
-        }
-
-        private boolean showUsage() {
-            return showUsage;
-        }
-    }
 }

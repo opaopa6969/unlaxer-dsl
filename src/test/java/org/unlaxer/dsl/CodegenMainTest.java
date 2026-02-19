@@ -1,6 +1,7 @@
 package org.unlaxer.dsl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
@@ -230,11 +231,11 @@ public class CodegenMainTest {
         assertTrue(out.endsWith("\"issues\":[]}"));
 
         Map<String, Object> obj = JsonTestUtil.parseObject(out);
-        assertEquals(1L, obj.get("reportVersion"));
-        assertEquals("validate", obj.get("mode"));
-        assertEquals(Boolean.TRUE, obj.get("ok"));
-        assertEquals(1L, obj.get("grammarCount"));
-        assertEquals(List.of(), obj.get("issues"));
+        assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
+        assertEquals("validate", JsonTestUtil.getString(obj, "mode"));
+        assertTrue(JsonTestUtil.getBoolean(obj, "ok"));
+        assertEquals(1L, JsonTestUtil.getLong(obj, "grammarCount"));
+        assertEquals(List.of(), JsonTestUtil.getArray(obj, "issues"));
     }
 
     @Test
@@ -276,21 +277,19 @@ public class CodegenMainTest {
         assertTrue(msg.contains("\"issues\":["));
 
         Map<String, Object> obj = JsonTestUtil.parseObject(msg);
-        assertEquals(1L, obj.get("reportVersion"));
-        assertEquals("validate", obj.get("mode"));
-        assertEquals(Boolean.FALSE, obj.get("ok"));
-        assertEquals(1L, obj.get("issueCount"));
-        @SuppressWarnings("unchecked")
-        Map<String, Object> severityCounts = (Map<String, Object>) obj.get("severityCounts");
-        assertEquals(1L, severityCounts.get("ERROR"));
-        @SuppressWarnings("unchecked")
-        List<Object> issues = (List<Object>) obj.get("issues");
+        assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
+        assertEquals("validate", JsonTestUtil.getString(obj, "mode"));
+        assertFalse(JsonTestUtil.getBoolean(obj, "ok"));
+        assertEquals(1L, JsonTestUtil.getLong(obj, "issueCount"));
+        Map<String, Object> severityCounts = JsonTestUtil.getObject(obj, "severityCounts");
+        assertEquals(1L, JsonTestUtil.getLong(severityCounts, "ERROR"));
+        List<Object> issues = JsonTestUtil.getArray(obj, "issues");
         assertEquals(1, issues.size());
         @SuppressWarnings("unchecked")
         Map<String, Object> issue = (Map<String, Object>) issues.get(0);
-        assertEquals("E-MAPPING-MISSING-CAPTURE", issue.get("code"));
-        assertEquals("ERROR", issue.get("severity"));
-        assertEquals("MAPPING", issue.get("category"));
+        assertEquals("E-MAPPING-MISSING-CAPTURE", JsonTestUtil.getString(issue, "code"));
+        assertEquals("ERROR", JsonTestUtil.getString(issue, "severity"));
+        assertEquals("MAPPING", JsonTestUtil.getString(issue, "category"));
     }
 
     @Test
@@ -433,12 +432,11 @@ public class CodegenMainTest {
         assertTrue(report.contains("ValidAST.java"));
 
         Map<String, Object> obj = JsonTestUtil.parseObject(report);
-        assertEquals(1L, obj.get("reportVersion"));
-        assertEquals("generate", obj.get("mode"));
-        assertEquals(Boolean.TRUE, obj.get("ok"));
-        assertEquals(1L, obj.get("generatedCount"));
-        @SuppressWarnings("unchecked")
-        List<Object> files = (List<Object>) obj.get("generatedFiles");
+        assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
+        assertEquals("generate", JsonTestUtil.getString(obj, "mode"));
+        assertTrue(JsonTestUtil.getBoolean(obj, "ok"));
+        assertEquals(1L, JsonTestUtil.getLong(obj, "generatedCount"));
+        List<Object> files = JsonTestUtil.getArray(obj, "generatedFiles");
         assertEquals(1, files.size());
     }
 
@@ -517,7 +515,7 @@ public class CodegenMainTest {
         );
         assertEquals(CodegenMain.EXIT_OK, result.exitCode());
         Map<String, Object> obj = JsonTestUtil.parseObject(result.out().trim());
-        assertEquals(1L, obj.get("reportVersion"));
+        assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
     }
 
     @Test

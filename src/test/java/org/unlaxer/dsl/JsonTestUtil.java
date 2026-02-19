@@ -24,6 +24,57 @@ final class JsonTestUtil {
         return out;
     }
 
+    static String getString(Map<String, Object> obj, String key) {
+        Object value = requireKey(obj, key);
+        if (!(value instanceof String s)) {
+            throw new IllegalArgumentException("expected string for key: " + key);
+        }
+        return s;
+    }
+
+    static long getLong(Map<String, Object> obj, String key) {
+        Object value = requireKey(obj, key);
+        if (!(value instanceof Number n)) {
+            throw new IllegalArgumentException("expected number for key: " + key);
+        }
+        return n.longValue();
+    }
+
+    static boolean getBoolean(Map<String, Object> obj, String key) {
+        Object value = requireKey(obj, key);
+        if (!(value instanceof Boolean b)) {
+            throw new IllegalArgumentException("expected boolean for key: " + key);
+        }
+        return b;
+    }
+
+    static Map<String, Object> getObject(Map<String, Object> obj, String key) {
+        Object value = requireKey(obj, key);
+        if (!(value instanceof Map<?, ?> m)) {
+            throw new IllegalArgumentException("expected object for key: " + key);
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> out = (Map<String, Object>) m;
+        return out;
+    }
+
+    static List<Object> getArray(Map<String, Object> obj, String key) {
+        Object value = requireKey(obj, key);
+        if (!(value instanceof List<?> list)) {
+            throw new IllegalArgumentException("expected array for key: " + key);
+        }
+        @SuppressWarnings("unchecked")
+        List<Object> out = (List<Object>) list;
+        return out;
+    }
+
+    private static Object requireKey(Map<String, Object> obj, String key) {
+        if (!obj.containsKey(key)) {
+            throw new IllegalArgumentException("missing key: " + key);
+        }
+        return obj.get(key);
+    }
+
     private static final class Parser {
         private final String s;
         private int i;

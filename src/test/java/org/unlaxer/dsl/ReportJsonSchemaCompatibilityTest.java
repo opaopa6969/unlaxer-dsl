@@ -37,10 +37,10 @@ public class ReportJsonSchemaCompatibilityTest {
             List.of("reportVersion", "toolVersion", "generatedAt", "mode", "ok", "grammarCount", "issues"),
             List.copyOf(obj.keySet())
         );
-        assertEquals(1L, obj.get("reportVersion"));
-        assertEquals(Boolean.TRUE, obj.get("ok"));
-        assertEquals(1L, obj.get("grammarCount"));
-        assertEquals(List.of(), obj.get("issues"));
+        assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
+        assertEquals(true, JsonTestUtil.getBoolean(obj, "ok"));
+        assertEquals(1L, JsonTestUtil.getLong(obj, "grammarCount"));
+        assertEquals(List.of(), JsonTestUtil.getArray(obj, "issues"));
     }
 
     @Test
@@ -78,13 +78,11 @@ public class ReportJsonSchemaCompatibilityTest {
             ),
             List.copyOf(obj.keySet())
         );
-        assertEquals(1L, obj.get("reportVersion"));
-        assertEquals(Boolean.FALSE, obj.get("ok"));
-        @SuppressWarnings("unchecked")
-        var severityCounts = (java.util.Map<String, Object>) obj.get("severityCounts");
-        assertEquals(1L, severityCounts.get("ERROR"));
-        @SuppressWarnings("unchecked")
-        var issues = (java.util.List<Object>) obj.get("issues");
+        assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
+        assertEquals(false, JsonTestUtil.getBoolean(obj, "ok"));
+        var severityCounts = JsonTestUtil.getObject(obj, "severityCounts");
+        assertEquals(1L, JsonTestUtil.getLong(severityCounts, "ERROR"));
+        var issues = JsonTestUtil.getArray(obj, "issues");
         assertEquals(1, issues.size());
     }
 
@@ -126,9 +124,9 @@ public class ReportJsonSchemaCompatibilityTest {
             ),
             List.copyOf(obj.keySet())
         );
-        assertEquals(1L, obj.get("reportVersion"));
-        assertEquals(Boolean.TRUE, obj.get("ok"));
-        assertEquals(1L, obj.get("generatedCount"));
+        assertEquals(1L, JsonTestUtil.getLong(obj, "reportVersion"));
+        assertEquals(true, JsonTestUtil.getBoolean(obj, "ok"));
+        assertEquals(1L, JsonTestUtil.getLong(obj, "generatedCount"));
     }
 
     private static RunResult runCodegen(String... args) {
