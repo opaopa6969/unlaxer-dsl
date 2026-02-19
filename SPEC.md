@@ -90,6 +90,7 @@ Current behavior:
 - `--validate-only` runs grammar validation without writing generated sources.
 - `--report-format json` emits machine-readable validation output (especially useful with `--validate-only`).
 - `--report-format ndjson` emits newline-delimited JSON events (`file` events plus summary report event).
+- In `ndjson` mode, `stdout` remains JSON-lines only (human progress text is suppressed).
 - `--report-file <path>` writes the final report payload (text/json) to a file.
 - `--output-manifest <path>` writes action manifest JSON (written/skipped/conflict/dry-run files and counts).
 - `--manifest-format json|ndjson` controls manifest output format when `--output-manifest` is used.

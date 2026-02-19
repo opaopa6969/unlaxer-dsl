@@ -265,7 +265,9 @@ final class CodegenRunner {
                 if (action == WriteAction.SKIPPED) {
                     skippedCount++;
                     fileEvents.add(new FileEvent("skipped", javaFile.toString()));
-                    out.println("Skipped (unchanged): " + javaFile);
+                    if (!"ndjson".equals(config.reportFormat())) {
+                        out.println("Skipped (unchanged): " + javaFile);
+                    }
                     if ("ndjson".equals(config.reportFormat())) {
                         out.println(ndjsonFileEvent("skipped", javaFile.toString()));
                     }
@@ -274,14 +276,18 @@ final class CodegenRunner {
                 if (action == WriteAction.DRY_RUN) {
                     dryRunCount++;
                     fileEvents.add(new FileEvent("dry-run", javaFile.toString()));
-                    out.println("Dry-run: would generate " + javaFile);
+                    if (!"ndjson".equals(config.reportFormat())) {
+                        out.println("Dry-run: would generate " + javaFile);
+                    }
                     if ("ndjson".equals(config.reportFormat())) {
                         out.println(ndjsonFileEvent("dry-run", javaFile.toString()));
                     }
                 } else {
                     writtenCount++;
                     fileEvents.add(new FileEvent("written", javaFile.toString()));
-                    out.println("Generated: " + javaFile);
+                    if (!"ndjson".equals(config.reportFormat())) {
+                        out.println("Generated: " + javaFile);
+                    }
                     if ("ndjson".equals(config.reportFormat())) {
                         out.println(ndjsonFileEvent("written", javaFile.toString()));
                     }

@@ -1021,6 +1021,10 @@ public class CodegenMainTest {
         assertTrue(out.contains("\"action\":\"written\""));
         assertTrue(out.contains("\"event\":\"generate-summary\""));
         assertTrue(out.contains("\"writtenCount\":1"));
+        for (String line : out.trim().split("\\R")) {
+            String trimmed = line.trim();
+            assertTrue("ndjson stdout line must be JSON: " + trimmed, trimmed.startsWith("{") && trimmed.endsWith("}"));
+        }
     }
 
     @Test
