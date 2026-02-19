@@ -1283,6 +1283,41 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testNdjsonSkippedFailureEmitsOnlyJsonEventsAndEmptyStderr() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-skipped-failure", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-ndjson-skipped-failure-out");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        RunResult first = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST"
+        );
+        assertEquals(CodegenMain.EXIT_OK, first.exitCode());
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--overwrite", "if-different",
+            "--fail-on", "skipped",
+            "--report-format", "ndjson"
+        );
+        assertEquals(CodegenMain.EXIT_GENERATION_ERROR, result.exitCode());
+        assertTrue(result.err().isBlank());
+
+        List<String> outLines = List.of(result.out().trim().split("\\R"));
+        for (String line : outLines) {
+            String trimmed = line.trim();
+            assertTrue("ndjson stdout line must be JSON: " + trimmed, trimmed.startsWith("{") && trimmed.endsWith("}"));
+        }
+        assertTrue(result.out().contains("\"event\":\"file\""));
+        assertTrue(result.out().contains("\"action\":\"skipped\""));
+        assertTrue(result.out().contains("\"event\":\"generate-summary\""));
+        assertTrue(result.out().contains("\"failReasonCode\":\"FAIL_ON_SKIPPED\""));
+    }
+
+    @Test
     public void testFailOnWarningsThresholdReturnsStrictValidationError() throws Exception {
         String source = """
             grammar WarnOnly {
