@@ -245,6 +245,53 @@ public class GrammarValidatorTest {
         }
     }
 
+    @Test
+    public void testPrecedenceTopologyValid() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @mapping(ExprNode, params=[left, op, right])\n"
+                + "  @leftAssoc\n"
+                + "  @precedence(level=10)\n"
+                + "  Expr ::= Term @left { '+' @op Term @right } ;\n"
+                + "  @mapping(TermNode, params=[left, op, right])\n"
+                + "  @leftAssoc\n"
+                + "  @precedence(level=20)\n"
+                + "  Term ::= Factor @left { '*' @op Factor @right } ;\n"
+                + "  Factor ::= 'n' ;\n"
+                + "}"
+        );
+
+        GrammarValidator.validateOrThrow(grammar);
+    }
+
+    @Test
+    public void testPrecedenceTopologyInvalidOrderFails() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @mapping(ExprNode, params=[left, op, right])\n"
+                + "  @leftAssoc\n"
+                + "  @precedence(level=20)\n"
+                + "  Expr ::= Term @left { '+' @op Term @right } ;\n"
+                + "  @mapping(TermNode, params=[left, op, right])\n"
+                + "  @leftAssoc\n"
+                + "  @precedence(level=10)\n"
+                + "  Term ::= Factor @left { '*' @op Factor @right } ;\n"
+                + "  Factor ::= 'n' ;\n"
+                + "}"
+        );
+
+        try {
+            GrammarValidator.validateOrThrow(grammar);
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("must be lower than referenced operator rule"));
+        }
+    }
+
     private GrammarDecl parseGrammar(String source) {
         return UBNFMapper.parse(source).grammars().get(0);
     }

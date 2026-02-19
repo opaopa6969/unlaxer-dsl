@@ -14,6 +14,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.RepeatElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RightAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleDecl;
+import org.unlaxer.dsl.bootstrap.UBNFAST.RuleRefElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.SequenceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.StringSettingValue;
 import org.unlaxer.dsl.bootstrap.UBNFAST.WhitespaceAnnotation;
@@ -63,6 +64,7 @@ public final class GrammarValidator {
             }
             validatePrecedence(rule, hasLeftAssoc, hasRightAssoc, precedenceAnnotations, errors);
         }
+        validatePrecedenceTopology(grammar, errors);
 
         if (!errors.isEmpty()) {
             throw new IllegalArgumentException(
@@ -188,6 +190,52 @@ public final class GrammarValidator {
         }
     }
 
+    private static void validatePrecedenceTopology(GrammarDecl grammar, List<String> errors) {
+        var ruleMap = grammar.rules().stream()
+            .collect(java.util.stream.Collectors.toMap(RuleDecl::name, r -> r, (a, b) -> a));
+
+        for (RuleDecl rule : grammar.rules()) {
+            Integer precedence = findPrecedenceLevel(rule);
+            if (precedence == null || !hasAssoc(rule)) {
+                continue;
+            }
+            Set<String> refs = collectReferencedRuleNames(rule.body());
+            for (String refName : refs) {
+                if (rule.name().equals(refName)) {
+                    continue;
+                }
+                RuleDecl refRule = ruleMap.get(refName);
+                if (refRule == null || !hasAssoc(refRule)) {
+                    continue;
+                }
+                Integer refPrecedence = findPrecedenceLevel(refRule);
+                if (refPrecedence == null) {
+                    continue;
+                }
+                if (refPrecedence <= precedence) {
+                    errors.add("rule " + rule.name() + " precedence " + precedence
+                        + " must be lower than referenced operator rule "
+                        + refName + " precedence " + refPrecedence);
+                }
+            }
+        }
+    }
+
+    private static boolean hasAssoc(RuleDecl rule) {
+        boolean left = rule.annotations().stream().anyMatch(a -> a instanceof LeftAssocAnnotation);
+        boolean right = rule.annotations().stream().anyMatch(a -> a instanceof RightAssocAnnotation);
+        return left || right;
+    }
+
+    private static Integer findPrecedenceLevel(RuleDecl rule) {
+        return rule.annotations().stream()
+            .filter(a -> a instanceof PrecedenceAnnotation)
+            .map(a -> (PrecedenceAnnotation) a)
+            .reduce((first, second) -> second)
+            .map(PrecedenceAnnotation::level)
+            .orElse(null);
+    }
+
     private static Set<String> collectCaptureNames(RuleBody body) {
         Set<String> captures = new LinkedHashSet<>();
         collectCaptureNamesFromBody(body, captures);
@@ -219,6 +267,41 @@ public final class GrammarValidator {
             case RepeatElement rep -> collectCaptureNamesFromBody(rep.body(), captures);
             default -> {
                 // TerminalElement / RuleRefElement have no nested bodies.
+            }
+        }
+    }
+
+    private static Set<String> collectReferencedRuleNames(RuleBody body) {
+        Set<String> refs = new LinkedHashSet<>();
+        collectReferencedRuleNamesFromBody(body, refs);
+        return refs;
+    }
+
+    private static void collectReferencedRuleNamesFromBody(RuleBody body, Set<String> refs) {
+        switch (body) {
+            case ChoiceBody choice -> {
+                for (SequenceBody seq : choice.alternatives()) {
+                    collectReferencedRuleNamesFromSequence(seq, refs);
+                }
+            }
+            case SequenceBody seq -> collectReferencedRuleNamesFromSequence(seq, refs);
+        }
+    }
+
+    private static void collectReferencedRuleNamesFromSequence(SequenceBody seq, Set<String> refs) {
+        for (AnnotatedElement ae : seq.elements()) {
+            collectReferencedRuleNamesFromAtomic(ae.element(), refs);
+        }
+    }
+
+    private static void collectReferencedRuleNamesFromAtomic(AtomicElement element, Set<String> refs) {
+        switch (element) {
+            case RuleRefElement ref -> refs.add(ref.name());
+            case GroupElement group -> collectReferencedRuleNamesFromBody(group.body(), refs);
+            case OptionalElement opt -> collectReferencedRuleNamesFromBody(opt.body(), refs);
+            case RepeatElement rep -> collectReferencedRuleNamesFromBody(rep.body(), refs);
+            default -> {
+                // TerminalElement has no nested refs.
             }
         }
     }

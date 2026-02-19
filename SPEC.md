@@ -43,6 +43,7 @@ Contract:
 2. A rule may declare `@precedence` at most once.
 3. `@precedence` currently requires either `@leftAssoc` or `@rightAssoc` on the same rule.
 4. `@leftAssoc` and `@rightAssoc` cannot be used together on one rule.
+5. If an operator rule references another operator rule and both have `@precedence`, the referenced rule must have a higher precedence level.
 
 Current behavior:
 
