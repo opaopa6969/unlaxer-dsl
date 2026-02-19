@@ -2,7 +2,10 @@ package org.unlaxer.dsl;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assert.assertEquals;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -188,6 +191,67 @@ public class CodegenMainTest {
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("Grammar validation failed"));
             assertTrue(e.getMessage().contains("E-MAPPING-MISSING-CAPTURE"));
+        }
+    }
+
+    @Test
+    public void testValidateOnlyJsonSuccessReport() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+
+        Path grammarFile = Files.createTempFile("codegen-main-validate-only-json", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        PrintStream originalOut = System.out;
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(baos));
+            CodegenMain.main(new String[] {
+                "--grammar", grammarFile.toString(),
+                "--validate-only",
+                "--report-format", "json"
+            });
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        String out = baos.toString().trim();
+        assertEquals("{\"ok\":true,\"grammarCount\":1,\"issues\":[]}", out);
+    }
+
+    @Test
+    public void testValidateOnlyJsonFailureReport() throws Exception {
+        String source = """
+            grammar Invalid {
+              @package: org.example.invalid
+              @root
+              @mapping(RootNode, params=[value, missing])
+              Invalid ::= 'x' @value ;
+            }
+            """;
+
+        Path grammarFile = Files.createTempFile("codegen-main-validate-only-json-invalid", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        try {
+            CodegenMain.main(new String[] {
+                "--grammar", grammarFile.toString(),
+                "--validate-only",
+                "--report-format", "json"
+            });
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            assertTrue(msg.startsWith("{\"ok\":false"));
+            assertTrue(msg.contains("\"grammar\":\"Invalid\""));
+            assertTrue(msg.contains("\"code\":\"E-MAPPING-MISSING-CAPTURE\""));
+            assertTrue(msg.contains("\"issues\":["));
         }
     }
 }

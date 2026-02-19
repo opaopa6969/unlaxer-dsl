@@ -80,6 +80,7 @@ Current behavior:
 - Grammar validation runs before generation for each grammar block.
 - Validation failures are aggregated across grammar blocks and reported in one error.
 - `--validate-only` runs grammar validation without writing generated sources.
+- `--report-format json` emits machine-readable validation output (especially useful with `--validate-only`).
 
 ## LSP / DAP Expectations
 
