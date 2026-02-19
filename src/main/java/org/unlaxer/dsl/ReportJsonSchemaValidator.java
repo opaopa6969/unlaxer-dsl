@@ -1,9 +1,12 @@
 package org.unlaxer.dsl;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.time.Instant;
 
 /**
  * Validates JSON report schema contracts by reportVersion.
@@ -44,15 +47,20 @@ final class ReportJsonSchemaValidator {
                     "issues"
                 )
             );
-            requireNumber(obj, "reportVersion");
-            requireString(obj, "schemaVersion");
-            requireString(obj, "schemaUrl");
+            requireConstInteger(obj, "reportVersion", 1);
+            requireConstString(obj, "schemaVersion", "1.0");
+            requireConstString(obj, "schemaUrl", "https://unlaxer.dev/schema/report-v1.json");
             requireString(obj, "toolVersion");
             requireString(obj, "argsHash");
-            requireString(obj, "generatedAt");
-            requireNumber(obj, "grammarCount");
-            requireNumber(obj, "warningsCount");
-            requireArray(obj, "issues");
+            requireDateTimeString(obj, "generatedAt");
+            requireConstString(obj, "mode", "validate");
+            requireConstBoolean(obj, "ok", true);
+            requireIntegerMin(obj, "grammarCount", 0);
+            requireIntegerMin(obj, "warningsCount", 0);
+            List<Object> issues = requireArray(obj, "issues");
+            if (!issues.isEmpty()) {
+                fail("E-REPORT-SCHEMA-CONSTRAINT", "validate-success issues must be empty");
+            }
             return;
         }
 
@@ -76,18 +84,35 @@ final class ReportJsonSchemaValidator {
                     "issues"
                 )
             );
-            requireNumber(obj, "reportVersion");
-            requireString(obj, "schemaVersion");
-            requireString(obj, "schemaUrl");
+            requireConstInteger(obj, "reportVersion", 1);
+            requireConstString(obj, "schemaVersion", "1.0");
+            requireConstString(obj, "schemaUrl", "https://unlaxer.dev/schema/report-v1.json");
             requireString(obj, "toolVersion");
             requireString(obj, "argsHash");
-            requireString(obj, "generatedAt");
-            requireNullableString(obj, "failReasonCode");
-            requireNumber(obj, "issueCount");
-            requireNumber(obj, "warningsCount");
-            requireObject(obj, "severityCounts");
-            requireObject(obj, "categoryCounts");
-            requireArray(obj, "issues");
+            requireDateTimeString(obj, "generatedAt");
+            requireConstString(obj, "mode", "validate");
+            requireConstBoolean(obj, "ok", false);
+            requireNullableEnum(
+                obj,
+                "failReasonCode",
+                Set.of("FAIL_ON_WARNING", "FAIL_ON_WARNINGS_COUNT")
+            );
+            requireIntegerMin(obj, "issueCount", 1);
+            requireIntegerMin(obj, "warningsCount", 0);
+            requireCountMap(requireObject(obj, "severityCounts"), "severityCounts");
+            requireCountMap(requireObject(obj, "categoryCounts"), "categoryCounts");
+            List<Object> issues = requireArray(obj, "issues");
+            if (issues.isEmpty()) {
+                fail("E-REPORT-SCHEMA-CONSTRAINT", "validate-failure issues must contain at least one item");
+            }
+            for (Object issueObj : issues) {
+                if (!(issueObj instanceof Map<?, ?>)) {
+                    fail("E-REPORT-SCHEMA-TYPE", "Expected issue object");
+                }
+                @SuppressWarnings("unchecked")
+                Map<String, Object> issue = (Map<String, Object>) issueObj;
+                validateIssue(issue);
+            }
             return;
         }
 
@@ -114,21 +139,32 @@ final class ReportJsonSchemaValidator {
                     "generatedFiles"
                 )
             );
-            requireNumber(obj, "reportVersion");
-            requireString(obj, "schemaVersion");
-            requireString(obj, "schemaUrl");
+            requireConstInteger(obj, "reportVersion", 1);
+            requireConstString(obj, "schemaVersion", "1.0");
+            requireConstString(obj, "schemaUrl", "https://unlaxer.dev/schema/report-v1.json");
             requireString(obj, "toolVersion");
             requireString(obj, "argsHash");
-            requireString(obj, "generatedAt");
-            requireNullableString(obj, "failReasonCode");
-            requireNumber(obj, "grammarCount");
-            requireNumber(obj, "generatedCount");
-            requireNumber(obj, "warningsCount");
-            requireNumber(obj, "writtenCount");
-            requireNumber(obj, "skippedCount");
-            requireNumber(obj, "conflictCount");
-            requireNumber(obj, "dryRunCount");
-            requireArray(obj, "generatedFiles");
+            requireDateTimeString(obj, "generatedAt");
+            requireConstString(obj, "mode", "generate");
+            requireBoolean(obj, "ok");
+            requireNullableEnum(
+                obj,
+                "failReasonCode",
+                Set.of("FAIL_ON_SKIPPED", "FAIL_ON_CONFLICT", "FAIL_ON_CLEANED")
+            );
+            requireIntegerMin(obj, "grammarCount", 0);
+            requireIntegerMin(obj, "generatedCount", 0);
+            requireIntegerMin(obj, "warningsCount", 0);
+            requireIntegerMin(obj, "writtenCount", 0);
+            requireIntegerMin(obj, "skippedCount", 0);
+            requireIntegerMin(obj, "conflictCount", 0);
+            requireIntegerMin(obj, "dryRunCount", 0);
+            List<Object> generatedFiles = requireArray(obj, "generatedFiles");
+            for (Object file : generatedFiles) {
+                if (!(file instanceof String s) || s.isBlank()) {
+                    fail("E-REPORT-SCHEMA-TYPE", "generatedFiles items must be non-empty strings");
+                }
+            }
             return;
         }
 
@@ -150,7 +186,7 @@ final class ReportJsonSchemaValidator {
 
     private static String requireString(Map<String, Object> obj, String key) {
         Object value = requireKey(obj, key);
-        if (!(value instanceof String s)) {
+        if (!(value instanceof String s) || s.isBlank()) {
             fail("E-REPORT-SCHEMA-TYPE", "Expected string for key: " + key);
         }
         return (String) value;
@@ -177,10 +213,92 @@ final class ReportJsonSchemaValidator {
         if (value == null) {
             return null;
         }
-        if (!(value instanceof String s)) {
+        if (!(value instanceof String s) || s.isBlank()) {
             fail("E-REPORT-SCHEMA-TYPE", "Expected nullable string for key: " + key);
         }
         return (String) value;
+    }
+
+    private static long requireIntegerMin(Map<String, Object> obj, String key, long min) {
+        Number n = requireNumber(obj, key);
+        if (!(n instanceof Integer || n instanceof Long)) {
+            fail("E-REPORT-SCHEMA-TYPE", "Expected integer for key: " + key);
+        }
+        long value = n.longValue();
+        if (value < min) {
+            fail("E-REPORT-SCHEMA-CONSTRAINT", "Expected " + key + " >= " + min);
+        }
+        return value;
+    }
+
+    private static void requireConstString(Map<String, Object> obj, String key, String expected) {
+        String actual = requireString(obj, key);
+        if (!expected.equals(actual)) {
+            fail("E-REPORT-SCHEMA-CONSTRAINT", "Expected " + key + " == " + expected + " but was " + actual);
+        }
+    }
+
+    private static void requireConstBoolean(Map<String, Object> obj, String key, boolean expected) {
+        boolean actual = requireBoolean(obj, key);
+        if (actual != expected) {
+            fail("E-REPORT-SCHEMA-CONSTRAINT", "Expected " + key + " == " + expected + " but was " + actual);
+        }
+    }
+
+    private static void requireConstInteger(Map<String, Object> obj, String key, long expected) {
+        long actual = requireIntegerMin(obj, key, expected);
+        if (actual != expected) {
+            fail("E-REPORT-SCHEMA-CONSTRAINT", "Expected " + key + " == " + expected + " but was " + actual);
+        }
+    }
+
+    private static void requireNullableEnum(Map<String, Object> obj, String key, Set<String> allowed) {
+        String value = requireNullableString(obj, key);
+        if (value == null) {
+            return;
+        }
+        if (!allowed.contains(value)) {
+            fail("E-REPORT-SCHEMA-CONSTRAINT", "Unsupported value for " + key + ": " + value);
+        }
+    }
+
+    private static void requireDateTimeString(Map<String, Object> obj, String key) {
+        String value = requireString(obj, key);
+        try {
+            Instant.parse(value);
+        } catch (RuntimeException e) {
+            fail("E-REPORT-SCHEMA-CONSTRAINT", "Expected ISO-8601 instant for key: " + key);
+        }
+    }
+
+    private static void requireCountMap(Map<String, Object> map, String key) {
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            String k = entry.getKey();
+            if (k == null || k.isBlank()) {
+                fail("E-REPORT-SCHEMA-TYPE", key + " must not contain blank keys");
+            }
+            Object value = entry.getValue();
+            if (!(value instanceof Number n) || !(n instanceof Integer || n instanceof Long) || n.longValue() < 1) {
+                fail("E-REPORT-SCHEMA-CONSTRAINT", key + " values must be integers >= 1");
+            }
+        }
+    }
+
+    private static void validateIssue(Map<String, Object> issue) {
+        Set<String> expected = Set.of("grammar", "rule", "code", "severity", "category", "message", "hint");
+        if (!new HashSet<>(issue.keySet()).equals(expected)) {
+            fail("E-REPORT-SCHEMA-KEY-ORDER", "Unexpected issue keys: " + issue.keySet());
+        }
+        requireString(issue, "grammar");
+        Object rule = requireKey(issue, "rule");
+        if (!(rule == null || (rule instanceof String s && !s.isBlank()))) {
+            fail("E-REPORT-SCHEMA-TYPE", "Expected nullable non-empty string for key: rule");
+        }
+        requireString(issue, "code");
+        requireString(issue, "severity");
+        requireString(issue, "category");
+        requireString(issue, "message");
+        requireString(issue, "hint");
     }
 
     @SuppressWarnings("unchecked")

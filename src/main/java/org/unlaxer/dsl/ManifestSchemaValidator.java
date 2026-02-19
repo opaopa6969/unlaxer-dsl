@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.time.Instant;
 
 /**
  * Validates manifest JSON/NDJSON schema contracts.
@@ -44,18 +46,22 @@ final class ManifestSchemaValidator {
                 "files"
             )
         );
-        requireString(obj, "mode");
-        requireString(obj, "generatedAt");
+        requireEnum(obj, "mode", Set.of("validate", "generate"));
+        requireDateTimeString(obj, "generatedAt");
         requireString(obj, "toolVersion");
         requireString(obj, "argsHash");
         requireBoolean(obj, "ok");
-        requireNullableString(obj, "failReasonCode");
-        requireNumber(obj, "exitCode");
-        requireNumber(obj, "warningsCount");
-        requireNumber(obj, "writtenCount");
-        requireNumber(obj, "skippedCount");
-        requireNumber(obj, "conflictCount");
-        requireNumber(obj, "dryRunCount");
+        requireNullableEnum(
+            obj,
+            "failReasonCode",
+            Set.of("FAIL_ON_WARNING", "FAIL_ON_WARNINGS_COUNT", "FAIL_ON_SKIPPED", "FAIL_ON_CONFLICT", "FAIL_ON_CLEANED")
+        );
+        requireIntegerMin(obj, "exitCode", 0);
+        requireIntegerMin(obj, "warningsCount", 0);
+        requireIntegerMin(obj, "writtenCount", 0);
+        requireIntegerMin(obj, "skippedCount", 0);
+        requireIntegerMin(obj, "conflictCount", 0);
+        requireIntegerMin(obj, "dryRunCount", 0);
         List<Object> files = requireArray(obj, "files");
         for (Object item : files) {
             if (!(item instanceof Map<?, ?>)) {
@@ -64,7 +70,7 @@ final class ManifestSchemaValidator {
             @SuppressWarnings("unchecked")
             Map<String, Object> fileObj = (Map<String, Object>) item;
             requireTopLevelOrder(fileObj, List.of("action", "path"));
-            requireString(fileObj, "action");
+            requireEnum(fileObj, "action", Set.of("written", "skipped", "dry-run", "conflict", "cleaned"));
             requireString(fileObj, "path");
         }
     }
@@ -84,7 +90,7 @@ final class ManifestSchemaValidator {
             String event = requireString(obj, "event");
             if ("file".equals(event)) {
                 requireTopLevelOrder(obj, List.of("event", "action", "path"));
-                requireString(obj, "action");
+                requireEnum(obj, "action", Set.of("written", "skipped", "dry-run", "conflict", "cleaned"));
                 requireString(obj, "path");
                 continue;
             }
@@ -108,18 +114,28 @@ final class ManifestSchemaValidator {
                         "dryRunCount"
                     )
                 );
-                requireString(obj, "mode");
-                requireString(obj, "generatedAt");
+                requireEnum(obj, "mode", Set.of("validate", "generate"));
+                requireDateTimeString(obj, "generatedAt");
                 requireString(obj, "toolVersion");
                 requireString(obj, "argsHash");
                 requireBoolean(obj, "ok");
-                requireNullableString(obj, "failReasonCode");
-                requireNumber(obj, "exitCode");
-                requireNumber(obj, "warningsCount");
-                requireNumber(obj, "writtenCount");
-                requireNumber(obj, "skippedCount");
-                requireNumber(obj, "conflictCount");
-                requireNumber(obj, "dryRunCount");
+                requireNullableEnum(
+                    obj,
+                    "failReasonCode",
+                    Set.of(
+                        "FAIL_ON_WARNING",
+                        "FAIL_ON_WARNINGS_COUNT",
+                        "FAIL_ON_SKIPPED",
+                        "FAIL_ON_CONFLICT",
+                        "FAIL_ON_CLEANED"
+                    )
+                );
+                requireIntegerMin(obj, "exitCode", 0);
+                requireIntegerMin(obj, "warningsCount", 0);
+                requireIntegerMin(obj, "writtenCount", 0);
+                requireIntegerMin(obj, "skippedCount", 0);
+                requireIntegerMin(obj, "conflictCount", 0);
+                requireIntegerMin(obj, "dryRunCount", 0);
                 continue;
             }
             fail("E-MANIFEST-SCHEMA-INVALID-EVENT", "Unsupported manifest event: " + event);
@@ -141,7 +157,7 @@ final class ManifestSchemaValidator {
 
     private static String requireString(Map<String, Object> obj, String key) {
         Object value = requireKey(obj, key);
-        if (!(value instanceof String s)) {
+        if (!(value instanceof String s) || s.isBlank()) {
             fail("E-MANIFEST-SCHEMA-TYPE", "Expected string for key: " + key);
         }
         return (String) value;
@@ -152,10 +168,27 @@ final class ManifestSchemaValidator {
         if (value == null) {
             return null;
         }
-        if (!(value instanceof String s)) {
+        if (!(value instanceof String s) || s.isBlank()) {
             fail("E-MANIFEST-SCHEMA-TYPE", "Expected nullable string for key: " + key);
         }
         return (String) value;
+    }
+
+    private static void requireEnum(Map<String, Object> obj, String key, Set<String> allowed) {
+        String value = requireString(obj, key);
+        if (!allowed.contains(value)) {
+            fail("E-MANIFEST-SCHEMA-CONSTRAINT", "Unsupported value for " + key + ": " + value);
+        }
+    }
+
+    private static void requireNullableEnum(Map<String, Object> obj, String key, Set<String> allowed) {
+        String value = requireNullableString(obj, key);
+        if (value == null) {
+            return;
+        }
+        if (!allowed.contains(value)) {
+            fail("E-MANIFEST-SCHEMA-CONSTRAINT", "Unsupported value for " + key + ": " + value);
+        }
     }
 
     private static boolean requireBoolean(Map<String, Object> obj, String key) {
@@ -172,6 +205,27 @@ final class ManifestSchemaValidator {
             fail("E-MANIFEST-SCHEMA-TYPE", "Expected number for key: " + key);
         }
         return (Number) value;
+    }
+
+    private static long requireIntegerMin(Map<String, Object> obj, String key, long min) {
+        Number n = requireNumber(obj, key);
+        if (!(n instanceof Integer || n instanceof Long)) {
+            fail("E-MANIFEST-SCHEMA-TYPE", "Expected integer for key: " + key);
+        }
+        long value = n.longValue();
+        if (value < min) {
+            fail("E-MANIFEST-SCHEMA-CONSTRAINT", "Expected " + key + " >= " + min);
+        }
+        return value;
+    }
+
+    private static void requireDateTimeString(Map<String, Object> obj, String key) {
+        String value = requireString(obj, key);
+        try {
+            Instant.parse(value);
+        } catch (RuntimeException e) {
+            fail("E-MANIFEST-SCHEMA-CONSTRAINT", "Expected ISO-8601 instant for key: " + key);
+        }
     }
 
     @SuppressWarnings("unchecked")

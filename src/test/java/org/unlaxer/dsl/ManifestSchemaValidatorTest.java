@@ -34,4 +34,52 @@ public class ManifestSchemaValidatorTest {
             assertEquals("E-MANIFEST-SCHEMA-SUMMARY", expected.code());
         }
     }
+
+    @Test
+    public void testRejectsUnknownFileActionInNdjson() {
+        try {
+            ManifestSchemaValidator.validate(
+                "ndjson",
+                "{\"event\":\"file\",\"action\":\"unknown\",\"path\":\"out/A.java\"}\n"
+                    + "{\"event\":\"manifest-summary\",\"mode\":\"generate\",\"generatedAt\":\"2026-01-01T00:00:00Z\","
+                    + "\"toolVersion\":\"dev\",\"argsHash\":\"hash\",\"ok\":true,\"failReasonCode\":null,"
+                    + "\"exitCode\":0,\"warningsCount\":0,\"writtenCount\":1,\"skippedCount\":0,\"conflictCount\":0,\"dryRunCount\":0}"
+            );
+            fail("expected schema validation error");
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-MANIFEST-SCHEMA-CONSTRAINT", expected.code());
+        }
+    }
+
+    @Test
+    public void testRejectsNegativeCountInJsonManifest() {
+        try {
+            ManifestSchemaValidator.validate(
+                "json",
+                "{\"mode\":\"generate\",\"generatedAt\":\"2026-01-01T00:00:00Z\",\"toolVersion\":\"dev\","
+                    + "\"argsHash\":\"hash\",\"ok\":true,\"failReasonCode\":null,\"exitCode\":0,\"warningsCount\":0,"
+                    + "\"writtenCount\":1,\"skippedCount\":0,\"conflictCount\":-1,\"dryRunCount\":0,"
+                    + "\"files\":[]}"
+            );
+            fail("expected schema validation error");
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-MANIFEST-SCHEMA-CONSTRAINT", expected.code());
+        }
+    }
+
+    @Test
+    public void testRejectsNonIsoGeneratedAt() {
+        try {
+            ManifestSchemaValidator.validate(
+                "json",
+                "{\"mode\":\"generate\",\"generatedAt\":\"not-a-date\",\"toolVersion\":\"dev\","
+                    + "\"argsHash\":\"hash\",\"ok\":true,\"failReasonCode\":null,\"exitCode\":0,\"warningsCount\":0,"
+                    + "\"writtenCount\":1,\"skippedCount\":0,\"conflictCount\":0,\"dryRunCount\":0,"
+                    + "\"files\":[]}"
+            );
+            fail("expected schema validation error");
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-MANIFEST-SCHEMA-CONSTRAINT", expected.code());
+        }
+    }
 }
