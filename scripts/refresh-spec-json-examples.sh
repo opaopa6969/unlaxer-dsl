@@ -5,6 +5,11 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SPEC_FILE="$ROOT_DIR/SPEC.md"
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
+SKIP_BUILD=false
+
+if [[ "${1:-}" == "--skip-build" ]]; then
+  SKIP_BUILD=true
+fi
 
 VALID_GRAMMAR="$WORK_DIR/valid.ubnf"
 INVALID_GRAMMAR="$WORK_DIR/invalid.ubnf"
@@ -28,22 +33,28 @@ grammar Invalid {
 }
 GRAMMAR
 
-echo "[refresh-spec-json-examples] Building jar..."
+if [[ "$SKIP_BUILD" == "true" ]]; then
+  echo "[refresh-spec-json-examples] Skipping build; using existing target/classes."
+else
+  echo "[refresh-spec-json-examples] Compiling project..."
+  (
+    cd "$ROOT_DIR"
+    mvn -q -DskipTests compile
+  )
+fi
 (
   cd "$ROOT_DIR"
-  mvn -q -DskipTests package
   mvn -q -DincludeScope=runtime dependency:build-classpath -Dmdep.outputFile="$WORK_DIR/runtime.classpath"
 )
 
-JAR_FILE="$(ls "$ROOT_DIR"/target/unlaxer-dsl-*.jar | grep -v 'sources' | grep -v 'javadoc' | head -n1)"
-if [[ -z "$JAR_FILE" ]]; then
-  echo "[refresh-spec-json-examples] ERROR: jar not found in target/." >&2
+MAIN_CP="$ROOT_DIR/target/classes"
+if [[ ! -d "$MAIN_CP" ]]; then
+  echo "[refresh-spec-json-examples] ERROR: $MAIN_CP not found. Run mvn compile first." >&2
   exit 1
 fi
-
-echo "[refresh-spec-json-examples] Using jar: $JAR_FILE"
+echo "[refresh-spec-json-examples] Using classes: $MAIN_CP"
 RUNTIME_CP="$(cat "$WORK_DIR/runtime.classpath")"
-JAVA_CP="$JAR_FILE:$RUNTIME_CP"
+JAVA_CP="$MAIN_CP:$RUNTIME_CP"
 
 java -cp "$JAVA_CP" org.unlaxer.dsl.CodegenMain \
   --grammar "$VALID_GRAMMAR" \
@@ -75,11 +86,11 @@ java -cp "$JAVA_CP" org.unlaxer.dsl.CodegenMain \
   >/dev/null
 
 sed "s#${OUT_DIR//\//\\/}#/path/to/out#g" "$WORK_DIR/generate-success.json" > "$WORK_DIR/generate-success.norm.json"
-sed -E 's/"generatedAt":"[^"]+"/"generatedAt":"<generatedAt>"/g' \
+sed -E 's/"generatedAt":"[^"]+"/"generatedAt":"<generatedAt>"/g; s/"toolVersion":"[^"]+"/"toolVersion":"<toolVersion>"/g' \
   "$WORK_DIR/validate-success.json" > "$WORK_DIR/validate-success.norm.json"
-sed -E 's/"generatedAt":"[^"]+"/"generatedAt":"<generatedAt>"/g' \
+sed -E 's/"generatedAt":"[^"]+"/"generatedAt":"<generatedAt>"/g; s/"toolVersion":"[^"]+"/"toolVersion":"<toolVersion>"/g' \
   "$WORK_DIR/validate-failure.json" > "$WORK_DIR/validate-failure.norm.json"
-sed -E 's/"generatedAt":"[^"]+"/"generatedAt":"<generatedAt>"/g' \
+sed -E 's/"generatedAt":"[^"]+"/"generatedAt":"<generatedAt>"/g; s/"toolVersion":"[^"]+"/"toolVersion":"<toolVersion>"/g' \
   "$WORK_DIR/generate-success.norm.json" > "$WORK_DIR/generate-success.final.json"
 
 VALIDATE_SUCCESS_JSON="$(cat "$WORK_DIR/validate-success.norm.json")"
