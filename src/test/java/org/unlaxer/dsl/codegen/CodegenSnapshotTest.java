@@ -98,6 +98,22 @@ public class CodegenSnapshotTest {
         assertEquals(normalize(expected), normalize(actual));
     }
 
+    @Test
+    public void testAstGeneratorSnapshot() throws Exception {
+        GrammarDecl grammar = parseGrammar(SNAPSHOT_GRAMMAR);
+        String actual = new ASTGenerator().generate(grammar).source();
+        String expected = Files.readString(Path.of("src/test/resources/golden/ast_snapshot.java.txt"));
+        assertEquals(normalize(expected), normalize(actual));
+    }
+
+    @Test
+    public void testEvaluatorGeneratorSnapshot() throws Exception {
+        GrammarDecl grammar = parseGrammar(SNAPSHOT_GRAMMAR);
+        String actual = new EvaluatorGenerator().generate(grammar).source();
+        String expected = Files.readString(Path.of("src/test/resources/golden/evaluator_snapshot.java.txt"));
+        assertEquals(normalize(expected), normalize(actual));
+    }
+
     private GrammarDecl parseGrammar(String source) {
         return UBNFMapper.parse(source).grammars().get(0);
     }
