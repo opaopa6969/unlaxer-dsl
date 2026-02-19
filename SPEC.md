@@ -132,6 +132,7 @@ Current behavior:
 - NDJSON event schema contract lives at `docs/schema/report-v1.ndjson.json`.
 - Manifest schema contracts live at `docs/schema/manifest-v1.json` and `docs/schema/manifest-v1.ndjson.json`.
 - Parser IR / advanced grammar extension design draft lives at `docs/PARSER-IR-DRAFT.md`.
+- Parser IR draft schema artifact lives at `docs/schema/parser-ir-v1.draft.json`.
 - `CodegenMain.runWithClock(...)` exists for deterministic timestamp testing.
 
 ### JSON Report Examples

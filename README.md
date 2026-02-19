@@ -860,6 +860,7 @@ JSON reports always include stable top-level fields:
 The public v1 JSON schema is documented at `docs/schema/report-v1.json`.
 NDJSON event schema is documented at `docs/schema/report-v1.ndjson.json`.
 Manifest schemas are documented at `docs/schema/manifest-v1.json` and `docs/schema/manifest-v1.ndjson.json`.
+Parser IR draft schema is documented at `docs/schema/parser-ir-v1.draft.json`.
 Validation failure entries in `issues[]` include:
 `grammar`, `rule`, `code`, `severity`, `category`, `message`, and `hint`.
 Validation failure reports also include `severityCounts` and `categoryCounts` summaries.

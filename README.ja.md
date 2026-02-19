@@ -1060,6 +1060,7 @@ JSON レポートは安定したトップレベル項目として
 公開される v1 JSON schema は `docs/schema/report-v1.json` を参照。
 NDJSON イベント schema は `docs/schema/report-v1.ndjson.json` を参照。
 manifest schema は `docs/schema/manifest-v1.json` と `docs/schema/manifest-v1.ndjson.json` を参照。
+Parser IR の draft schema は `docs/schema/parser-ir-v1.draft.json` を参照。
 バリデーション失敗時の `issues[]` 要素は
 `grammar`, `rule`, `code`, `severity`, `category`, `message`, `hint` を含む。
 失敗レポートには `severityCounts` と `categoryCounts` の集計も含む。

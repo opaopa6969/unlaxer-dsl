@@ -7,6 +7,8 @@ This memo proposes a hybrid approach for advanced parsing features in unlaxer-ds
 - Post-parse semantics and tooling integration in annotations
 - A shared Parser Annotation IR so non-UBNF parsers can use the same downstream pipeline
 
+Draft schema artifact: `docs/schema/parser-ir-v1.draft.json`
+
 ## 1. Design Goals
 
 - Represent parser behavior that is hard to express in plain CFG:
