@@ -997,11 +997,20 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
   --generators Parser,LSP,Launcher,DAP,DAPLauncher
 ```
 
+検証のみ（ソース出力なし）:
+
+```bash
+java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
+  --grammar path/to/my.ubnf \
+  --validate-only
+```
+
 | オプション | 説明 | デフォルト |
 |---|---|---|
 | `--grammar <file>` | `.ubnf` ファイルのパス | （必須） |
-| `--output <dir>` | 出力ルートディレクトリ（package 構造で書き出す） | （必須） |
+| `--output <dir>` | 出力ルートディレクトリ（package 構造で書き出す） | `--validate-only` 以外では必須 |
 | `--generators <list>` | カンマ区切りの生成器名 | `Parser,LSP,Launcher` |
+| `--validate-only` | 文法検証のみ実行（コード生成をスキップ） | `false` |
 
 使用可能な生成器名: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 

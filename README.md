@@ -797,11 +797,20 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
   --generators Parser,LSP,Launcher,DAP,DAPLauncher
 ```
 
+Validation-only mode (no source files are written):
+
+```bash
+java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
+  --grammar path/to/my.ubnf \
+  --validate-only
+```
+
 | Option | Description | Default |
 |---|---|---|
 | `--grammar <file>` | Path to `.ubnf` file | (required) |
-| `--output <dir>` | Output root directory (written with package structure) | (required) |
+| `--output <dir>` | Output root directory (written with package structure) | required unless `--validate-only` |
 | `--generators <list>` | Comma-separated generator names | `Parser,LSP,Launcher` |
+| `--validate-only` | Run grammar validation only (skip code generation) | `false` |
 
 Available generator names: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 

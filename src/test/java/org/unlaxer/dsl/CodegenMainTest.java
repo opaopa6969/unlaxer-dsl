@@ -164,4 +164,30 @@ public class CodegenMainTest {
         Path ast = outputDir.resolve("org/example/valid/ValidAST.java");
         assertTrue("validate-only should not generate files", !Files.exists(ast));
     }
+
+    @Test
+    public void testValidateOnlyStillFailsOnInvalidGrammar() throws Exception {
+        String source = """
+            grammar Invalid {
+              @package: org.example.invalid
+              @root
+              @mapping(RootNode, params=[value, missing])
+              Invalid ::= 'x' @value ;
+            }
+            """;
+
+        Path grammarFile = Files.createTempFile("codegen-main-validate-only-invalid", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        try {
+            CodegenMain.main(new String[] {
+                "--grammar", grammarFile.toString(),
+                "--validate-only"
+            });
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Grammar validation failed"));
+            assertTrue(e.getMessage().contains("E-MAPPING-MISSING-CAPTURE"));
+        }
+    }
 }
