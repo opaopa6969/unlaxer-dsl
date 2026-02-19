@@ -822,6 +822,27 @@ public class ParserGenerator implements CodeGenerator {
         sb.append("                .findFirst());\n");
         sb.append("    }\n\n");
 
+        sb.append("    public static java.util.Optional<OperatorSpec> getLowestPrecedenceOperator() {\n");
+        sb.append("        return OPERATOR_SPECS.isEmpty()\n");
+        sb.append("            ? java.util.Optional.empty()\n");
+        sb.append("            : java.util.Optional.of(OPERATOR_SPECS.get(0));\n");
+        sb.append("    }\n\n");
+
+        sb.append("    public static java.util.Optional<Parser> getOperatorParser(String ruleName) {\n");
+        sb.append("        return switch (ruleName) {\n");
+        for (RuleDecl rule : sorted) {
+            sb.append("            case \"").append(rule.name()).append("\" -> java.util.Optional.of(Parser.get(")
+                .append(rule.name()).append("Parser.class));\n");
+        }
+        sb.append("            default -> java.util.Optional.empty();\n");
+        sb.append("        };\n");
+        sb.append("    }\n\n");
+
+        sb.append("    public static java.util.Optional<Parser> getLowestPrecedenceParser() {\n");
+        sb.append("        return getLowestPrecedenceOperator()\n");
+        sb.append("            .flatMap(spec -> getOperatorParser(spec.ruleName()));\n");
+        sb.append("    }\n\n");
+
         return sb.toString();
     }
 

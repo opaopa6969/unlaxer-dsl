@@ -56,6 +56,24 @@ public class SnapshotRightAssocParsers {
                 .findFirst());
     }
 
+    public static java.util.Optional<OperatorSpec> getLowestPrecedenceOperator() {
+        return OPERATOR_SPECS.isEmpty()
+            ? java.util.Optional.empty()
+            : java.util.Optional.of(OPERATOR_SPECS.get(0));
+    }
+
+    public static java.util.Optional<Parser> getOperatorParser(String ruleName) {
+        return switch (ruleName) {
+            case "Expr" -> java.util.Optional.of(Parser.get(ExprParser.class));
+            default -> java.util.Optional.empty();
+        };
+    }
+
+    public static java.util.Optional<Parser> getLowestPrecedenceParser() {
+        return getLowestPrecedenceOperator()
+            .flatMap(spec -> getOperatorParser(spec.ruleName()));
+    }
+
     // --- Base Chain (No Auto Delimiter) ---
     public static abstract class SnapshotRightAssocPlainLazyChain extends LazyChain {
         private static final long serialVersionUID = 1L;
