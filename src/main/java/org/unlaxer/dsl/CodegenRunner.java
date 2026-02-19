@@ -490,39 +490,6 @@ final class CodegenRunner {
         return "{\"event\":\"" + ReportJsonWriter.escapeJson(event) + "\",\"payload\":" + payloadJson + "}";
     }
 
-    private static String ndjsonCliErrorEvent(
-        String code,
-        String message,
-        String detail,
-        List<String> availableGenerators
-    ) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\"event\":\"cli-error\"")
-            .append(",\"code\":\"").append(ReportJsonWriter.escapeJson(code)).append("\"")
-            .append(",\"message\":\"").append(ReportJsonWriter.escapeJson(message)).append("\"")
-            .append(",\"detail\":");
-        if (detail == null) {
-            sb.append("null");
-        } else {
-            sb.append("\"").append(ReportJsonWriter.escapeJson(detail)).append("\"");
-        }
-        sb.append(",\"availableGenerators\":");
-        if (availableGenerators == null || availableGenerators.isEmpty()) {
-            sb.append("[]");
-        } else {
-            sb.append("[");
-            for (int i = 0; i < availableGenerators.size(); i++) {
-                if (i > 0) {
-                    sb.append(",");
-                }
-                sb.append("\"").append(ReportJsonWriter.escapeJson(availableGenerators.get(i))).append("\"");
-            }
-            sb.append("]");
-        }
-        sb.append("}");
-        return sb.toString();
-    }
-
     private static void emitCliRuntimeError(
         CodegenCliParser.CliOptions config,
         PrintStream out,
@@ -533,7 +500,7 @@ final class CodegenRunner {
         List<String> availableGenerators
     ) {
         if ("ndjson".equals(config.reportFormat())) {
-            out.println(ndjsonCliErrorEvent(code, message, detail, availableGenerators));
+            out.println(NdjsonErrorEventWriter.cliErrorEvent(code, message, detail, availableGenerators));
             return;
         }
         err.println(message);

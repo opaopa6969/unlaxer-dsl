@@ -192,6 +192,23 @@ public class ReportNdjsonSchemaDocumentConsistencyTest {
         assertEquals("cli-error", JsonTestUtil.getString(event, "event"));
     }
 
+    @Test
+    public void testCliUsageErrorEventMatchesSchemaDocument() throws Exception {
+        Map<String, Object> schema = loadSchemaDocument();
+        Set<String> expectedKeys = requiredKeys(schemaVariant(schema, "cli-error"));
+
+        RunResult result = runCodegen(
+            "--validate-only",
+            "--report-format", "ndjson"
+        );
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+
+        Map<String, Object> event = JsonTestUtil.parseObject(lastJsonLine(result.out()));
+        assertEquals(expectedKeys, event.keySet());
+        assertEquals("cli-error", JsonTestUtil.getString(event, "event"));
+        assertEquals("E-CLI-USAGE", JsonTestUtil.getString(event, "code"));
+    }
+
     private static Set<String> requiredKeys(Map<String, Object> variant) {
         List<Object> required = JsonTestUtil.getArray(variant, "required");
         Set<String> keys = new LinkedHashSet<>();

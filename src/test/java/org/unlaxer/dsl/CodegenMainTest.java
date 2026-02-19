@@ -586,6 +586,23 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testBrokenGrammarReturnsNdjsonCliErrorEventWhenRequested() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-broken-grammar-ndjson", ".ubnf");
+        Files.writeString(grammarFile, "grammar Broken {");
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "ndjson"
+        );
+
+        assertEquals(CodegenMain.EXIT_GENERATION_ERROR, result.exitCode());
+        assertTrue(result.out().contains("\"event\":\"cli-error\""));
+        assertTrue(result.out().contains("\"code\":\"E-RUNTIME\""));
+        assertTrue(result.err().isBlank());
+    }
+
+    @Test
     public void testReportFileWriteFailureReturnsGenerationError() throws Exception {
         String source = """
             grammar Valid {
@@ -655,6 +672,16 @@ public class CodegenMainTest {
         assertTrue(result.err().contains("--manifest-format"));
         assertTrue(result.err().contains("--report-schema-check"));
         assertTrue(result.err().contains("--warnings-as-json"));
+    }
+
+    @Test
+    public void testMissingGrammarReturnsNdjsonCliErrorEventWhenRequested() {
+        RunResult result = runCodegen("--validate-only", "--report-format", "ndjson");
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+        assertTrue(result.out().contains("\"event\":\"cli-error\""));
+        assertTrue(result.out().contains("\"code\":\"E-CLI-USAGE\""));
+        assertTrue(result.out().contains("\"message\":\""));
+        assertTrue(result.err().isBlank());
     }
 
     @Test

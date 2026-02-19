@@ -3,6 +3,7 @@ package org.unlaxer.dsl;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.time.Clock;
+import java.util.List;
 
 /**
  * CLI tool entry point for UBNF validation and source generation.
@@ -28,6 +29,7 @@ public class CodegenMain {
     }
 
     static int runWithClock(String[] args, PrintStream out, PrintStream err, Clock clock) {
+        boolean ndjsonRequested = isNdjsonRequested(args);
         try {
             CodegenCliParser.CliOptions config = CodegenCliParser.parse(args);
             if (config.help()) {
@@ -40,6 +42,15 @@ public class CodegenMain {
             }
             return CodegenRunner.execute(config, out, err, clock, TOOL_VERSION, ArgsHashUtil.fromOptions(config));
         } catch (CodegenCliParser.UsageException e) {
+            if (ndjsonRequested) {
+                emitNdjsonCliError(
+                    out,
+                    "E-CLI-USAGE",
+                    normalizeMessage("CLI usage error", e.getMessage()),
+                    e.showUsage() ? "Use --help to view usage." : null
+                );
+                return EXIT_CLI_ERROR;
+            }
             if (e.getMessage() != null && !e.getMessage().isBlank()) {
                 err.println(e.getMessage());
             }
@@ -48,15 +59,54 @@ public class CodegenMain {
             }
             return EXIT_CLI_ERROR;
         } catch (ReportSchemaValidationException e) {
+            if (ndjsonRequested) {
+                emitNdjsonCliError(out, e.code(), normalizeMessage("Schema validation error", e.getMessage()), null);
+                return EXIT_GENERATION_ERROR;
+            }
             err.println(e.code() + ": " + e.getMessage());
             return EXIT_GENERATION_ERROR;
         } catch (IOException e) {
+            if (ndjsonRequested) {
+                emitNdjsonCliError(out, "E-IO", normalizeMessage("I/O error", e.getMessage()), null);
+                return EXIT_GENERATION_ERROR;
+            }
             err.println("I/O error: " + e.getMessage());
             return EXIT_GENERATION_ERROR;
         } catch (RuntimeException e) {
+            if (ndjsonRequested) {
+                emitNdjsonCliError(out, "E-RUNTIME", normalizeMessage("Generation failed", e.getMessage()), null);
+                return EXIT_GENERATION_ERROR;
+            }
             err.println("Generation failed: " + e.getMessage());
             return EXIT_GENERATION_ERROR;
         }
+    }
+
+    private static void emitNdjsonCliError(PrintStream out, String code, String message, String detail) {
+        out.println(NdjsonErrorEventWriter.cliErrorEvent(code, message, detail, List.of()));
+    }
+
+    private static boolean isNdjsonRequested(String[] args) {
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+            if ("--report-format".equals(arg)) {
+                if (i + 1 < args.length && "ndjson".equals(args[i + 1])) {
+                    return true;
+                }
+                continue;
+            }
+            if (arg.startsWith("--report-format=") && "ndjson".equals(arg.substring("--report-format=".length()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalizeMessage(String fallback, String message) {
+        if (message == null || message.isBlank()) {
+            return fallback;
+        }
+        return message;
     }
 
     private static void printUsage(PrintStream err) {

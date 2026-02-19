@@ -90,7 +90,7 @@ Current behavior:
 - `--validate-only` runs grammar validation without writing generated sources.
 - `--report-format json` emits machine-readable validation output (especially useful with `--validate-only`).
 - `--report-format ndjson` emits newline-delimited JSON events (`file` events plus summary report event).
-- In `ndjson`, runtime CLI failures (for example unknown generator) are emitted as `cli-error` events.
+- In `ndjson`, CLI failures (usage/argument errors and runtime failures such as unknown generator) are emitted as `cli-error` events.
 - In `ndjson` mode, `stdout` remains JSON-lines only (human progress text is suppressed).
 - In `ndjson` generation mode, conflict/fail-on human error messages are suppressed from `stderr`.
 - In `ndjson` validation failure paths, `stderr` also remains JSON-lines only.
