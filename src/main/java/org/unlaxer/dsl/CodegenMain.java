@@ -17,6 +17,7 @@ import org.unlaxer.dsl.codegen.ParserGenerator;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
  */
 public class CodegenMain {
     private static final int REPORT_VERSION = 1;
+    private static final String TOOL_VERSION = resolveToolVersion();
 
     public static void main(String[] args) throws IOException {
         String grammarFile = null;
@@ -148,8 +150,11 @@ public class CodegenMain {
         }
         if (validateOnly) {
             if ("json".equals(reportFormat)) {
-                String json = "{\"reportVersion\":" + REPORT_VERSION + ",\"mode\":\"validate\","
-                    + "\"ok\":true,\"grammarCount\":" + file.grammars().size() + ",\"issues\":[]}";
+                String json = "{\"reportVersion\":" + REPORT_VERSION
+                    + ",\"toolVersion\":\"" + escapeJson(TOOL_VERSION) + "\""
+                    + ",\"generatedAt\":\"" + escapeJson(Instant.now().toString()) + "\""
+                    + ",\"mode\":\"validate\""
+                    + ",\"ok\":true,\"grammarCount\":" + file.grammars().size() + ",\"issues\":[]}";
                 System.out.println(json);
                 writeReportIfNeeded(reportFile, json);
             } else {
@@ -217,6 +222,8 @@ public class CodegenMain {
     private static String toValidationJsonReport(List<ValidationRow> rows) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"reportVersion\":").append(REPORT_VERSION)
+            .append(",\"toolVersion\":\"").append(escapeJson(TOOL_VERSION)).append("\"")
+            .append(",\"generatedAt\":\"").append(escapeJson(Instant.now().toString())).append("\"")
             .append(",\"mode\":\"validate\",\"ok\":false,\"issueCount\":")
             .append(rows.size()).append(",\"issues\":[");
         for (int i = 0; i < rows.size(); i++) {
@@ -244,6 +251,8 @@ public class CodegenMain {
     private static String toGenerationJsonReport(int grammarCount, List<String> generatedFiles) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"reportVersion\":").append(REPORT_VERSION)
+            .append(",\"toolVersion\":\"").append(escapeJson(TOOL_VERSION)).append("\"")
+            .append(",\"generatedAt\":\"").append(escapeJson(Instant.now().toString())).append("\"")
             .append(",\"mode\":\"generate\",\"ok\":true,\"grammarCount\":").append(grammarCount)
             .append(",\"generatedCount\":").append(generatedFiles.size())
             .append(",\"generatedFiles\":[");
@@ -268,6 +277,18 @@ public class CodegenMain {
 
     private static String toTextIssue(ValidationRow row) {
         return row.message() + " [code: " + row.code() + "] [hint: " + row.hint() + "]";
+    }
+
+    private static String resolveToolVersion() {
+        Package pkg = CodegenMain.class.getPackage();
+        if (pkg == null) {
+            return "dev";
+        }
+        String version = pkg.getImplementationVersion();
+        if (version == null || version.isBlank()) {
+            return "dev";
+        }
+        return version;
     }
 
     private static String escapeJson(String s) {

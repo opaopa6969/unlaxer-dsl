@@ -816,7 +816,7 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
 ```
 
 JSON reports always include stable top-level fields:
-`reportVersion` and `mode` (`validate` or `generate`).
+`reportVersion`, `toolVersion`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
 Validation failure entries in `issues[]` include:
 `grammar`, `rule`, `code`, `severity`, `category`, `message`, and `hint`.
 

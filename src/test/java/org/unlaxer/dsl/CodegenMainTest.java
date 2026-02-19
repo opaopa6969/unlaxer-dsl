@@ -222,7 +222,13 @@ public class CodegenMainTest {
         }
 
         String out = baos.toString().trim();
-        assertEquals("{\"reportVersion\":1,\"mode\":\"validate\",\"ok\":true,\"grammarCount\":1,\"issues\":[]}", out);
+        assertTrue(out.startsWith("{\"reportVersion\":1,"));
+        assertTrue(out.contains("\"toolVersion\":\""));
+        assertTrue(out.contains("\"generatedAt\":\""));
+        assertTrue(out.contains("\"mode\":\"validate\""));
+        assertTrue(out.contains("\"ok\":true"));
+        assertTrue(out.contains("\"grammarCount\":1"));
+        assertTrue(out.endsWith("\"issues\":[]}"));
     }
 
     @Test
@@ -248,7 +254,11 @@ public class CodegenMainTest {
             fail("expected validation error");
         } catch (IllegalArgumentException e) {
             String msg = e.getMessage();
-            assertTrue(msg.startsWith("{\"reportVersion\":1,\"mode\":\"validate\",\"ok\":false"));
+            assertTrue(msg.startsWith("{\"reportVersion\":1,"));
+            assertTrue(msg.contains("\"toolVersion\":\""));
+            assertTrue(msg.contains("\"generatedAt\":\""));
+            assertTrue(msg.contains("\"mode\":\"validate\""));
+            assertTrue(msg.contains("\"ok\":false"));
             assertTrue(msg.contains("\"grammar\":\"Invalid\""));
             assertTrue(msg.contains("\"rule\":\"Invalid\""));
             assertTrue(msg.contains("\"code\":\"E-MAPPING-MISSING-CAPTURE\""));
@@ -321,7 +331,13 @@ public class CodegenMainTest {
         });
 
         String report = Files.readString(reportFile).trim();
-        assertEquals("{\"reportVersion\":1,\"mode\":\"validate\",\"ok\":true,\"grammarCount\":1,\"issues\":[]}", report);
+        assertTrue(report.startsWith("{\"reportVersion\":1,"));
+        assertTrue(report.contains("\"toolVersion\":\""));
+        assertTrue(report.contains("\"generatedAt\":\""));
+        assertTrue(report.contains("\"mode\":\"validate\""));
+        assertTrue(report.contains("\"ok\":true"));
+        assertTrue(report.contains("\"grammarCount\":1"));
+        assertTrue(report.endsWith("\"issues\":[]}"));
     }
 
     @Test
@@ -350,6 +366,8 @@ public class CodegenMainTest {
         String report = Files.readString(reportFile);
         assertTrue(report.contains("\"ok\":true"));
         assertTrue(report.contains("\"reportVersion\":1"));
+        assertTrue(report.contains("\"toolVersion\":\""));
+        assertTrue(report.contains("\"generatedAt\":\""));
         assertTrue(report.contains("\"mode\":\"generate\""));
         assertTrue(report.contains("\"generatedCount\":1"));
         assertTrue(report.contains("\"generatedFiles\":["));

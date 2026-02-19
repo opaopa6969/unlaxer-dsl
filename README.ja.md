@@ -1016,7 +1016,7 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
 ```
 
 JSON レポートは安定したトップレベル項目として
-`reportVersion` と `mode`（`validate` / `generate`）を常に含む。
+`reportVersion`, `toolVersion`, `generatedAt`（UTC ISO-8601）, `mode`（`validate` / `generate`）を常に含む。
 バリデーション失敗時の `issues[]` 要素は
 `grammar`, `rule`, `code`, `severity`, `category`, `message`, `hint` を含む。
 
