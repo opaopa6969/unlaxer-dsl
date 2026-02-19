@@ -110,7 +110,7 @@ SECTION
 START_MARKER='<!-- JSON_REPORT_EXAMPLES_START -->'
 END_MARKER='<!-- JSON_REPORT_EXAMPLES_END -->'
 
-if ! rg -q "^${START_MARKER}$" "$SPEC_FILE" || ! rg -q "^${END_MARKER}$" "$SPEC_FILE"; then
+if ! grep -q "^${START_MARKER}$" "$SPEC_FILE" || ! grep -q "^${END_MARKER}$" "$SPEC_FILE"; then
   echo "[refresh-spec-json-examples] ERROR: marker block not found in SPEC.md" >&2
   exit 1
 fi
