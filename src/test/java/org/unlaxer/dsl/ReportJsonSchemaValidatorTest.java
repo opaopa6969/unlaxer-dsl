@@ -1,6 +1,7 @@
 package org.unlaxer.dsl;
 
 import static org.junit.Assert.fail;
+import static org.junit.Assert.assertEquals;
 
 import java.util.List;
 
@@ -41,19 +42,19 @@ public class ReportJsonSchemaValidatorTest {
         try {
             ReportJsonSchemaValidator.validate(2, json);
             fail("expected unsupported version error");
-        } catch (IllegalArgumentException expected) {
-            // expected
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-REPORT-SCHEMA-UNSUPPORTED-VERSION", expected.code());
         }
     }
 
     @Test
     public void testRejectsMissingRequiredKey() {
-        String broken = "{\"reportVersion\":1,\"toolVersion\":\"dev\",\"generatedAt\":\"x\",\"mode\":\"validate\",\"ok\":true,\"issues\":[]}";
+        String broken = "{\"reportVersion\":1,\"toolVersion\":\"dev\",\"generatedAt\":\"x\",\"ok\":true,\"grammarCount\":1,\"issues\":[]}";
         try {
             ReportJsonSchemaValidator.validate(1, broken);
             fail("expected schema validation error");
-        } catch (IllegalArgumentException expected) {
-            // expected
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-REPORT-SCHEMA-MISSING-KEY", expected.code());
         }
     }
 
@@ -63,8 +64,8 @@ public class ReportJsonSchemaValidatorTest {
         try {
             ReportJsonSchemaValidator.validate(1, broken);
             fail("expected schema validation error");
-        } catch (IllegalArgumentException expected) {
-            // expected
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-REPORT-SCHEMA-KEY-ORDER", expected.code());
         }
     }
 
@@ -73,8 +74,8 @@ public class ReportJsonSchemaValidatorTest {
         try {
             ReportJsonSchemaValidator.validate(1, "[]");
             fail("expected schema validation error");
-        } catch (IllegalArgumentException expected) {
-            // expected
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-REPORT-SCHEMA-PARSE", expected.code());
         }
     }
 
@@ -84,8 +85,8 @@ public class ReportJsonSchemaValidatorTest {
         try {
             ReportJsonSchemaValidator.validate(1, valid + " trailing");
             fail("expected schema validation error");
-        } catch (IllegalArgumentException expected) {
-            // expected
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-REPORT-SCHEMA-PARSE", expected.code());
         }
     }
 }

@@ -88,6 +88,12 @@ golden snapshot の再生成：
 ./scripts/refresh-golden-snapshots.sh
 ```
 
+golden snapshot が最新かチェック：
+
+```bash
+./scripts/check-golden-snapshots.sh
+```
+
 `SPEC.md` の JSON レポート例を再生成：
 
 ```bash
@@ -112,7 +118,7 @@ CLI オプション記述のドキュメント同期チェック：
 ./scripts/spec/check-doc-sync.sh
 ```
 
-ローカルの一括チェック（scripts + tests + spec freshness）：
+ローカルの一括チェック（scripts + golden同期 + tests + spec freshness）：
 
 ```bash
 ./scripts/check-all.sh
@@ -1048,6 +1054,7 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
 JSON レポートは安定したトップレベル項目として
 `reportVersion`, `toolVersion`, `generatedAt`（UTC ISO-8601）, `mode`（`validate` / `generate`）を常に含む。
 `toolVersion` は取得可能なら artifact の `Implementation-Version`、未設定時は `dev` を使う。
+公開される v1 JSON schema は `docs/schema/report-v1.json` を参照。
 バリデーション失敗時の `issues[]` 要素は
 `grammar`, `rule`, `code`, `severity`, `category`, `message`, `hint` を含む。
 失敗レポートには `severityCounts` と `categoryCounts` の集計も含む。
@@ -1057,6 +1064,8 @@ JSON レポートは安定したトップレベル項目として
 | `--grammar <file>` | `.ubnf` ファイルのパス | （必須） |
 | `--output <dir>` | 出力ルートディレクトリ（package 構造で書き出す） | `--validate-only` 以外では必須 |
 | `--generators <list>` | カンマ区切りの生成器名 | `Parser,LSP,Launcher` |
+| `--help`, `-h` | 使用方法を表示して終了 | `false` |
+| `--version`, `-v` | ツールバージョンを表示して終了 | `false` |
 | `--validate-only` | 文法検証のみ実行（コード生成をスキップ） | `false` |
 | `--report-format text\|json` | 出力/レポート形式 | `text` |
 | `--report-file <path>` | レポート内容をファイル出力 | （なし） |
@@ -1065,6 +1074,7 @@ JSON レポートは安定したトップレベル項目として
 
 使用可能な生成器名: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 `--generators` はカンマ区切り値をトリムし、空要素はエラーとして拒否する（例: `"AST, LSP"` は有効）。
+`--report-schema-check` で失敗した場合のメッセージは `E-REPORT-SCHEMA-*` で始まる。
 
 終了コード:
 

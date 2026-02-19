@@ -52,6 +52,14 @@ public class CodegenMain {
     static int runWithClock(String[] args, PrintStream out, PrintStream err, Clock clock) {
         try {
             CodegenCliParser.CliOptions config = CodegenCliParser.parse(args);
+            if (config.help()) {
+                printUsage(out);
+                return EXIT_OK;
+            }
+            if (config.version()) {
+                out.println(TOOL_VERSION);
+                return EXIT_OK;
+            }
             return execute(config, out, err, clock);
         } catch (CodegenCliParser.UsageException e) {
             if (e.getMessage() != null && !e.getMessage().isBlank()) {
@@ -61,6 +69,9 @@ public class CodegenMain {
                 printUsage(err);
             }
             return EXIT_CLI_ERROR;
+        } catch (ReportSchemaValidationException e) {
+            err.println(e.code() + ": " + e.getMessage());
+            return EXIT_GENERATION_ERROR;
         } catch (IOException e) {
             err.println("I/O error: " + e.getMessage());
             return EXIT_GENERATION_ERROR;
@@ -198,7 +209,7 @@ public class CodegenMain {
 
     private static void printUsage(PrintStream err) {
         err.println(
-            "Usage: CodegenMain --grammar <file.ubnf> --output <dir>"
+            "Usage: CodegenMain [--help] [--version] --grammar <file.ubnf> --output <dir>"
                 + " [--generators AST,Parser,Mapper,Evaluator,LSP,Launcher,DAP,DAPLauncher]"
                 + " [--validate-only]"
                 + " [--report-format text|json]"

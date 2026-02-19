@@ -10,6 +10,8 @@ DOCS=(
 )
 
 OPTIONS=(
+  '--help'
+  '--version'
   '--grammar'
   '--output'
   '--generators'

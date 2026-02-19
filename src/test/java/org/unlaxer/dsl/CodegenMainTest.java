@@ -489,6 +489,93 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testHelpReturnsOkAndPrintsUsage() {
+        RunResult result = runCodegen("--help");
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.out().contains("Usage: CodegenMain"));
+        assertTrue(result.out().contains("--help"));
+        assertTrue(result.out().contains("--version"));
+    }
+
+    @Test
+    public void testVersionReturnsOkAndPrintsVersion() {
+        RunResult result = runCodegen("--version");
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertFalse(result.out().isBlank());
+        assertTrue(result.err().isBlank());
+    }
+
+    @Test
+    public void testBrokenGrammarReturnsGenerationError() throws Exception {
+        String source = "grammar Broken {";
+        Path grammarFile = Files.createTempFile("codegen-main-broken-grammar", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only"
+        );
+
+        assertEquals(CodegenMain.EXIT_GENERATION_ERROR, result.exitCode());
+        assertTrue(result.err().contains("Generation failed:"));
+    }
+
+    @Test
+    public void testReportFileWriteFailureReturnsGenerationError() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-report-write-failure", ".ubnf");
+        Files.writeString(grammarFile, source);
+        Path blocker = Files.createTempFile("codegen-main-report-blocker", ".tmp");
+        Path reportFile = blocker.resolve("report.json");
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "json",
+            "--report-file", reportFile.toString()
+        );
+
+        assertEquals(CodegenMain.EXIT_GENERATION_ERROR, result.exitCode());
+        assertTrue(result.err().contains("I/O error:"));
+    }
+
+    @Test
+    public void testUnknownGeneratorWithReportOptionsReturnsCliErrorAndNoReport() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-unknown-gen-report", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-unknown-gen-report-out");
+        Path reportFile = outputDir.resolve("report.json");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "Nope",
+            "--report-format", "json",
+            "--report-file", reportFile.toString(),
+            "--report-schema-check"
+        );
+
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+        assertTrue(result.err().contains("Unknown generator"));
+        assertFalse(Files.exists(reportFile));
+    }
+
+    @Test
     public void testMissingGrammarReturnsCliErrorCode() {
         RunResult result = runCodegen("--validate-only");
         assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());

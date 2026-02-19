@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unlaxer.dev/schema/report-v1.json",
+  "title": "unlaxer-dsl Codegen JSON Report v1",
+  "description": "Machine-readable report emitted by CodegenMain with --report-format json --report-version 1.",
+  "oneOf": [
+    {
+      "title": "validate-success",
+      "type": "object",
+      "required": [
+        "reportVersion",
+        "toolVersion",
+        "generatedAt",
+        "mode",
+        "ok",
+        "grammarCount",
+        "issues"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "reportVersion": { "const": 1 },
+        "toolVersion": { "type": "string", "minLength": 1 },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "mode": { "const": "validate" },
+        "ok": { "const": true },
+        "grammarCount": { "type": "integer", "minimum": 0 },
+        "issues": {
+          "type": "array",
+          "maxItems": 0,
+          "items": { "$ref": "#/$defs/validationIssue" }
+        }
+      }
+    },
+    {
+      "title": "validate-failure",
+      "type": "object",
+      "required": [
+        "reportVersion",
+        "toolVersion",
+        "generatedAt",
+        "mode",
+        "ok",
+        "issueCount",
+        "severityCounts",
+        "categoryCounts",
+        "issues"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "reportVersion": { "const": 1 },
+        "toolVersion": { "type": "string", "minLength": 1 },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "mode": { "const": "validate" },
+        "ok": { "const": false },
+        "issueCount": { "type": "integer", "minimum": 1 },
+        "severityCounts": { "$ref": "#/$defs/countMap" },
+        "categoryCounts": { "$ref": "#/$defs/countMap" },
+        "issues": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/validationIssue" }
+        }
+      }
+    },
+    {
+      "title": "generate-success",
+      "type": "object",
+      "required": [
+        "reportVersion",
+        "toolVersion",
+        "generatedAt",
+        "mode",
+        "ok",
+        "grammarCount",
+        "generatedCount",
+        "generatedFiles"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "reportVersion": { "const": 1 },
+        "toolVersion": { "type": "string", "minLength": 1 },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "mode": { "const": "generate" },
+        "ok": { "const": true },
+        "grammarCount": { "type": "integer", "minimum": 0 },
+        "generatedCount": { "type": "integer", "minimum": 0 },
+        "generatedFiles": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "countMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "validationIssue": {
+      "type": "object",
+      "required": ["grammar", "rule", "code", "severity", "category", "message", "hint"],
+      "additionalProperties": false,
+      "properties": {
+        "grammar": { "type": "string", "minLength": 1 },
+        "rule": { "type": "string", "minLength": 1 },
+        "code": { "type": "string", "minLength": 1 },
+        "severity": { "type": "string", "minLength": 1 },
+        "category": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "hint": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

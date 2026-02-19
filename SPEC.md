@@ -78,6 +78,8 @@ Current behavior:
 - All `grammar` blocks in a single `.ubnf` file are processed (not only the first one).
 - Missing values for `--grammar`, `--output`, or `--generators` are treated as CLI errors.
 - `--generators` values are comma-split with whitespace trimming; empty entries are rejected as CLI errors.
+- `--help`/`-h` prints usage and exits with code `0`.
+- `--version`/`-v` prints resolved tool version and exits with code `0`.
 - Grammar validation runs before generation for each grammar block.
 - Validation failures are aggregated across grammar blocks and reported in one error.
 - `--validate-only` runs grammar validation without writing generated sources.
@@ -85,6 +87,7 @@ Current behavior:
 - `--report-file <path>` writes the final report payload (text/json) to a file.
 - `--report-version 1` selects JSON schema version (currently only version `1` is supported).
 - `--report-schema-check` validates JSON payload schema before emitting/writing reports.
+- On schema-check failure, CLI emits stable error codes prefixed with `E-REPORT-SCHEMA-*`.
 - In normal generation mode with `--report-format json`, CLI emits generation summary (`generatedCount`, `generatedFiles`).
 - JSON report schema includes stable top-level fields:
   `reportVersion`, `toolVersion`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
@@ -98,6 +101,7 @@ Current behavior:
   `0` success, `2` CLI usage error, `3` validation error, `4` generation/runtime error.
 - JSON payload creation is centralized in `ReportJsonWriter` and versioned via `ReportJsonWriterV1`.
 - `ReportJsonSchemaCompatibilityTest` pins top-level JSON schema order/keys for report version 1.
+- The public JSON schema contract for v1 lives at `docs/schema/report-v1.json`.
 - `CodegenMain.runWithClock(...)` exists for deterministic timestamp testing.
 
 ### JSON Report Examples
@@ -151,6 +155,8 @@ Generate success:
 - Snapshot fixtures are stored under `src/test/resources/golden/`.
 - `org.unlaxer.dsl.codegen.SnapshotFixtureWriter` rewrites all fixtures from the current generators.
 - `SnapshotFixtureWriter` supports `--output-dir <path>` for safe dry-runs from tests or local verification.
+- `scripts/refresh-golden-snapshots.sh` also supports `--output-dir <path>`.
+- `scripts/check-golden-snapshots.sh` verifies committed fixtures against regenerated output.
 - `SnapshotFixtureData` keeps snapshot grammars and fixture file lists in one place.
 - `SnapshotFixtureGoldenConsistencyTest` verifies writer output matches committed fixtures.
 - Fixtures currently cover AST/Parser/Mapper/Evaluator/LSP/LSPLauncher/DAP/DAPLauncher (plus right-assoc parser/mapper variants).

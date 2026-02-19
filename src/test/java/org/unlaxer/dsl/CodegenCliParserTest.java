@@ -23,6 +23,8 @@ public class CodegenCliParserTest {
         assertEquals(1, options.reportVersion());
         assertTrue(options.validateOnly());
         assertFalse(options.reportSchemaCheck());
+        assertFalse(options.help());
+        assertFalse(options.version());
     }
 
     @Test
@@ -136,5 +138,19 @@ public class CodegenCliParserTest {
         } catch (CodegenCliParser.UsageException e) {
             assertTrue(e.showUsage());
         }
+    }
+
+    @Test
+    public void testParseHelpWithoutGrammarOrOutput() throws Exception {
+        var options = CodegenCliParser.parse(new String[] {"--help"});
+        assertTrue(options.help());
+        assertFalse(options.version());
+    }
+
+    @Test
+    public void testParseVersionWithoutGrammarOrOutput() throws Exception {
+        var options = CodegenCliParser.parse(new String[] {"--version"});
+        assertTrue(options.version());
+        assertFalse(options.help());
     }
 }

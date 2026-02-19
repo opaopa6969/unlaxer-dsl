@@ -77,6 +77,12 @@ Refresh golden snapshots:
 ./scripts/refresh-golden-snapshots.sh
 ```
 
+Check golden snapshots are up to date:
+
+```bash
+./scripts/check-golden-snapshots.sh
+```
+
 Refresh JSON report examples in `SPEC.md`:
 
 ```bash
@@ -101,7 +107,7 @@ Check CLI option docs are synchronized across docs:
 ./scripts/spec/check-doc-sync.sh
 ```
 
-Run all local checks (scripts + tests + spec freshness):
+Run all local checks (scripts + golden sync + tests + spec freshness):
 
 ```bash
 ./scripts/check-all.sh
@@ -848,6 +854,7 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
 JSON reports always include stable top-level fields:
 `reportVersion`, `toolVersion`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
 `toolVersion` uses artifact `Implementation-Version` when available, otherwise `dev`.
+The public v1 JSON schema is documented at `docs/schema/report-v1.json`.
 Validation failure entries in `issues[]` include:
 `grammar`, `rule`, `code`, `severity`, `category`, `message`, and `hint`.
 Validation failure reports also include `severityCounts` and `categoryCounts` summaries.
@@ -857,6 +864,8 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 | `--grammar <file>` | Path to `.ubnf` file | (required) |
 | `--output <dir>` | Output root directory (written with package structure) | required unless `--validate-only` |
 | `--generators <list>` | Comma-separated generator names | `Parser,LSP,Launcher` |
+| `--help`, `-h` | Print usage and exit | `false` |
+| `--version`, `-v` | Print tool version and exit | `false` |
 | `--validate-only` | Run grammar validation only (skip code generation) | `false` |
 | `--report-format text\|json` | Output/report format | `text` |
 | `--report-file <path>` | Write report payload to a file | (none) |
@@ -865,6 +874,7 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 
 Available generator names: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 `--generators` values are trimmed by comma, empty entries are rejected (for example, `"AST, LSP"` is valid).
+When `--report-schema-check` fails, error messages are prefixed with `E-REPORT-SCHEMA-*`.
 
 Exit codes:
 

@@ -18,6 +18,8 @@ final class CodegenCliParser {
         String outputDir = null;
         List<String> generators = List.of("Parser", "LSP", "Launcher");
         boolean validateOnly = false;
+        boolean help = false;
+        boolean version = false;
         String reportFormat = "text";
         String reportFile = null;
         int reportVersion = DEFAULT_REPORT_VERSION;
@@ -51,6 +53,8 @@ final class CodegenCliParser {
                     }
                 }
                 case "--validate-only" -> validateOnly = true;
+                case "--help", "-h" -> help = true;
+                case "--version", "-v" -> version = true;
                 case "--report-format" -> {
                     if (i + 1 >= args.length) {
                         throw new UsageException("Missing value for --report-format", true);
@@ -94,6 +98,21 @@ final class CodegenCliParser {
             }
         }
 
+        if (help || version) {
+            return new CliOptions(
+                grammarFile,
+                outputDir,
+                generators,
+                validateOnly,
+                help,
+                version,
+                reportFormat,
+                reportFile,
+                reportVersion,
+                reportSchemaCheck
+            );
+        }
+
         if (grammarFile == null || (!validateOnly && outputDir == null)) {
             throw new UsageException(null, true);
         }
@@ -103,6 +122,8 @@ final class CodegenCliParser {
             outputDir,
             generators,
             validateOnly,
+            help,
+            version,
             reportFormat,
             reportFile,
             reportVersion,
@@ -115,6 +136,8 @@ final class CodegenCliParser {
         String outputDir,
         List<String> generators,
         boolean validateOnly,
+        boolean help,
+        boolean version,
         String reportFormat,
         String reportFile,
         int reportVersion,

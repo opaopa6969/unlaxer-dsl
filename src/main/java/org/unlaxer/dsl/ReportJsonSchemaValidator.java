@@ -15,7 +15,10 @@ final class ReportJsonSchemaValidator {
     static void validate(int reportVersion, String json) {
         switch (reportVersion) {
             case 1 -> validateV1(json);
-            default -> throw new IllegalArgumentException("Unsupported reportVersion for validation: " + reportVersion);
+            default -> fail(
+                "E-REPORT-SCHEMA-UNSUPPORTED-VERSION",
+                "Unsupported reportVersion for validation: " + reportVersion
+            );
         }
     }
 
@@ -85,13 +88,17 @@ final class ReportJsonSchemaValidator {
             return;
         }
 
-        throw new IllegalArgumentException("Unsupported report payload shape for mode='" + mode + "' and ok=" + ok);
+        fail(
+            "E-REPORT-SCHEMA-INVALID-SHAPE",
+            "Unsupported report payload shape for mode='" + mode + "' and ok=" + ok
+        );
     }
 
     private static void requireTopLevelOrder(Map<String, Object> obj, List<String> expectedOrder) {
         List<String> keys = new ArrayList<>(obj.keySet());
         if (!keys.equals(expectedOrder)) {
-            throw new IllegalArgumentException(
+            fail(
+                "E-REPORT-SCHEMA-KEY-ORDER",
                 "Unexpected JSON keys/order. expected=" + expectedOrder + " actual=" + keys
             );
         }
@@ -100,32 +107,32 @@ final class ReportJsonSchemaValidator {
     private static String requireString(Map<String, Object> obj, String key) {
         Object value = requireKey(obj, key);
         if (!(value instanceof String s)) {
-            throw new IllegalArgumentException("Expected string for key: " + key);
+            fail("E-REPORT-SCHEMA-TYPE", "Expected string for key: " + key);
         }
-        return s;
+        return (String) value;
     }
 
     private static boolean requireBoolean(Map<String, Object> obj, String key) {
         Object value = requireKey(obj, key);
         if (!(value instanceof Boolean b)) {
-            throw new IllegalArgumentException("Expected boolean for key: " + key);
+            fail("E-REPORT-SCHEMA-TYPE", "Expected boolean for key: " + key);
         }
-        return b;
+        return (Boolean) value;
     }
 
     private static Number requireNumber(Map<String, Object> obj, String key) {
         Object value = requireKey(obj, key);
         if (!(value instanceof Number n)) {
-            throw new IllegalArgumentException("Expected number for key: " + key);
+            fail("E-REPORT-SCHEMA-TYPE", "Expected number for key: " + key);
         }
-        return n;
+        return (Number) value;
     }
 
     @SuppressWarnings("unchecked")
     private static Map<String, Object> requireObject(Map<String, Object> obj, String key) {
         Object value = requireKey(obj, key);
         if (!(value instanceof Map<?, ?>)) {
-            throw new IllegalArgumentException("Expected object for key: " + key);
+            fail("E-REPORT-SCHEMA-TYPE", "Expected object for key: " + key);
         }
         return (Map<String, Object>) value;
     }
@@ -134,31 +141,44 @@ final class ReportJsonSchemaValidator {
     private static List<Object> requireArray(Map<String, Object> obj, String key) {
         Object value = requireKey(obj, key);
         if (!(value instanceof List<?>)) {
-            throw new IllegalArgumentException("Expected array for key: " + key);
+            fail("E-REPORT-SCHEMA-TYPE", "Expected array for key: " + key);
         }
         return (List<Object>) value;
     }
 
     private static Object requireKey(Map<String, Object> obj, String key) {
         if (!obj.containsKey(key)) {
-            throw new IllegalArgumentException("Missing key: " + key);
+            fail("E-REPORT-SCHEMA-MISSING-KEY", "Missing key: " + key);
         }
         return obj.get(key);
     }
 
     private static Map<String, Object> parseObject(String json) {
         Parser p = new Parser(json);
-        Object v = p.parseValue();
-        p.skipWhitespace();
+        Object v;
+        try {
+            v = p.parseValue();
+            p.skipWhitespace();
+        } catch (ReportSchemaValidationException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            fail("E-REPORT-SCHEMA-PARSE", e.getMessage());
+            return Map.of();
+        }
+
         if (!p.isEnd()) {
-            throw new IllegalArgumentException("unexpected trailing characters");
+            fail("E-REPORT-SCHEMA-PARSE", "unexpected trailing characters");
         }
         if (!(v instanceof Map<?, ?> m)) {
-            throw new IllegalArgumentException("expected JSON object");
+            fail("E-REPORT-SCHEMA-PARSE", "expected JSON object");
         }
         @SuppressWarnings("unchecked")
-        Map<String, Object> out = (Map<String, Object>) m;
+        Map<String, Object> out = (Map<String, Object>) v;
         return out;
+    }
+
+    private static void fail(String code, String message) {
+        throw new ReportSchemaValidationException(code, message);
     }
 
     private static final class Parser {
@@ -188,7 +208,7 @@ final class ReportJsonSchemaValidator {
         private Object parseValue() {
             skipWhitespace();
             if (isEnd()) {
-                throw new IllegalArgumentException("unexpected end");
+                fail("E-REPORT-SCHEMA-PARSE", "unexpected end");
             }
             char c = s.charAt(i);
             return switch (c) {
@@ -202,7 +222,8 @@ final class ReportJsonSchemaValidator {
                     if (c == '-' || Character.isDigit(c)) {
                         yield parseNumber();
                     }
-                    throw new IllegalArgumentException("unexpected char: " + c);
+                    fail("E-REPORT-SCHEMA-PARSE", "unexpected char: " + c);
+                    yield null;
                 }
             };
         }
@@ -261,7 +282,7 @@ final class ReportJsonSchemaValidator {
                 }
                 if (c == '\\') {
                     if (isEnd()) {
-                        throw new IllegalArgumentException("invalid escape");
+                        fail("E-REPORT-SCHEMA-PARSE", "invalid escape");
                     }
                     char e = s.charAt(i++);
                     switch (e) {
@@ -275,19 +296,24 @@ final class ReportJsonSchemaValidator {
                         case 't' -> sb.append('\t');
                         case 'u' -> {
                             if (i + 4 > s.length()) {
-                                throw new IllegalArgumentException("invalid unicode escape");
+                                fail("E-REPORT-SCHEMA-PARSE", "invalid unicode escape");
                             }
                             String hex = s.substring(i, i + 4);
-                            sb.append((char) Integer.parseInt(hex, 16));
+                            try {
+                                sb.append((char) Integer.parseInt(hex, 16));
+                            } catch (NumberFormatException ex) {
+                                fail("E-REPORT-SCHEMA-PARSE", "invalid unicode escape: " + hex);
+                            }
                             i += 4;
                         }
-                        default -> throw new IllegalArgumentException("invalid escape: \\" + e);
+                        default -> fail("E-REPORT-SCHEMA-PARSE", "invalid escape: \\" + e);
                     }
                 } else {
                     sb.append(c);
                 }
             }
-            throw new IllegalArgumentException("unterminated string");
+            fail("E-REPORT-SCHEMA-PARSE", "unterminated string");
+            return null;
         }
 
         private Object parseLiteral(String text, Object value) {
@@ -295,7 +321,8 @@ final class ReportJsonSchemaValidator {
                 i += text.length();
                 return value;
             }
-            throw new IllegalArgumentException("invalid literal");
+            fail("E-REPORT-SCHEMA-PARSE", "invalid literal");
+            return null;
         }
 
         private Number parseNumber() {
@@ -325,10 +352,15 @@ final class ReportJsonSchemaValidator {
                 }
             }
             String token = s.substring(start, i);
-            if (isDecimal) {
-                return Double.parseDouble(token);
+            try {
+                if (isDecimal) {
+                    return Double.parseDouble(token);
+                }
+                return Long.parseLong(token);
+            } catch (NumberFormatException e) {
+                fail("E-REPORT-SCHEMA-PARSE", "invalid number: " + token);
+                return 0;
             }
-            return Long.parseLong(token);
         }
 
         private boolean peek(char c) {
@@ -339,7 +371,7 @@ final class ReportJsonSchemaValidator {
         private void expect(char c) {
             skipWhitespace();
             if (isEnd() || s.charAt(i) != c) {
-                throw new IllegalArgumentException("expected '" + c + "'");
+                fail("E-REPORT-SCHEMA-PARSE", "expected '" + c + "'");
             }
             i++;
         }
