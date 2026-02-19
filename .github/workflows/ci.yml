@@ -54,5 +54,8 @@ jobs:
       - name: Compile (for fast spec check)
         run: mvn -q -DskipTests compile
 
+      - name: Build runtime classpath cache
+        run: mvn -q -DincludeScope=runtime dependency:build-classpath -Dmdep.outputFile=target/runtime.classpath
+
       - name: Check SPEC JSON examples are up to date
         run: ./scripts/check-spec-json-examples.sh

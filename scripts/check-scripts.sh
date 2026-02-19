@@ -24,6 +24,17 @@ for file in "${files[@]}"; do
     exit 1
   fi
 
+  if command -v shellcheck >/dev/null 2>&1; then
+    if ! shellcheck "$file"; then
+      echo "[check-scripts] ERROR: shellcheck failed for $file" >&2
+      exit 1
+    fi
+  fi
+
 done
 
-echo "[check-scripts] OK: ${#files[@]} script(s) passed shebang and syntax checks."
+if command -v shellcheck >/dev/null 2>&1; then
+  echo "[check-scripts] OK: ${#files[@]} script(s) passed shebang, syntax, and shellcheck."
+else
+  echo "[check-scripts] OK: ${#files[@]} script(s) passed shebang and syntax checks (shellcheck not installed)."
+fi

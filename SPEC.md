@@ -91,6 +91,10 @@ Current behavior:
 - Validation failure reports include aggregate summaries:
   `severityCounts` and `categoryCounts`.
 - Validation `issues[]` order is deterministic (sorted by `grammar`, `rule`, `code`, `message`).
+- Process exit codes are explicit:
+  `0` success, `2` CLI usage error, `3` validation error, `4` generation/runtime error.
+- JSON payload creation is centralized in `ReportJsonWriter` to keep schema logic in one place.
+- `ReportJsonSchemaCompatibilityTest` pins top-level JSON schema order/keys for report version 1.
 
 ### JSON Report Examples
 Regenerate from live CLI output:

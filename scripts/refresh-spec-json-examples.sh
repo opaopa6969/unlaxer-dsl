@@ -14,6 +14,7 @@ fi
 VALID_GRAMMAR="$WORK_DIR/valid.ubnf"
 INVALID_GRAMMAR="$WORK_DIR/invalid.ubnf"
 OUT_DIR="$WORK_DIR/out"
+RUNTIME_CP_FILE="$ROOT_DIR/target/runtime.classpath"
 
 cat > "$VALID_GRAMMAR" <<'GRAMMAR'
 grammar Valid {
@@ -42,10 +43,15 @@ else
     mvn -q -DskipTests compile
   )
 fi
-(
-  cd "$ROOT_DIR"
-  mvn -q -DincludeScope=runtime dependency:build-classpath -Dmdep.outputFile="$WORK_DIR/runtime.classpath"
-)
+if [[ ! -f "$RUNTIME_CP_FILE" ]]; then
+  echo "[refresh-spec-json-examples] Building runtime classpath..."
+  (
+    cd "$ROOT_DIR"
+    mvn -q -DincludeScope=runtime dependency:build-classpath -Dmdep.outputFile="$RUNTIME_CP_FILE"
+  )
+else
+  echo "[refresh-spec-json-examples] Reusing runtime classpath: $RUNTIME_CP_FILE"
+fi
 
 MAIN_CP="$ROOT_DIR/target/classes"
 if [[ ! -d "$MAIN_CP" ]]; then
@@ -53,7 +59,7 @@ if [[ ! -d "$MAIN_CP" ]]; then
   exit 1
 fi
 echo "[refresh-spec-json-examples] Using classes: $MAIN_CP"
-RUNTIME_CP="$(cat "$WORK_DIR/runtime.classpath")"
+RUNTIME_CP="$(cat "$RUNTIME_CP_FILE")"
 JAVA_CP="$MAIN_CP:$RUNTIME_CP"
 
 java -cp "$JAVA_CP" org.unlaxer.dsl.CodegenMain \

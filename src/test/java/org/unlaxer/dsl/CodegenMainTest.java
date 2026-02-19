@@ -1,8 +1,7 @@
 package org.unlaxer.dsl;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -38,17 +37,20 @@ public class CodegenMainTest {
         Path outputDir = Files.createTempDirectory("codegen-main-out");
         Files.writeString(grammarFile, source);
 
-        CodegenMain.main(new String[] {
+        RunResult result = runCodegen(
             "--grammar", grammarFile.toString(),
             "--output", outputDir.toString(),
             "--generators", "AST"
-        });
+        );
+
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.err().isEmpty());
 
         Path firstAst = outputDir.resolve("org/example/first/FirstAST.java");
         Path secondAst = outputDir.resolve("org/example/second/SecondAST.java");
 
-        assertTrue("first grammar AST should be generated", Files.exists(firstAst));
-        assertTrue("second grammar AST should be generated", Files.exists(secondAst));
+        assertTrue(Files.exists(firstAst));
+        assertTrue(Files.exists(secondAst));
     }
 
     @Test
@@ -66,16 +68,14 @@ public class CodegenMainTest {
         Path outputDir = Files.createTempDirectory("codegen-main-invalid-out");
         Files.writeString(grammarFile, source);
 
-        try {
-            CodegenMain.main(new String[] {
-                "--grammar", grammarFile.toString(),
-                "--output", outputDir.toString(),
-                "--generators", "AST"
-            });
-            fail("expected validation error");
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("has no matching capture"));
-        }
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST"
+        );
+
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        assertTrue(result.err().contains("has no matching capture"));
     }
 
     @Test
@@ -96,16 +96,14 @@ public class CodegenMainTest {
         Path outputDir = Files.createTempDirectory("codegen-main-invalid-rightassoc-out");
         Files.writeString(grammarFile, source);
 
-        try {
-            CodegenMain.main(new String[] {
-                "--grammar", grammarFile.toString(),
-                "--output", outputDir.toString(),
-                "--generators", "Parser"
-            });
-            fail("expected validation error");
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("body is not canonical"));
-        }
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "Parser"
+        );
+
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        assertTrue(result.err().contains("body is not canonical"));
     }
 
     @Test
@@ -133,18 +131,16 @@ public class CodegenMainTest {
         Path outputDir = Files.createTempDirectory("codegen-main-invalid-multi-out");
         Files.writeString(grammarFile, source);
 
-        try {
-            CodegenMain.main(new String[] {
-                "--grammar", grammarFile.toString(),
-                "--output", outputDir.toString(),
-                "--generators", "Parser"
-            });
-            fail("expected validation error");
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("grammar InvalidA:"));
-            assertTrue(e.getMessage().contains("grammar InvalidB:"));
-            assertTrue(e.getMessage().contains("[code:"));
-        }
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "Parser"
+        );
+
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        assertTrue(result.err().contains("grammar InvalidA:"));
+        assertTrue(result.err().contains("grammar InvalidB:"));
+        assertTrue(result.err().contains("[code:"));
     }
 
     @Test
@@ -162,13 +158,15 @@ public class CodegenMainTest {
         Path outputDir = Files.createTempDirectory("codegen-main-validate-only-out");
         Files.writeString(grammarFile, source);
 
-        CodegenMain.main(new String[] {
+        RunResult result = runCodegen(
             "--grammar", grammarFile.toString(),
             "--validate-only"
-        });
+        );
+
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
 
         Path ast = outputDir.resolve("org/example/valid/ValidAST.java");
-        assertTrue("validate-only should not generate files", !Files.exists(ast));
+        assertTrue(!Files.exists(ast));
     }
 
     @Test
@@ -185,16 +183,14 @@ public class CodegenMainTest {
         Path grammarFile = Files.createTempFile("codegen-main-validate-only-invalid", ".ubnf");
         Files.writeString(grammarFile, source);
 
-        try {
-            CodegenMain.main(new String[] {
-                "--grammar", grammarFile.toString(),
-                "--validate-only"
-            });
-            fail("expected validation error");
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("Grammar validation failed"));
-            assertTrue(e.getMessage().contains("E-MAPPING-MISSING-CAPTURE"));
-        }
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only"
+        );
+
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        assertTrue(result.err().contains("Grammar validation failed"));
+        assertTrue(result.err().contains("E-MAPPING-MISSING-CAPTURE"));
     }
 
     @Test
@@ -211,20 +207,14 @@ public class CodegenMainTest {
         Path grammarFile = Files.createTempFile("codegen-main-validate-only-json", ".ubnf");
         Files.writeString(grammarFile, source);
 
-        PrintStream originalOut = System.out;
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try {
-            System.setOut(new PrintStream(baos));
-            CodegenMain.main(new String[] {
-                "--grammar", grammarFile.toString(),
-                "--validate-only",
-                "--report-format", "json"
-            });
-        } finally {
-            System.setOut(originalOut);
-        }
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "json"
+        );
 
-        String out = baos.toString().trim();
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        String out = result.out().trim();
         assertTrue(out.startsWith("{\"reportVersion\":1,"));
         assertTrue(out.contains("\"toolVersion\":\""));
         assertTrue(out.contains("\"generatedAt\":\""));
@@ -250,31 +240,29 @@ public class CodegenMainTest {
         Path grammarFile = Files.createTempFile("codegen-main-validate-only-json-invalid", ".ubnf");
         Files.writeString(grammarFile, source);
 
-        try {
-            CodegenMain.main(new String[] {
-                "--grammar", grammarFile.toString(),
-                "--validate-only",
-                "--report-format", "json"
-            });
-            fail("expected validation error");
-        } catch (IllegalArgumentException e) {
-            String msg = e.getMessage();
-            assertTrue(msg.startsWith("{\"reportVersion\":1,"));
-            assertTrue(msg.contains("\"toolVersion\":\""));
-            assertTrue(msg.contains("\"generatedAt\":\""));
-            assertHasNonEmptyJsonField(msg, "toolVersion");
-            assertGeneratedAtIsIsoInstant(msg);
-            assertTrue(msg.contains("\"mode\":\"validate\""));
-            assertTrue(msg.contains("\"ok\":false"));
-            assertTrue(msg.contains("\"severityCounts\":{\"ERROR\":1}"));
-            assertTrue(msg.contains("\"categoryCounts\":{\"MAPPING\":1}"));
-            assertTrue(msg.contains("\"grammar\":\"Invalid\""));
-            assertTrue(msg.contains("\"rule\":\"Invalid\""));
-            assertTrue(msg.contains("\"code\":\"E-MAPPING-MISSING-CAPTURE\""));
-            assertTrue(msg.contains("\"severity\":\"ERROR\""));
-            assertTrue(msg.contains("\"category\":\"MAPPING\""));
-            assertTrue(msg.contains("\"issues\":["));
-        }
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "json"
+        );
+
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        String msg = result.err().trim();
+        assertTrue(msg.startsWith("{\"reportVersion\":1,"));
+        assertTrue(msg.contains("\"toolVersion\":\""));
+        assertTrue(msg.contains("\"generatedAt\":\""));
+        assertHasNonEmptyJsonField(msg, "toolVersion");
+        assertGeneratedAtIsIsoInstant(msg);
+        assertTrue(msg.contains("\"mode\":\"validate\""));
+        assertTrue(msg.contains("\"ok\":false"));
+        assertTrue(msg.contains("\"severityCounts\":{\"ERROR\":1}"));
+        assertTrue(msg.contains("\"categoryCounts\":{\"MAPPING\":1}"));
+        assertTrue(msg.contains("\"grammar\":\"Invalid\""));
+        assertTrue(msg.contains("\"rule\":\"Invalid\""));
+        assertTrue(msg.contains("\"code\":\"E-MAPPING-MISSING-CAPTURE\""));
+        assertTrue(msg.contains("\"severity\":\"ERROR\""));
+        assertTrue(msg.contains("\"category\":\"MAPPING\""));
+        assertTrue(msg.contains("\"issues\":["));
     }
 
     @Test
@@ -301,21 +289,19 @@ public class CodegenMainTest {
         Path grammarFile = Files.createTempFile("codegen-main-validate-only-json-invalid-sort", ".ubnf");
         Files.writeString(grammarFile, source);
 
-        try {
-            CodegenMain.main(new String[] {
-                "--grammar", grammarFile.toString(),
-                "--validate-only",
-                "--report-format", "json"
-            });
-            fail("expected validation error");
-        } catch (IllegalArgumentException e) {
-            String msg = e.getMessage();
-            int idxA = msg.indexOf("\"grammar\":\"InvalidA\"");
-            int idxB = msg.indexOf("\"grammar\":\"InvalidB\"");
-            assertTrue(idxA >= 0);
-            assertTrue(idxB >= 0);
-            assertTrue("issues should be sorted by grammar", idxA < idxB);
-        }
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "json"
+        );
+
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        String msg = result.err();
+        int idxA = msg.indexOf("\"grammar\":\"InvalidA\"");
+        int idxB = msg.indexOf("\"grammar\":\"InvalidB\"");
+        assertTrue(idxA >= 0);
+        assertTrue(idxB >= 0);
+        assertTrue(idxA < idxB);
     }
 
     @Test
@@ -333,19 +319,17 @@ public class CodegenMainTest {
         Path grammarFile = Files.createTempFile("codegen-main-validate-only-json-invalid-counts", ".ubnf");
         Files.writeString(grammarFile, source);
 
-        try {
-            CodegenMain.main(new String[] {
-                "--grammar", grammarFile.toString(),
-                "--validate-only",
-                "--report-format", "json"
-            });
-            fail("expected validation error");
-        } catch (IllegalArgumentException e) {
-            String msg = e.getMessage();
-            assertTrue(msg.contains("\"issueCount\":2"));
-            assertTrue(msg.contains("\"severityCounts\":{\"ERROR\":2}"));
-            assertTrue(msg.contains("\"categoryCounts\":{\"MAPPING\":1,\"WHITESPACE\":1}"));
-        }
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "json"
+        );
+
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        String msg = result.err();
+        assertTrue(msg.contains("\"issueCount\":2"));
+        assertTrue(msg.contains("\"severityCounts\":{\"ERROR\":2}"));
+        assertTrue(msg.contains("\"categoryCounts\":{\"MAPPING\":1,\"WHITESPACE\":1}"));
     }
 
     @Test
@@ -358,17 +342,19 @@ public class CodegenMainTest {
               Valid ::= 'ok' @value ;
             }
             """;
+
         Path grammarFile = Files.createTempFile("codegen-main-validate-only-json-file", ".ubnf");
         Path reportFile = Files.createTempFile("codegen-main-report", ".json");
         Files.writeString(grammarFile, source);
 
-        CodegenMain.main(new String[] {
+        RunResult result = runCodegen(
             "--grammar", grammarFile.toString(),
             "--validate-only",
             "--report-format", "json",
             "--report-file", reportFile.toString()
-        });
+        );
 
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
         String report = Files.readString(reportFile).trim();
         assertTrue(report.startsWith("{\"reportVersion\":1,"));
         assertTrue(report.contains("\"toolVersion\":\""));
@@ -391,19 +377,21 @@ public class CodegenMainTest {
               Valid ::= 'ok' @value ;
             }
             """;
+
         Path grammarFile = Files.createTempFile("codegen-main-generate-json", ".ubnf");
         Path outputDir = Files.createTempDirectory("codegen-main-generate-json-out");
         Path reportFile = Files.createTempFile("codegen-main-generate-report", ".json");
         Files.writeString(grammarFile, source);
 
-        CodegenMain.main(new String[] {
+        RunResult result = runCodegen(
             "--grammar", grammarFile.toString(),
             "--output", outputDir.toString(),
             "--generators", "AST",
             "--report-format", "json",
             "--report-file", reportFile.toString()
-        });
+        );
 
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
         String report = Files.readString(reportFile);
         assertTrue(report.contains("\"ok\":true"));
         assertTrue(report.contains("\"reportVersion\":1"));
@@ -415,6 +403,44 @@ public class CodegenMainTest {
         assertTrue(report.contains("\"generatedCount\":1"));
         assertTrue(report.contains("\"generatedFiles\":["));
         assertTrue(report.contains("ValidAST.java"));
+    }
+
+    @Test
+    public void testUnknownGeneratorReturnsCliErrorCode() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-unknown-gen", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-unknown-gen-out");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "Nope"
+        );
+
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+        assertTrue(result.err().contains("Unknown generator"));
+    }
+
+    @Test
+    public void testMissingGrammarReturnsCliErrorCode() {
+        RunResult result = runCodegen("--validate-only");
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+        assertTrue(result.err().contains("Usage: CodegenMain"));
+    }
+
+    private static RunResult runCodegen(String... args) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        int exitCode = CodegenMain.run(args, new PrintStream(out), new PrintStream(err));
+        return new RunResult(exitCode, out.toString(), err.toString());
     }
 
     private static void assertHasNonEmptyJsonField(String json, String fieldName) {
@@ -436,4 +462,6 @@ public class CodegenMainTest {
         }
         return matcher.group(1);
     }
+
+    private record RunResult(int exitCode, String out, String err) {}
 }

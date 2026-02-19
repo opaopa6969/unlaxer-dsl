@@ -857,6 +857,15 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 
 Available generator names: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 
+Exit codes:
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `2` | CLI usage/argument error |
+| `3` | Grammar validation failure |
+| `4` | Generation/runtime failure |
+
 ---
 
 ## Building the VS Code Extension (VSIX)
