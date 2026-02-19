@@ -33,6 +33,23 @@ public class CodegenSnapshotTest {
         }
         """;
 
+    private static final String RIGHT_ASSOC_SNAPSHOT_GRAMMAR = """
+        grammar SnapshotRightAssoc {
+          @package: org.example.snapshot
+          @whitespace: javaStyle
+
+          token NUMBER = NumberParser
+
+          @root
+          @mapping(PowNode, params=[left, op, right])
+          @rightAssoc
+          @precedence(level=30)
+          Expr ::= Atom @left { '^' @op Expr @right } ;
+
+          Atom ::= NUMBER ;
+        }
+        """;
+
     @Test
     public void testParserGeneratorSnapshot() throws Exception {
         GrammarDecl grammar = parseGrammar(SNAPSHOT_GRAMMAR);
@@ -46,6 +63,22 @@ public class CodegenSnapshotTest {
         GrammarDecl grammar = parseGrammar(SNAPSHOT_GRAMMAR);
         String actual = new MapperGenerator().generate(grammar).source();
         String expected = Files.readString(Path.of("src/test/resources/golden/mapper_snapshot.java.txt"));
+        assertEquals(normalize(expected), normalize(actual));
+    }
+
+    @Test
+    public void testRightAssocParserGeneratorSnapshot() throws Exception {
+        GrammarDecl grammar = parseGrammar(RIGHT_ASSOC_SNAPSHOT_GRAMMAR);
+        String actual = new ParserGenerator().generate(grammar).source();
+        String expected = Files.readString(Path.of("src/test/resources/golden/parser_right_assoc_snapshot.java.txt"));
+        assertEquals(normalize(expected), normalize(actual));
+    }
+
+    @Test
+    public void testRightAssocMapperGeneratorSnapshot() throws Exception {
+        GrammarDecl grammar = parseGrammar(RIGHT_ASSOC_SNAPSHOT_GRAMMAR);
+        String actual = new MapperGenerator().generate(grammar).source();
+        String expected = Files.readString(Path.of("src/test/resources/golden/mapper_right_assoc_snapshot.java.txt"));
         assertEquals(normalize(expected), normalize(actual));
     }
 
