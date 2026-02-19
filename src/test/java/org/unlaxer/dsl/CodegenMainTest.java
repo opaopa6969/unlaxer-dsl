@@ -1670,6 +1670,32 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testNdjsonWarningsPathReportFileStoresFinalSuccessPayload() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-warnings-report-file", ".ubnf");
+        Path reportFile = Files.createTempFile("codegen-main-ndjson-warnings-report-file", ".json");
+        Files.writeString(grammarFile, CliFixtureData.WARN_ONLY_GRAMMAR);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--fail-on", "none",
+            "--report-format", "ndjson",
+            "--report-file", reportFile.toString()
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.err().contains("\"event\":\"warnings\""));
+        assertTrue(result.out().contains("\"event\":\"validate-success\""));
+
+        String saved = Files.readString(reportFile).trim();
+        assertTrue(saved.startsWith("{\"reportVersion\":1,"));
+        assertFalse(saved.contains("\"event\":\"warnings\""));
+        assertFalse(saved.contains("\"event\":\"validate-success\""));
+        assertTrue(saved.contains("\"mode\":\"validate\""));
+        assertTrue(saved.contains("\"ok\":true"));
+        assertTrue(saved.contains("\"warningsCount\":1"));
+    }
+
+    @Test
     public void testReportSchemaCheckOptionWithGenerationJson() throws Exception {
         String source = """
             grammar Valid {

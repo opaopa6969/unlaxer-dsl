@@ -94,6 +94,7 @@ Current behavior:
 - In `ndjson` generation mode, conflict/fail-on human error messages are suppressed from `stderr`.
 - In `ndjson` validation failure paths, `stderr` also remains JSON-lines only.
 - With `--report-file` and `ndjson`, the persisted report content is the raw JSON payload (without NDJSON event wrapper).
+- For warning-only successful validation (`--fail-on none`), `--report-file` stores the final `validate` success payload.
 - `--report-file <path>` writes the final report payload (text/json) to a file.
 - `--output-manifest <path>` writes action manifest JSON (written/skipped/conflict/dry-run files and counts).
 - `--manifest-format json|ndjson` controls manifest output format when `--output-manifest` is used.
