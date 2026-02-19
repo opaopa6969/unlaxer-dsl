@@ -469,6 +469,8 @@ public class CodegenMainTest {
         RunResult result = runCodegen("--validate-only");
         assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
         assertTrue(result.err().contains("Usage: CodegenMain"));
+        assertTrue(result.err().contains("--report-version 1"));
+        assertTrue(result.err().contains("--report-schema-check"));
     }
 
     @Test
