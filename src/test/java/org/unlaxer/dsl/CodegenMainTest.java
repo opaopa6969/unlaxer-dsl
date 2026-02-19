@@ -1506,10 +1506,8 @@ public class CodegenMainTest {
             "--version"
         });
 
-        var method = CodegenMain.class.getDeclaredMethod("argsHash", CodegenCliParser.CliOptions.class);
-        method.setAccessible(true);
-        String hashBase = (String) method.invoke(null, base);
-        String hashWithFlags = (String) method.invoke(null, withHelpVersion);
+        String hashBase = ArgsHashUtil.fromOptions(base);
+        String hashWithFlags = ArgsHashUtil.fromOptions(withHelpVersion);
         assertEquals(hashBase, hashWithFlags);
     }
 
