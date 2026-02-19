@@ -20,6 +20,7 @@ public class CodegenCliParserTest {
         assertEquals("text", options.reportFormat());
         assertEquals(1, options.reportVersion());
         assertTrue(options.validateOnly());
+        assertFalse(options.reportSchemaCheck());
     }
 
     @Test
@@ -28,11 +29,13 @@ public class CodegenCliParserTest {
             "--grammar", "a.ubnf",
             "--validate-only",
             "--report-format", "json",
-            "--report-version", "1"
+            "--report-version", "1",
+            "--report-schema-check"
         });
 
         assertEquals("json", options.reportFormat());
         assertEquals(1, options.reportVersion());
+        assertTrue(options.reportSchemaCheck());
     }
 
     @Test

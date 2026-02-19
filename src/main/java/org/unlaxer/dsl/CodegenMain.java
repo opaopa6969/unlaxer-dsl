@@ -118,6 +118,7 @@ public class CodegenMain {
                     generatedAt,
                     sortedRows
                 );
+                validateJsonIfRequested(config, json);
                 writeReportIfNeeded(config.reportFile(), json);
                 err.println(json);
                 return EXIT_VALIDATION_ERROR;
@@ -140,6 +141,7 @@ public class CodegenMain {
                     generatedAt,
                     file.grammars().size()
                 );
+                validateJsonIfRequested(config, json);
                 out.println(json);
                 writeReportIfNeeded(config.reportFile(), json);
             } else {
@@ -181,6 +183,7 @@ public class CodegenMain {
                 file.grammars().size(),
                 generatedFiles
             );
+            validateJsonIfRequested(config, json);
             out.println(json);
             writeReportIfNeeded(config.reportFile(), json);
         } else if (config.reportFile() != null) {
@@ -201,6 +204,7 @@ public class CodegenMain {
                 + " [--report-format text|json]"
                 + " [--report-file <path>]"
                 + " [--report-version 1]"
+                + " [--report-schema-check]"
         );
     }
 
@@ -234,6 +238,13 @@ public class CodegenMain {
             return "dev";
         }
         return version;
+    }
+
+    private static void validateJsonIfRequested(CodegenCliParser.CliOptions config, String json) {
+        if (!config.reportSchemaCheck() || !"json".equals(config.reportFormat())) {
+            return;
+        }
+        ReportJsonSchemaValidator.validate(config.reportVersion(), json);
     }
 
     private static void writeReportIfNeeded(String reportFile, String content) throws IOException {

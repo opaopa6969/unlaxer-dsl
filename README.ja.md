@@ -1061,6 +1061,7 @@ JSON レポートは安定したトップレベル項目として
 | `--report-format text\|json` | 出力/レポート形式 | `text` |
 | `--report-file <path>` | レポート内容をファイル出力 | （なし） |
 | `--report-version 1` | JSON レポートスキーマのバージョン | `1` |
+| `--report-schema-check` | JSON ペイロードを出力前にスキーマ検証する | `false` |
 
 使用可能な生成器名: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 

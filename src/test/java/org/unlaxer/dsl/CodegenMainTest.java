@@ -519,6 +519,29 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testReportSchemaCheckOptionIsAccepted() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-schema-check", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "json",
+            "--report-schema-check"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.err().isBlank());
+    }
+
+    @Test
     public void testGeneratedAtUsesProvidedClock() throws Exception {
         String source = """
             grammar Valid {

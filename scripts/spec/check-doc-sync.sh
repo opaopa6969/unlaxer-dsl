@@ -17,6 +17,7 @@ OPTIONS=(
   '--report-format'
   '--report-file'
   '--report-version'
+  '--report-schema-check'
 )
 
 for doc in "${DOCS[@]}"; do

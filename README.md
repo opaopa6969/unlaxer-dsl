@@ -861,6 +861,7 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 | `--report-format text\|json` | Output/report format | `text` |
 | `--report-file <path>` | Write report payload to a file | (none) |
 | `--report-version 1` | JSON report schema version | `1` |
+| `--report-schema-check` | Validate JSON payload shape before emitting it | `false` |
 
 Available generator names: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 

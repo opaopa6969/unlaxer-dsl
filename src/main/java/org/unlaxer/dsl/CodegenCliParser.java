@@ -20,6 +20,7 @@ final class CodegenCliParser {
         String reportFormat = "text";
         String reportFile = null;
         int reportVersion = DEFAULT_REPORT_VERSION;
+        boolean reportSchemaCheck = false;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -80,6 +81,7 @@ final class CodegenCliParser {
                         );
                     }
                 }
+                case "--report-schema-check" -> reportSchemaCheck = true;
                 default -> throw new UsageException("Unknown argument: " + args[i], true);
             }
         }
@@ -95,7 +97,8 @@ final class CodegenCliParser {
             validateOnly,
             reportFormat,
             reportFile,
-            reportVersion
+            reportVersion,
+            reportSchemaCheck
         );
     }
 
@@ -106,7 +109,8 @@ final class CodegenCliParser {
         boolean validateOnly,
         String reportFormat,
         String reportFile,
-        int reportVersion
+        int reportVersion,
+        boolean reportSchemaCheck
     ) {}
 
     static final class UsageException extends Exception {
