@@ -71,6 +71,12 @@ Run tests:
 mvn test
 ```
 
+Refresh golden snapshots:
+
+```bash
+./scripts/refresh-golden-snapshots.sh
+```
+
 ---
 
 ## Quick Start

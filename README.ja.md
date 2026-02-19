@@ -82,6 +82,12 @@ mvn package
 mvn test
 ```
 
+golden snapshot の再生成：
+
+```bash
+./scripts/refresh-golden-snapshots.sh
+```
+
 ---
 
 ## クイックスタート
