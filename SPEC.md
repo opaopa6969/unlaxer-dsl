@@ -32,7 +32,8 @@ Current behavior:
 - Current status: partially consumed by parser generation.
 - It uses the same capture/mapping contract as `@leftAssoc` (`left`, `op`, `right`).
 - It is mutually exclusive with `@leftAssoc` on the same rule.
-- Canonical shape `Base { Op Right }` is generated as right-recursive choice (`Base Op Self | Base`).
+- Canonical shape `Base { Op Self }` is generated as right-recursive choice (`Base Op Self | Base`).
+- Non-canonical shapes currently fall back to grammar-driven generation.
 
 ### `@precedence(level=...)`
 
@@ -46,6 +47,7 @@ Contract:
 Current behavior:
 
 - Violations fail fast during code generation (`GrammarValidator.validateOrThrow`) with a clear error message.
+- Parser generator emits `PRECEDENCE_<RULE_NAME>` constants for annotated rules.
 
 ### `@whitespace`
 

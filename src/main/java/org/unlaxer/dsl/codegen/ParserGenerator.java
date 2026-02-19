@@ -7,6 +7,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.ChoiceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GroupElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.OptionalElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.PrecedenceAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RepeatElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RightAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RootAnnotation;
@@ -140,6 +141,7 @@ public class ParserGenerator implements CodeGenerator {
 
         // クラス宣言
         sb.append("public class ").append(className).append(" {\n\n");
+        sb.append(generatePrecedenceConstants(grammar));
 
         // チェーンクラス
         sb.append(generatePlainChainClass(ctx));
@@ -699,10 +701,15 @@ public class ParserGenerator implements CodeGenerator {
             return null;
         }
         SequenceBody repeatSeq = getSingleSequenceFrom(repeat.body());
-        if (repeatSeq == null || repeatSeq.elements().size() < 1) {
+        if (repeatSeq == null || repeatSeq.elements().size() != 2) {
             return null;
         }
         AtomicElement op = repeatSeq.elements().get(0).element();
+        AtomicElement right = repeatSeq.elements().get(1).element();
+        if (!(right instanceof RuleRefElement rightRef) || !rule.name().equals(rightRef.name())) {
+            // Canonical right-assoc shape only: Base { Op Self }.
+            return null;
+        }
         return new RightAssocShape(base, op);
     }
 
@@ -712,6 +719,36 @@ public class ParserGenerator implements CodeGenerator {
             case ChoiceBody choice when choice.alternatives().size() == 1 -> choice.alternatives().get(0);
             default -> null;
         };
+    }
+
+    private String generatePrecedenceConstants(GrammarDecl grammar) {
+        StringBuilder sb = new StringBuilder();
+        boolean found = false;
+        for (RuleDecl rule : grammar.rules()) {
+            Integer level = findPrecedenceLevel(rule);
+            if (level == null) {
+                continue;
+            }
+            found = true;
+            sb.append("    public static final int PRECEDENCE_")
+                .append(rule.name().toUpperCase())
+                .append(" = ")
+                .append(level)
+                .append(";\n");
+        }
+        if (found) {
+            sb.append("\n");
+        }
+        return sb.toString();
+    }
+
+    private Integer findPrecedenceLevel(RuleDecl rule) {
+        return rule.annotations().stream()
+            .filter(a -> a instanceof PrecedenceAnnotation)
+            .map(a -> (PrecedenceAnnotation) a)
+            .reduce((first, second) -> second)
+            .map(PrecedenceAnnotation::level)
+            .orElse(null);
     }
 
     /** ルートルール名を返す（@root アノテーション付き） */

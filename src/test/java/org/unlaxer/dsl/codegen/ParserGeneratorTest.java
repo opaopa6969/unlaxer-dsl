@@ -54,6 +54,19 @@ public class ParserGeneratorTest {
         "  @mapping(PowNode, params=[left, op, right])\n" +
         "  @rightAssoc\n" +
         "  @precedence(level=30)\n" +
+        "  Expr ::= Atom @left { '^' @op Expr @right } ;\n" +
+        "  Atom ::= NUMBER ;\n" +
+        "}";
+
+    private static final String RIGHT_ASSOC_NON_CANONICAL_GRAMMAR =
+        "grammar PowAlt {\n" +
+        "  @package: org.example.pow\n" +
+        "  @whitespace: javaStyle\n" +
+        "  token NUMBER = NumberParser\n" +
+        "  @root\n" +
+        "  @mapping(PowNode, params=[left, op, right])\n" +
+        "  @rightAssoc\n" +
+        "  @precedence(level=30)\n" +
         "  Expr ::= Atom @left { '^' @op Atom @right } ;\n" +
         "  Atom ::= NUMBER ;\n" +
         "}";
@@ -188,6 +201,22 @@ public class ParserGeneratorTest {
             source.contains("class ExprParser extends LazyChoice"));
         assertTrue("right-assoc recursive branch should reference itself",
             source.contains("Parser.get(ExprParser.class)"));
+    }
+
+    @Test
+    public void testRightAssocNonCanonicalRuleFallsBackToGrammarDriven() {
+        String source = generate(RIGHT_ASSOC_NON_CANONICAL_GRAMMAR);
+        assertFalse("non-canonical right-assoc should not force recursive choice rewrite",
+            source.contains("class ExprParser extends LazyChoice"));
+        assertTrue("non-canonical right-assoc should keep repeat parser generation",
+            source.contains("new ZeroOrMore("));
+    }
+
+    @Test
+    public void testGeneratesPrecedenceConstants() {
+        String source = generate(RIGHT_ASSOC_GRAMMAR);
+        assertTrue("should expose precedence metadata as constant",
+            source.contains("public static final int PRECEDENCE_EXPR = 30;"));
     }
 
     @Test
