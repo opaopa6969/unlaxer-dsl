@@ -61,11 +61,13 @@ public class CodegenRunnerTest {
             false,
             "json",
             null,
+            null,
             1,
             false,
             false,
             "always",
-            "conflict"
+            "conflict",
+            -1
         );
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ByteArrayOutputStream err = new ByteArrayOutputStream();

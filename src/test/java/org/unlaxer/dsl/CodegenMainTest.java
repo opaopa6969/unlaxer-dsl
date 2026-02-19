@@ -529,6 +529,7 @@ public class CodegenMainTest {
         assertTrue(result.out().contains("--clean-output"));
         assertTrue(result.out().contains("--overwrite"));
         assertTrue(result.out().contains("--fail-on"));
+        assertTrue(result.out().contains("--output-manifest"));
         assertTrue(result.out().contains("text|json|ndjson"));
         assertTrue(result.out().contains("--warnings-as-json"));
     }
@@ -622,6 +623,7 @@ public class CodegenMainTest {
         assertTrue(result.err().contains("--clean-output"));
         assertTrue(result.err().contains("--overwrite"));
         assertTrue(result.err().contains("--fail-on"));
+        assertTrue(result.err().contains("--output-manifest"));
         assertTrue(result.err().contains("--report-schema-check"));
         assertTrue(result.err().contains("--warnings-as-json"));
     }
@@ -1013,6 +1015,34 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testNdjsonGenerationIncludesCleanedEvent() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-cleaned", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-ndjson-cleaned-out");
+        Files.writeString(grammarFile, source);
+        Path ast = outputDir.resolve("org/example/valid/ValidAST.java");
+        Files.createDirectories(ast.getParent());
+        Files.writeString(ast, "// stale");
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--clean-output",
+            "--report-format", "ndjson"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.out().contains("\"action\":\"cleaned\""));
+    }
+
+    @Test
     public void testFailOnSkippedReturnsGenerationError() throws Exception {
         String source = """
             grammar Valid {
@@ -1042,6 +1072,56 @@ public class CodegenMainTest {
         );
         assertEquals(CodegenMain.EXIT_GENERATION_ERROR, second.exitCode());
         assertTrue(second.err().contains("Fail-on policy triggered: skipped=1"));
+    }
+
+    @Test
+    public void testFailOnWarningsThresholdReturnsStrictValidationError() throws Exception {
+        String source = """
+            grammar WarnOnly {
+              @package: org.example.warn
+              @mapping(RootNode, params=[value])
+              Start ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-failon-warning-threshold", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--fail-on", "warnings-count>=1",
+            "--report-format", "json"
+        );
+        assertEquals(CodegenMain.EXIT_STRICT_VALIDATION_ERROR, result.exitCode());
+        assertTrue(result.err().contains("\"warningsCount\":1"));
+    }
+
+    @Test
+    public void testOutputManifestIsWritten() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-manifest", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-manifest-out");
+        Path manifest = Files.createTempFile("codegen-main-manifest", ".json");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--output-manifest", manifest.toString()
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        String payload = Files.readString(manifest);
+        assertTrue(payload.contains("\"mode\":\"generate\""));
+        assertTrue(payload.contains("\"writtenCount\":1"));
+        assertTrue(payload.contains("\"files\":["));
     }
 
     @Test

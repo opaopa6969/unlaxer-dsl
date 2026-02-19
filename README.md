@@ -868,13 +868,14 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 | `--dry-run` | Preview generated file paths without writing files | `false` |
 | `--clean-output` | Delete planned target files before generation | `false` |
 | `--overwrite never\|if-different\|always` | Overwrite policy for existing files | `always` |
-| `--fail-on none\|warning\|skipped\|conflict` | Additional failure policy trigger | `conflict` |
+| `--fail-on none\|warning\|skipped\|conflict\|warnings-count>=N` | Additional failure policy trigger | `conflict` |
 | `--strict` | Treat warnings as validation failures | `false` |
 | `--help`, `-h` | Print usage and exit | `false` |
 | `--version`, `-v` | Print tool version and exit | `false` |
 | `--validate-only` | Run grammar validation only (skip code generation) | `false` |
 | `--report-format text\|json\|ndjson` | Output/report format | `text` |
 | `--report-file <path>` | Write report payload to a file | (none) |
+| `--output-manifest <path>` | Write generation/validation action manifest JSON | (none) |
 | `--report-version 1` | JSON report schema version | `1` |
 | `--report-schema-check` | Validate JSON payload shape before emitting it | `false` |
 | `--warnings-as-json` | Emit warning diagnostics as JSON to stderr (text mode) | `false` |
@@ -886,6 +887,7 @@ When `--report-schema-check` fails, error messages are prefixed with `E-REPORT-S
 JSON payloads expose `warningsCount` so clients can detect warnings without scanning `issues[]`.
 Generation JSON payloads also expose `writtenCount`, `skippedCount`, `conflictCount`, and `dryRunCount`.
 `ndjson` emits one JSON object per line (file events + summary event) for streaming-friendly integrations.
+`--fail-on warnings-count>=N` fails when warning count reaches/exceeds `N`.
 
 Exit codes:
 

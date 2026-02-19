@@ -81,7 +81,7 @@ Current behavior:
 - `--dry-run` previews generated file paths without writing outputs.
 - `--clean-output` removes planned target files before generation starts.
 - `--overwrite never|if-different|always` controls overwrite behavior for existing files.
-- `--fail-on none|warning|skipped|conflict` applies extra failure policy checks after execution.
+- `--fail-on none|warning|skipped|conflict|warnings-count>=N` applies extra failure policy checks after execution.
 - `--help`/`-h` prints usage and exits with code `0`.
 - `--version`/`-v` prints resolved tool version and exits with code `0`.
 - `--strict` treats validation warnings as failures (exit code `5`).
@@ -91,6 +91,7 @@ Current behavior:
 - `--report-format json` emits machine-readable validation output (especially useful with `--validate-only`).
 - `--report-format ndjson` emits newline-delimited JSON events (`file` events plus summary report event).
 - `--report-file <path>` writes the final report payload (text/json) to a file.
+- `--output-manifest <path>` writes action manifest JSON (written/skipped/conflict/dry-run files and counts).
 - `--report-version 1` selects JSON schema version (currently only version `1` is supported).
 - `--report-schema-check` validates JSON payload schema before emitting/writing reports.
 - `--warnings-as-json` emits warning diagnostics as JSON to stderr even when `--report-format text` is used.

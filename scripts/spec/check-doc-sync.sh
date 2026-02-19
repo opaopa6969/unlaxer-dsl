@@ -21,6 +21,7 @@ EXPECTED_FLAGS=(
   '--version'
   '--report-format'
   '--report-file'
+  '--output-manifest'
   '--report-version'
   '--report-schema-check'
   '--warnings-as-json'

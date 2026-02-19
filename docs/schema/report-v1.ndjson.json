@@ -11,7 +11,7 @@
       "additionalProperties": false,
       "properties": {
         "event": { "const": "file" },
-        "action": { "enum": ["written", "skipped", "dry-run", "conflict"] },
+        "action": { "enum": ["written", "skipped", "dry-run", "conflict", "cleaned"] },
         "path": { "type": "string", "minLength": 1 }
       }
     },

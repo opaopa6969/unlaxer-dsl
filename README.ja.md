@@ -1068,13 +1068,14 @@ NDJSON イベント schema は `docs/schema/report-v1.ndjson.json` を参照。
 | `--dry-run` | 生成ファイルを書き込まずに出力先だけ確認する | `false` |
 | `--clean-output` | 生成予定ファイルを事前に削除してから生成する | `false` |
 | `--overwrite never\|if-different\|always` | 既存ファイル上書きポリシー | `always` |
-| `--fail-on none\|warning\|skipped\|conflict` | 追加の失敗判定ポリシー | `conflict` |
+| `--fail-on none\|warning\|skipped\|conflict\|warnings-count>=N` | 追加の失敗判定ポリシー | `conflict` |
 | `--strict` | warning をバリデーション失敗として扱う | `false` |
 | `--help`, `-h` | 使用方法を表示して終了 | `false` |
 | `--version`, `-v` | ツールバージョンを表示して終了 | `false` |
 | `--validate-only` | 文法検証のみ実行（コード生成をスキップ） | `false` |
 | `--report-format text\|json\|ndjson` | 出力/レポート形式 | `text` |
 | `--report-file <path>` | レポート内容をファイル出力 | （なし） |
+| `--output-manifest <path>` | 生成/検証アクションmanifest JSONを出力 | （なし） |
 | `--report-version 1` | JSON レポートスキーマのバージョン | `1` |
 | `--report-schema-check` | JSON ペイロードを出力前にスキーマ検証する | `false` |
 | `--warnings-as-json` | warning 診断を stderr に JSON で出力する（text モード） | `false` |
@@ -1086,6 +1087,7 @@ NDJSON イベント schema は `docs/schema/report-v1.ndjson.json` を参照。
 JSON ペイロードには `warningsCount` が含まれ、`issues[]` を走査せず warning 件数を確認できる。
 生成JSONには `writtenCount`, `skippedCount`, `conflictCount`, `dryRunCount` も含まれる。
 `ndjson` は 1 行 1 JSON（file イベント + summary イベント）でストリーミング連携しやすい。
+`--fail-on warnings-count>=N` で warning 件数が `N` 以上なら失敗させられる。
 
 終了コード:
 

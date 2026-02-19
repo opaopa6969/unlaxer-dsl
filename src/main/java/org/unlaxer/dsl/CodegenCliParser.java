@@ -25,11 +25,13 @@ final class CodegenCliParser {
         boolean version = false;
         String reportFormat = "text";
         String reportFile = null;
+        String outputManifest = null;
         int reportVersion = DEFAULT_REPORT_VERSION;
         boolean reportSchemaCheck = false;
         boolean warningsAsJson = false;
         String overwrite = "always";
         String failOn = "conflict";
+        int failOnWarningsThreshold = -1;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -82,6 +84,12 @@ final class CodegenCliParser {
                     }
                     reportFile = args[++i];
                 }
+                case "--output-manifest" -> {
+                    if (i + 1 >= args.length) {
+                        throw new UsageException("Missing value for --output-manifest", true);
+                    }
+                    outputManifest = args[++i];
+                }
                 case "--report-version" -> {
                     if (i + 1 >= args.length) {
                         throw new UsageException("Missing value for --report-version", true);
@@ -121,10 +129,30 @@ final class CodegenCliParser {
                         throw new UsageException("Missing value for --fail-on", true);
                     }
                     failOn = args[++i].trim().toLowerCase();
-                    if (!"none".equals(failOn) && !"warning".equals(failOn)
+                    if (failOn.startsWith("warnings-count>=")) {
+                        String raw = failOn.substring("warnings-count>=".length()).trim();
+                        try {
+                            failOnWarningsThreshold = Integer.parseInt(raw);
+                        } catch (NumberFormatException e) {
+                            throw new UsageException(
+                                "Unsupported --fail-on: " + failOn
+                                    + "\nAllowed values: none, warning, skipped, conflict, warnings-count>=N",
+                                false
+                            );
+                        }
+                        if (failOnWarningsThreshold < 0) {
+                            throw new UsageException(
+                                "Unsupported --fail-on: " + failOn
+                                    + "\nAllowed values: none, warning, skipped, conflict, warnings-count>=N",
+                                false
+                            );
+                        }
+                        failOn = "warnings-count";
+                    } else if (!"none".equals(failOn) && !"warning".equals(failOn)
                         && !"skipped".equals(failOn) && !"conflict".equals(failOn)) {
                         throw new UsageException(
-                            "Unsupported --fail-on: " + failOn + "\nAllowed values: none, warning, skipped, conflict",
+                            "Unsupported --fail-on: " + failOn
+                                + "\nAllowed values: none, warning, skipped, conflict, warnings-count>=N",
                             false
                         );
                     }
@@ -146,11 +174,13 @@ final class CodegenCliParser {
                 version,
                 reportFormat,
                 reportFile,
+                outputManifest,
                 reportVersion,
                 reportSchemaCheck,
                 warningsAsJson,
                 overwrite,
-                failOn
+                failOn,
+                failOnWarningsThreshold
             );
         }
 
@@ -170,11 +200,13 @@ final class CodegenCliParser {
             version,
             reportFormat,
             reportFile,
+            outputManifest,
             reportVersion,
             reportSchemaCheck,
             warningsAsJson,
             overwrite,
-            failOn
+            failOn,
+            failOnWarningsThreshold
         );
     }
 
@@ -190,11 +222,13 @@ final class CodegenCliParser {
         boolean version,
         String reportFormat,
         String reportFile,
+        String outputManifest,
         int reportVersion,
         boolean reportSchemaCheck,
         boolean warningsAsJson,
         String overwrite,
-        String failOn
+        String failOn,
+        int failOnWarningsThreshold
     ) {}
 
     static final class UsageException extends Exception {

@@ -33,4 +33,25 @@ public class ReportNdjsonSchemaDocumentTest {
         assertTrue(titles.contains("warnings"));
         assertTrue(titles.contains("generate-summary"));
     }
+
+    @Test
+    public void testNdjsonSchemaFileEventIncludesCleanedAction() throws Exception {
+        String json = Files.readString(Path.of("docs/schema/report-v1.ndjson.json"));
+        Map<String, Object> schema = JsonTestUtil.parseObject(json);
+        List<Object> oneOf = JsonTestUtil.getArray(schema, "oneOf");
+
+        for (Object o : oneOf) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> item = (Map<String, Object>) o;
+            if (!"file-event".equals(JsonTestUtil.getString(item, "title"))) {
+                continue;
+            }
+            Map<String, Object> properties = JsonTestUtil.getObject(item, "properties");
+            Map<String, Object> action = JsonTestUtil.getObject(properties, "action");
+            List<Object> enums = JsonTestUtil.getArray(action, "enum");
+            assertTrue(enums.contains("cleaned"));
+            return;
+        }
+        throw new IllegalStateException("file-event schema not found");
+    }
 }

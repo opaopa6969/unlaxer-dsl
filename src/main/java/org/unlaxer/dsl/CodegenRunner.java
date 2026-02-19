@@ -72,13 +72,16 @@ final class CodegenRunner {
         boolean hasErrors = hasErrorRows(sortedRows);
         boolean hasWarnings = hasWarningRows(sortedRows);
         int warningsCount = countWarnings(sortedRows);
+        boolean warningPolicyTriggered = hasWarnings
+            && (shouldFailOn(config, "warning") || shouldFailOnWarningsThreshold(config, warningsCount));
 
         String generatedAt = Instant.now(clock).toString();
+        List<FileEvent> fileEvents = new ArrayList<>();
         String warningJson = hasWarnings
             ? ReportJsonWriter.validationFailure(config.reportVersion(), toolVersion, generatedAt, sortedRows)
             : null;
 
-        if (hasErrors || (shouldFailOn(config, "warning") && hasWarnings)) {
+        if (hasErrors || warningPolicyTriggered) {
             int exitCode = hasErrors ? CodegenMain.EXIT_VALIDATION_ERROR : CodegenMain.EXIT_STRICT_VALIDATION_ERROR;
             boolean emitJson =
                 "json".equals(config.reportFormat())
@@ -100,6 +103,20 @@ final class CodegenRunner {
                 } else {
                     err.println(json);
                 }
+                writeManifestIfNeeded(
+                    config,
+                    fs,
+                    "validate",
+                    generatedAt,
+                    fileEvents,
+                    warningsCount,
+                    0,
+                    0,
+                    0,
+                    0,
+                    false,
+                    exitCode
+                );
                 return exitCode;
             }
 
@@ -112,6 +129,20 @@ final class CodegenRunner {
             String text = prefix + ":\n - " + String.join("\n - ", validationMessages);
             writeReportIfNeeded(config.reportFile(), text, fs);
             err.println(text);
+            writeManifestIfNeeded(
+                config,
+                fs,
+                "validate",
+                generatedAt,
+                fileEvents,
+                warningsCount,
+                0,
+                0,
+                0,
+                0,
+                false,
+                exitCode
+            );
             return exitCode;
         }
 
@@ -149,6 +180,20 @@ final class CodegenRunner {
                 out.println(text);
                 writeReportIfNeeded(config.reportFile(), text, fs);
             }
+            writeManifestIfNeeded(
+                config,
+                fs,
+                "validate",
+                generatedAt,
+                fileEvents,
+                warningsCount,
+                0,
+                0,
+                0,
+                0,
+                true,
+                CodegenMain.EXIT_OK
+            );
             return CodegenMain.EXIT_OK;
         }
 
@@ -178,11 +223,17 @@ final class CodegenRunner {
                 Path pkgDir = outPath.resolve(src.packageName().replace('.', '/'));
                 Path javaFile = pkgDir.resolve(src.className() + ".java");
                 if (config.cleanOutput() && !config.dryRun()) {
-                    fs.deleteIfExists(javaFile);
+                    if (fs.deleteIfExists(javaFile)) {
+                        fileEvents.add(new FileEvent("cleaned", javaFile.toString()));
+                        if ("ndjson".equals(config.reportFormat())) {
+                            out.println(ndjsonFileEvent("cleaned", javaFile.toString()));
+                        }
+                    }
                 }
                 WriteAction action = writeGeneratedSource(config, fs, pkgDir, javaFile, src.source());
                 if (action == WriteAction.CONFLICT) {
                     conflictCount++;
+                    fileEvents.add(new FileEvent("conflict", javaFile.toString()));
                     err.println("Conflict (not overwritten): " + javaFile);
                     if ("ndjson".equals(config.reportFormat())) {
                         out.println(ndjsonFileEvent("conflict", javaFile.toString()));
@@ -191,6 +242,7 @@ final class CodegenRunner {
                 }
                 if (action == WriteAction.SKIPPED) {
                     skippedCount++;
+                    fileEvents.add(new FileEvent("skipped", javaFile.toString()));
                     out.println("Skipped (unchanged): " + javaFile);
                     if ("ndjson".equals(config.reportFormat())) {
                         out.println(ndjsonFileEvent("skipped", javaFile.toString()));
@@ -199,12 +251,14 @@ final class CodegenRunner {
                 }
                 if (action == WriteAction.DRY_RUN) {
                     dryRunCount++;
+                    fileEvents.add(new FileEvent("dry-run", javaFile.toString()));
                     out.println("Dry-run: would generate " + javaFile);
                     if ("ndjson".equals(config.reportFormat())) {
                         out.println(ndjsonFileEvent("dry-run", javaFile.toString()));
                     }
                 } else {
                     writtenCount++;
+                    fileEvents.add(new FileEvent("written", javaFile.toString()));
                     out.println("Generated: " + javaFile);
                     if ("ndjson".equals(config.reportFormat())) {
                         out.println(ndjsonFileEvent("written", javaFile.toString()));
@@ -216,10 +270,38 @@ final class CodegenRunner {
 
         if (shouldFailOn(config, "skipped") && skippedCount > 0) {
             err.println("Fail-on policy triggered: skipped=" + skippedCount);
+            writeManifestIfNeeded(
+                config,
+                fs,
+                "generate",
+                generatedAt,
+                fileEvents,
+                warningsCount,
+                writtenCount,
+                skippedCount,
+                conflictCount,
+                dryRunCount,
+                false,
+                CodegenMain.EXIT_GENERATION_ERROR
+            );
             return CodegenMain.EXIT_GENERATION_ERROR;
         }
         if (shouldFailOn(config, "conflict") && conflictCount > 0) {
             err.println("Fail-on policy triggered: conflict=" + conflictCount);
+            writeManifestIfNeeded(
+                config,
+                fs,
+                "generate",
+                generatedAt,
+                fileEvents,
+                warningsCount,
+                writtenCount,
+                skippedCount,
+                conflictCount,
+                dryRunCount,
+                false,
+                CodegenMain.EXIT_GENERATION_ERROR
+            );
             return CodegenMain.EXIT_GENERATION_ERROR;
         }
 
@@ -249,6 +331,21 @@ final class CodegenRunner {
                 .collect(Collectors.joining("\n"));
             writeReportIfNeeded(config.reportFile(), text, fs);
         }
+
+        writeManifestIfNeeded(
+            config,
+            fs,
+            "generate",
+            generatedAt,
+            fileEvents,
+            warningsCount,
+            writtenCount,
+            skippedCount,
+            conflictCount,
+            dryRunCount,
+            true,
+            CodegenMain.EXIT_OK
+        );
 
         return CodegenMain.EXIT_OK;
     }
@@ -353,6 +450,13 @@ final class CodegenRunner {
             return config.strict() || "warning".equals(config.failOn());
         }
         return Objects.equals(config.failOn(), key);
+    }
+
+    private static boolean shouldFailOnWarningsThreshold(CodegenCliParser.CliOptions config, int warningsCount) {
+        if (!"warnings-count".equals(config.failOn())) {
+            return false;
+        }
+        return warningsCount >= config.failOnWarningsThreshold();
     }
 
     private static void validateJsonIfRequested(
@@ -461,4 +565,79 @@ final class CodegenRunner {
         Path cwd = Path.of("").toAbsolutePath().normalize();
         return normalized.equals(cwd);
     }
+
+    private static void writeManifestIfNeeded(
+        CodegenCliParser.CliOptions config,
+        FileSystemPort fs,
+        String mode,
+        String generatedAt,
+        List<FileEvent> fileEvents,
+        int warningsCount,
+        int writtenCount,
+        int skippedCount,
+        int conflictCount,
+        int dryRunCount,
+        boolean ok,
+        int exitCode
+    ) throws IOException {
+        if (config.outputManifest() == null) {
+            return;
+        }
+        String json = manifestJson(
+            mode,
+            generatedAt,
+            fileEvents,
+            warningsCount,
+            writtenCount,
+            skippedCount,
+            conflictCount,
+            dryRunCount,
+            ok,
+            exitCode
+        );
+        Path manifestPath = Path.of(config.outputManifest());
+        Path parent = manifestPath.getParent();
+        if (parent != null) {
+            fs.createDirectories(parent);
+        }
+        fs.writeString(manifestPath, json);
+    }
+
+    private static String manifestJson(
+        String mode,
+        String generatedAt,
+        List<FileEvent> fileEvents,
+        int warningsCount,
+        int writtenCount,
+        int skippedCount,
+        int conflictCount,
+        int dryRunCount,
+        boolean ok,
+        int exitCode
+    ) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{")
+            .append("\"mode\":\"").append(ReportJsonWriter.escapeJson(mode)).append("\",")
+            .append("\"generatedAt\":\"").append(ReportJsonWriter.escapeJson(generatedAt)).append("\",")
+            .append("\"ok\":").append(ok).append(",")
+            .append("\"exitCode\":").append(exitCode).append(",")
+            .append("\"warningsCount\":").append(warningsCount).append(",")
+            .append("\"writtenCount\":").append(writtenCount).append(",")
+            .append("\"skippedCount\":").append(skippedCount).append(",")
+            .append("\"conflictCount\":").append(conflictCount).append(",")
+            .append("\"dryRunCount\":").append(dryRunCount).append(",")
+            .append("\"files\":[");
+        for (int i = 0; i < fileEvents.size(); i++) {
+            if (i > 0) {
+                sb.append(",");
+            }
+            FileEvent e = fileEvents.get(i);
+            sb.append("{\"action\":\"").append(ReportJsonWriter.escapeJson(e.action())).append("\",")
+                .append("\"path\":\"").append(ReportJsonWriter.escapeJson(e.path())).append("\"}");
+        }
+        sb.append("]}");
+        return sb.toString();
+    }
+
+    private record FileEvent(String action, String path) {}
 }

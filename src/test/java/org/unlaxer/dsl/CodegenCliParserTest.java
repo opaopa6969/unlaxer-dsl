@@ -27,8 +27,10 @@ public class CodegenCliParserTest {
         assertFalse(options.strict());
         assertFalse(options.reportSchemaCheck());
         assertFalse(options.warningsAsJson());
+        assertEquals(null, options.outputManifest());
         assertEquals("always", options.overwrite());
         assertEquals("conflict", options.failOn());
+        assertEquals(-1, options.failOnWarningsThreshold());
         assertFalse(options.help());
         assertFalse(options.version());
     }
@@ -92,6 +94,18 @@ public class CodegenCliParserTest {
             "--fail-on", "skipped"
         });
         assertEquals("skipped", options.failOn());
+        assertEquals(-1, options.failOnWarningsThreshold());
+    }
+
+    @Test
+    public void testParseFailOnWarningsThreshold() throws Exception {
+        var options = CodegenCliParser.parse(new String[] {
+            "--grammar", "a.ubnf",
+            "--output", "out",
+            "--fail-on", "warnings-count>=3"
+        });
+        assertEquals("warnings-count", options.failOn());
+        assertEquals(3, options.failOnWarningsThreshold());
     }
 
     @Test
@@ -132,6 +146,16 @@ public class CodegenCliParserTest {
             assertFalse(e.showUsage());
             assertTrue(e.getMessage().contains("Unsupported --fail-on"));
         }
+    }
+
+    @Test
+    public void testParseOutputManifestOption() throws Exception {
+        var options = CodegenCliParser.parse(new String[] {
+            "--grammar", "a.ubnf",
+            "--validate-only",
+            "--output-manifest", "build/manifest.json"
+        });
+        assertEquals("build/manifest.json", options.outputManifest());
     }
 
     @Test
