@@ -1561,6 +1561,67 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testNdjsonValidateFailureReportFileStoresRawJsonPayload() throws Exception {
+        String source = """
+            grammar Invalid {
+              @package: org.example.invalid
+              @root
+              @mapping(RootNode, params=[value, missing])
+              Invalid ::= 'x' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-validate-failure-report-file", ".ubnf");
+        Path reportFile = Files.createTempFile("codegen-main-ndjson-validate-failure-report-file", ".json");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "ndjson",
+            "--report-file", reportFile.toString()
+        );
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        String stderr = result.err().trim();
+        assertTrue(stderr.startsWith("{\"event\":\"validate-failure\",\"payload\":{"));
+
+        String saved = Files.readString(reportFile).trim();
+        assertTrue(saved.startsWith("{\"reportVersion\":1,"));
+        assertFalse(saved.contains("\"event\":\"validate-failure\""));
+        assertTrue(saved.contains("\"mode\":\"validate\""));
+        assertTrue(saved.contains("\"ok\":false"));
+    }
+
+    @Test
+    public void testNdjsonGenerateFailureReportFileStoresRawJsonPayload() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-generate-failure-report-file", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-ndjson-generate-failure-report-file-out");
+        Path reportFile = Files.createTempFile("codegen-main-ndjson-generate-failure-report-file", ".json");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+        Path ast = outputDir.resolve("org/example/valid/ValidAST.java");
+        Files.createDirectories(ast.getParent());
+        Files.writeString(ast, "// existing");
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--overwrite", "never",
+            "--fail-on", "conflict",
+            "--report-format", "ndjson",
+            "--report-file", reportFile.toString()
+        );
+        assertEquals(CodegenMain.EXIT_GENERATION_ERROR, result.exitCode());
+        assertTrue(result.out().contains("\"event\":\"generate-summary\""));
+
+        String saved = Files.readString(reportFile).trim();
+        assertTrue(saved.startsWith("{\"reportVersion\":1,"));
+        assertFalse(saved.contains("\"event\":\"generate-summary\""));
+        assertTrue(saved.contains("\"mode\":\"generate\""));
+        assertTrue(saved.contains("\"ok\":false"));
+        assertTrue(saved.contains("\"failReasonCode\":\"FAIL_ON_CONFLICT\""));
+    }
+
+    @Test
     public void testReportSchemaCheckOptionWithGenerationJson() throws Exception {
         String source = """
             grammar Valid {
