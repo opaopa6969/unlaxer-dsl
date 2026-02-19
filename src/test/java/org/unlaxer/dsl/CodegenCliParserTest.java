@@ -5,6 +5,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.List;
+
 import org.junit.Test;
 
 public class CodegenCliParserTest {
@@ -95,6 +97,32 @@ public class CodegenCliParserTest {
         } catch (CodegenCliParser.UsageException e) {
             assertTrue(e.showUsage());
             assertTrue(e.getMessage().contains("Unknown argument"));
+        }
+    }
+
+    @Test
+    public void testParseGeneratorsTrimsWhitespaceAndDropsEmptyEntries() throws Exception {
+        var options = CodegenCliParser.parse(new String[] {
+            "--grammar", "a.ubnf",
+            "--output", "out",
+            "--generators", "AST, LSP, , Parser"
+        });
+
+        assertEquals(List.of("AST", "LSP", "Parser"), options.generators());
+    }
+
+    @Test
+    public void testRejectEmptyGeneratorsValue() {
+        try {
+            CodegenCliParser.parse(new String[] {
+                "--grammar", "a.ubnf",
+                "--output", "out",
+                "--generators", " ,  , "
+            });
+            fail("expected parser usage error");
+        } catch (CodegenCliParser.UsageException e) {
+            assertFalse(e.showUsage());
+            assertTrue(e.getMessage().contains("No generators specified"));
         }
     }
 

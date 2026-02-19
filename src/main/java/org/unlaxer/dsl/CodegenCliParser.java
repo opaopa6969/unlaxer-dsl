@@ -2,6 +2,7 @@ package org.unlaxer.dsl;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Parses CodegenMain CLI arguments.
@@ -40,7 +41,14 @@ final class CodegenCliParser {
                     if (i + 1 >= args.length) {
                         throw new UsageException("Missing value for --generators", true);
                     }
-                    generators = Arrays.asList(args[++i].split(","));
+                    generators =
+                        Arrays.stream(args[++i].split(","))
+                            .map(String::trim)
+                            .filter(s -> !s.isEmpty())
+                            .collect(Collectors.toList());
+                    if (generators.isEmpty()) {
+                        throw new UsageException("No generators specified for --generators", false);
+                    }
                 }
                 case "--validate-only" -> validateOnly = true;
                 case "--report-format" -> {
