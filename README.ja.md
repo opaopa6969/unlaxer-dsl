@@ -1092,6 +1092,7 @@ JSON ペイロードには `warningsCount` が含まれ、`issues[]` を走査�
 生成JSONには `writtenCount`, `skippedCount`, `conflictCount`, `dryRunCount` も含まれ、ポリシー失敗時は `failReasonCode` も含まれる。
 `ndjson` は 1 行 1 JSON（file イベント + summary イベント）でストリーミング連携しやすい。
 `ndjson` は CLI 失敗（引数/使用方法エラーと実行時エラー。例: 未知の generator）で `cli-error` イベントも出力する。
+`cli-error` のフィールドは `code`, `message`, nullable な `detail`, `availableGenerators`（通常は空配列）で安定化している。
 `ndjson` モードでは `stdout` は JSON 行のみ（人間向け進捗テキストは出力しない）。
 `ndjson` の生成モードでは conflict/fail-on の人間向けメッセージを `stderr` に出さない。
 `ndjson` の検証失敗経路でも `stderr` は JSON 行のみ。

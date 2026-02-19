@@ -514,9 +514,12 @@ public class CodegenMainTest {
         );
 
         assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
-        assertTrue(result.out().contains("\"event\":\"cli-error\""));
-        assertTrue(result.out().contains("\"code\":\"E-CLI-UNKNOWN-GENERATOR\""));
-        assertTrue(result.out().contains("\"availableGenerators\":["));
+        Map<String, Object> event = JsonTestUtil.parseObject(result.out().trim());
+        assertEquals("cli-error", JsonTestUtil.getString(event, "event"));
+        assertEquals("E-CLI-UNKNOWN-GENERATOR", JsonTestUtil.getString(event, "code"));
+        assertEquals(null, event.get("detail"));
+        List<Object> generators = JsonTestUtil.getArray(event, "availableGenerators");
+        assertEquals(List.of("AST", "DAP", "DAPLauncher", "Evaluator", "LSP", "Launcher", "Mapper", "Parser"), generators);
         assertTrue(result.err().isBlank());
     }
 
@@ -678,9 +681,34 @@ public class CodegenMainTest {
     public void testMissingGrammarReturnsNdjsonCliErrorEventWhenRequested() {
         RunResult result = runCodegen("--validate-only", "--report-format", "ndjson");
         assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
-        assertTrue(result.out().contains("\"event\":\"cli-error\""));
-        assertTrue(result.out().contains("\"code\":\"E-CLI-USAGE\""));
-        assertTrue(result.out().contains("\"message\":\""));
+        Map<String, Object> event = JsonTestUtil.parseObject(result.out().trim());
+        assertEquals("cli-error", JsonTestUtil.getString(event, "event"));
+        assertEquals("E-CLI-USAGE", JsonTestUtil.getString(event, "code"));
+        assertFalse(JsonTestUtil.getString(event, "message").isBlank());
+        assertTrue(event.get("detail") == null || "Use --help to view usage.".equals(event.get("detail")));
+        assertEquals(List.of(), JsonTestUtil.getArray(event, "availableGenerators"));
+        assertTrue(result.err().isBlank());
+    }
+
+    @Test
+    public void testUnsupportedReportVersionReturnsNdjsonCliErrorEvent() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-report-version-invalid-ndjson", ".ubnf");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "ndjson",
+            "--report-version", "2"
+        );
+
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+        Map<String, Object> event = JsonTestUtil.parseObject(result.out().trim());
+        assertEquals("cli-error", JsonTestUtil.getString(event, "event"));
+        assertEquals("E-CLI-USAGE", JsonTestUtil.getString(event, "code"));
+        assertTrue(JsonTestUtil.getString(event, "message").contains("Unsupported --report-version"));
+        assertTrue(event.get("detail") == null || "Use --help to view usage.".equals(event.get("detail")));
+        assertEquals(List.of(), JsonTestUtil.getArray(event, "availableGenerators"));
         assertTrue(result.err().isBlank());
     }
 
@@ -1661,9 +1689,11 @@ public class CodegenMainTest {
             "--report-format", "ndjson"
         );
         assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
-        assertTrue(result.out().contains("\"event\":\"cli-error\""));
-        assertTrue(result.out().contains("\"code\":\"E-CLI-UNSAFE-CLEAN-OUTPUT\""));
-        assertTrue(result.out().contains("\"detail\":\"/\""));
+        Map<String, Object> event = JsonTestUtil.parseObject(result.out().trim());
+        assertEquals("cli-error", JsonTestUtil.getString(event, "event"));
+        assertEquals("E-CLI-UNSAFE-CLEAN-OUTPUT", JsonTestUtil.getString(event, "code"));
+        assertEquals("/", JsonTestUtil.getString(event, "detail"));
+        assertEquals(List.of(), JsonTestUtil.getArray(event, "availableGenerators"));
         assertTrue(result.err().isBlank());
     }
 
