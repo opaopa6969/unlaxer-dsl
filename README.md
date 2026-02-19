@@ -83,6 +83,12 @@ Refresh JSON report examples in `SPEC.md`:
 ./scripts/refresh-spec-json-examples.sh
 ```
 
+Check `SPEC.md` JSON examples are current (for CI):
+
+```bash
+./scripts/check-spec-json-examples.sh
+```
+
 ---
 
 ## Quick Start

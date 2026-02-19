@@ -94,6 +94,12 @@ golden snapshot の再生成：
 ./scripts/refresh-spec-json-examples.sh
 ```
 
+`SPEC.md` の JSON レポート例が最新か確認（CI向け）：
+
+```bash
+./scripts/check-spec-json-examples.sh
+```
+
 ---
 
 ## クイックスタート
