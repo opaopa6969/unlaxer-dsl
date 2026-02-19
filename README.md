@@ -77,6 +77,12 @@ Refresh golden snapshots:
 ./scripts/refresh-golden-snapshots.sh
 ```
 
+Refresh JSON report examples in `SPEC.md`:
+
+```bash
+./scripts/refresh-spec-json-examples.sh
+```
+
 ---
 
 ## Quick Start

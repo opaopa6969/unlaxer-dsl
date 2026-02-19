@@ -88,6 +88,12 @@ golden snapshot の再生成：
 ./scripts/refresh-golden-snapshots.sh
 ```
 
+`SPEC.md` の JSON レポート例を再生成：
+
+```bash
+./scripts/refresh-spec-json-examples.sh
+```
+
 ---
 
 ## クイックスタート
