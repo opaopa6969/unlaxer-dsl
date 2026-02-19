@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * CLI tool that reads UBNF grammars and generates Java sources.
@@ -34,6 +35,7 @@ public class CodegenMain {
         List<String> generators = List.of("Parser", "LSP", "Launcher");
         boolean validateOnly = false;
         String reportFormat = "text";
+        String reportFile = null;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -74,6 +76,14 @@ public class CodegenMain {
                         System.err.println("Allowed values: text, json");
                         System.exit(1);
                     }
+                }
+                case "--report-file" -> {
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for --report-file");
+                        printUsage();
+                        System.exit(1);
+                    }
+                    reportFile = args[++i];
                 }
                 default -> {
                     System.err.println("Unknown argument: " + args[i]);
@@ -116,21 +126,30 @@ public class CodegenMain {
         }
         if (!validationErrors.isEmpty()) {
             if ("json".equals(reportFormat)) {
-                throw new IllegalArgumentException(toJsonReport(validationRows));
+                String json = toValidationJsonReport(validationRows);
+                writeReportIfNeeded(reportFile, json);
+                throw new IllegalArgumentException(json);
             }
-            throw new IllegalArgumentException(
+            String text =
                 "Grammar validation failed:\n - " + String.join("\n - ", validationErrors)
-            );
+            ;
+            writeReportIfNeeded(reportFile, text);
+            throw new IllegalArgumentException(text);
         }
         if (validateOnly) {
             if ("json".equals(reportFormat)) {
-                System.out.println("{\"ok\":true,\"grammarCount\":" + file.grammars().size() + ",\"issues\":[]}");
+                String json = "{\"ok\":true,\"grammarCount\":" + file.grammars().size() + ",\"issues\":[]}";
+                System.out.println(json);
+                writeReportIfNeeded(reportFile, json);
             } else {
-                System.out.println("Validation succeeded for " + file.grammars().size() + " grammar(s).");
+                String text = "Validation succeeded for " + file.grammars().size() + " grammar(s).";
+                System.out.println(text);
+                writeReportIfNeeded(reportFile, text);
             }
             return;
         }
         Path outPath = Path.of(outputDir);
+        List<String> generatedFiles = new ArrayList<>();
 
         for (GrammarDecl grammar : file.grammars()) {
             for (String name : generators) {
@@ -148,7 +167,19 @@ public class CodegenMain {
                 Path javaFile = pkgDir.resolve(src.className() + ".java");
                 Files.writeString(javaFile, src.source());
                 System.out.println("Generated: " + javaFile);
+                generatedFiles.add(javaFile.toString());
             }
+        }
+
+        if ("json".equals(reportFormat)) {
+            String json = toGenerationJsonReport(file.grammars().size(), generatedFiles);
+            System.out.println(json);
+            writeReportIfNeeded(reportFile, json);
+        } else if (reportFile != null) {
+            String text = "Generated files:\n" + generatedFiles.stream()
+                .map(p -> " - " + p)
+                .collect(Collectors.joining("\n"));
+            writeReportIfNeeded(reportFile, text);
         }
     }
 
@@ -158,12 +189,13 @@ public class CodegenMain {
                 + " [--generators AST,Parser,Mapper,Evaluator,LSP,Launcher,DAP,DAPLauncher]"
                 + " [--validate-only]"
                 + " [--report-format text|json]"
+                + " [--report-file <path>]"
         );
     }
 
     private record ValidationRow(String grammar, String code, String message, String hint) {}
 
-    private static String toJsonReport(List<ValidationRow> rows) {
+    private static String toValidationJsonReport(List<ValidationRow> rows) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"ok\":false,\"issueCount\":").append(rows.size()).append(",\"issues\":[");
         for (int i = 0; i < rows.size(); i++) {
@@ -180,6 +212,19 @@ public class CodegenMain {
         return sb.toString();
     }
 
+    private static String toGenerationJsonReport(int grammarCount, List<String> generatedFiles) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"ok\":true,\"grammarCount\":").append(grammarCount)
+            .append(",\"generatedCount\":").append(generatedFiles.size())
+            .append(",\"generatedFiles\":[");
+        for (int i = 0; i < generatedFiles.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append("\"").append(escapeJson(generatedFiles.get(i))).append("\"");
+        }
+        sb.append("]}");
+        return sb.toString();
+    }
+
     private static String escapeJson(String s) {
         return s
             .replace("\\", "\\\\")
@@ -187,5 +232,17 @@ public class CodegenMain {
             .replace("\n", "\\n")
             .replace("\r", "\\r")
             .replace("\t", "\\t");
+    }
+
+    private static void writeReportIfNeeded(String reportFile, String content) throws IOException {
+        if (reportFile == null) {
+            return;
+        }
+        Path reportPath = Path.of(reportFile);
+        Path parent = reportPath.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+        Files.writeString(reportPath, content);
     }
 }

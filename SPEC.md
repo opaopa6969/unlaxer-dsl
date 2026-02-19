@@ -81,6 +81,8 @@ Current behavior:
 - Validation failures are aggregated across grammar blocks and reported in one error.
 - `--validate-only` runs grammar validation without writing generated sources.
 - `--report-format json` emits machine-readable validation output (especially useful with `--validate-only`).
+- `--report-file <path>` writes the final report payload (text/json) to a file.
+- In normal generation mode with `--report-format json`, CLI emits generation summary (`generatedCount`, `generatedFiles`).
 
 ## LSP / DAP Expectations
 

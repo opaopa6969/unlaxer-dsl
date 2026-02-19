@@ -254,4 +254,59 @@ public class CodegenMainTest {
             assertTrue(msg.contains("\"issues\":["));
         }
     }
+
+    @Test
+    public void testValidateOnlyJsonWritesReportFile() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-validate-only-json-file", ".ubnf");
+        Path reportFile = Files.createTempFile("codegen-main-report", ".json");
+        Files.writeString(grammarFile, source);
+
+        CodegenMain.main(new String[] {
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "json",
+            "--report-file", reportFile.toString()
+        });
+
+        String report = Files.readString(reportFile).trim();
+        assertEquals("{\"ok\":true,\"grammarCount\":1,\"issues\":[]}", report);
+    }
+
+    @Test
+    public void testGenerationJsonReportIncludesGeneratedFiles() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-generate-json", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-generate-json-out");
+        Path reportFile = Files.createTempFile("codegen-main-generate-report", ".json");
+        Files.writeString(grammarFile, source);
+
+        CodegenMain.main(new String[] {
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--report-format", "json",
+            "--report-file", reportFile.toString()
+        });
+
+        String report = Files.readString(reportFile);
+        assertTrue(report.contains("\"ok\":true"));
+        assertTrue(report.contains("\"generatedCount\":1"));
+        assertTrue(report.contains("\"generatedFiles\":["));
+        assertTrue(report.contains("ValidAST.java"));
+    }
 }

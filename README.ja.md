@@ -1005,12 +1005,24 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
   --validate-only
 ```
 
+機械可読レポート出力:
+
+```bash
+java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
+  --grammar path/to/my.ubnf \
+  --validate-only \
+  --report-format json \
+  --report-file build/validation-report.json
+```
+
 | オプション | 説明 | デフォルト |
 |---|---|---|
 | `--grammar <file>` | `.ubnf` ファイルのパス | （必須） |
 | `--output <dir>` | 出力ルートディレクトリ（package 構造で書き出す） | `--validate-only` 以外では必須 |
 | `--generators <list>` | カンマ区切りの生成器名 | `Parser,LSP,Launcher` |
 | `--validate-only` | 文法検証のみ実行（コード生成をスキップ） | `false` |
+| `--report-format text\|json` | 出力/レポート形式 | `text` |
+| `--report-file <path>` | レポート内容をファイル出力 | （なし） |
 
 使用可能な生成器名: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 

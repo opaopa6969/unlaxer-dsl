@@ -805,12 +805,24 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
   --validate-only
 ```
 
+Machine-readable report:
+
+```bash
+java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
+  --grammar path/to/my.ubnf \
+  --validate-only \
+  --report-format json \
+  --report-file build/validation-report.json
+```
+
 | Option | Description | Default |
 |---|---|---|
 | `--grammar <file>` | Path to `.ubnf` file | (required) |
 | `--output <dir>` | Output root directory (written with package structure) | required unless `--validate-only` |
 | `--generators <list>` | Comma-separated generator names | `Parser,LSP,Launcher` |
 | `--validate-only` | Run grammar validation only (skip code generation) | `false` |
+| `--report-format text\|json` | Output/report format | `text` |
+| `--report-file <path>` | Write report payload to a file | (none) |
 
 Available generator names: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 
