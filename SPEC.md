@@ -92,6 +92,69 @@ Current behavior:
   `severityCounts` and `categoryCounts`.
 - Validation `issues[]` order is deterministic (sorted by `grammar`, `rule`, `code`, `message`).
 
+### JSON Report Examples
+
+Validate success:
+
+```json
+{
+  "reportVersion": 1,
+  "toolVersion": "0.1.0-SNAPSHOT",
+  "generatedAt": "2026-02-19T08:15:39.010669617Z",
+  "mode": "validate",
+  "ok": true,
+  "grammarCount": 1,
+  "issues": []
+}
+```
+
+Validate failure:
+
+```json
+{
+  "reportVersion": 1,
+  "toolVersion": "0.1.0-SNAPSHOT",
+  "generatedAt": "2026-02-19T08:15:39.010669617Z",
+  "mode": "validate",
+  "ok": false,
+  "issueCount": 1,
+  "severityCounts": {
+    "ERROR": 1
+  },
+  "categoryCounts": {
+    "MAPPING": 1
+  },
+  "issues": [
+    {
+      "grammar": "Invalid",
+      "rule": "Invalid",
+      "code": "E-MAPPING-MISSING-CAPTURE",
+      "severity": "ERROR",
+      "category": "MAPPING",
+      "message": "rule Invalid @mapping(RootNode) param 'missing' has no matching capture",
+      "hint": "Add @missing capture in the rule body or remove it from params."
+    }
+  ]
+}
+```
+
+Generate success:
+
+```json
+{
+  "reportVersion": 1,
+  "toolVersion": "0.1.0-SNAPSHOT",
+  "generatedAt": "2026-02-19T08:15:39.010669617Z",
+  "mode": "generate",
+  "ok": true,
+  "grammarCount": 1,
+  "generatedCount": 1,
+  "generatedFiles": [
+    "/path/to/out/org/example/valid/ValidAST.java"
+  ]
+}
+```
+
 ## LSP / DAP Expectations
 
 ### LSP

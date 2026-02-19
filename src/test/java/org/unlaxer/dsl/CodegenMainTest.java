@@ -319,6 +319,36 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testValidateOnlyJsonFailureReportIncludesAggregateCounts() throws Exception {
+        String source = """
+            grammar Invalid {
+              @package: org.example.invalid
+              @root
+              @mapping(RootNode, params=[value, missing])
+              @whitespace(custom)
+              Invalid ::= 'x' @value ;
+            }
+            """;
+
+        Path grammarFile = Files.createTempFile("codegen-main-validate-only-json-invalid-counts", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        try {
+            CodegenMain.main(new String[] {
+                "--grammar", grammarFile.toString(),
+                "--validate-only",
+                "--report-format", "json"
+            });
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            assertTrue(msg.contains("\"issueCount\":2"));
+            assertTrue(msg.contains("\"severityCounts\":{\"ERROR\":2}"));
+            assertTrue(msg.contains("\"categoryCounts\":{\"MAPPING\":1,\"WHITESPACE\":1}"));
+        }
+    }
+
+    @Test
     public void testValidateOnlyJsonWritesReportFile() throws Exception {
         String source = """
             grammar Valid {
