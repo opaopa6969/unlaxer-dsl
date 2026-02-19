@@ -83,6 +83,7 @@ Current behavior:
 - `--report-format json` emits machine-readable validation output (especially useful with `--validate-only`).
 - `--report-file <path>` writes the final report payload (text/json) to a file.
 - In normal generation mode with `--report-format json`, CLI emits generation summary (`generatedCount`, `generatedFiles`).
+- JSON report schema includes stable top-level fields: `reportVersion` and `mode` (`validate` or `generate`).
 
 ## LSP / DAP Expectations
 

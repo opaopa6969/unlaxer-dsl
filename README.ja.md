@@ -1015,6 +1015,9 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
   --report-file build/validation-report.json
 ```
 
+JSON レポートは安定したトップレベル項目として
+`reportVersion` と `mode`（`validate` / `generate`）を常に含む。
+
 | オプション | 説明 | デフォルト |
 |---|---|---|
 | `--grammar <file>` | `.ubnf` ファイルのパス | （必須） |

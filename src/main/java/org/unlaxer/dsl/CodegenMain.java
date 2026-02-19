@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
  * CLI tool that reads UBNF grammars and generates Java sources.
  */
 public class CodegenMain {
+    private static final int REPORT_VERSION = 1;
 
     public static void main(String[] args) throws IOException {
         String grammarFile = null;
@@ -138,7 +139,8 @@ public class CodegenMain {
         }
         if (validateOnly) {
             if ("json".equals(reportFormat)) {
-                String json = "{\"ok\":true,\"grammarCount\":" + file.grammars().size() + ",\"issues\":[]}";
+                String json = "{\"reportVersion\":" + REPORT_VERSION + ",\"mode\":\"validate\","
+                    + "\"ok\":true,\"grammarCount\":" + file.grammars().size() + ",\"issues\":[]}";
                 System.out.println(json);
                 writeReportIfNeeded(reportFile, json);
             } else {
@@ -197,7 +199,9 @@ public class CodegenMain {
 
     private static String toValidationJsonReport(List<ValidationRow> rows) {
         StringBuilder sb = new StringBuilder();
-        sb.append("{\"ok\":false,\"issueCount\":").append(rows.size()).append(",\"issues\":[");
+        sb.append("{\"reportVersion\":").append(REPORT_VERSION)
+            .append(",\"mode\":\"validate\",\"ok\":false,\"issueCount\":")
+            .append(rows.size()).append(",\"issues\":[");
         for (int i = 0; i < rows.size(); i++) {
             ValidationRow row = rows.get(i);
             if (i > 0) sb.append(",");
@@ -214,7 +218,8 @@ public class CodegenMain {
 
     private static String toGenerationJsonReport(int grammarCount, List<String> generatedFiles) {
         StringBuilder sb = new StringBuilder();
-        sb.append("{\"ok\":true,\"grammarCount\":").append(grammarCount)
+        sb.append("{\"reportVersion\":").append(REPORT_VERSION)
+            .append(",\"mode\":\"generate\",\"ok\":true,\"grammarCount\":").append(grammarCount)
             .append(",\"generatedCount\":").append(generatedFiles.size())
             .append(",\"generatedFiles\":[");
         for (int i = 0; i < generatedFiles.size(); i++) {

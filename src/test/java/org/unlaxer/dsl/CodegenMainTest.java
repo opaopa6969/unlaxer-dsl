@@ -222,7 +222,7 @@ public class CodegenMainTest {
         }
 
         String out = baos.toString().trim();
-        assertEquals("{\"ok\":true,\"grammarCount\":1,\"issues\":[]}", out);
+        assertEquals("{\"reportVersion\":1,\"mode\":\"validate\",\"ok\":true,\"grammarCount\":1,\"issues\":[]}", out);
     }
 
     @Test
@@ -248,7 +248,7 @@ public class CodegenMainTest {
             fail("expected validation error");
         } catch (IllegalArgumentException e) {
             String msg = e.getMessage();
-            assertTrue(msg.startsWith("{\"ok\":false"));
+            assertTrue(msg.startsWith("{\"reportVersion\":1,\"mode\":\"validate\",\"ok\":false"));
             assertTrue(msg.contains("\"grammar\":\"Invalid\""));
             assertTrue(msg.contains("\"code\":\"E-MAPPING-MISSING-CAPTURE\""));
             assertTrue(msg.contains("\"issues\":["));
@@ -277,7 +277,7 @@ public class CodegenMainTest {
         });
 
         String report = Files.readString(reportFile).trim();
-        assertEquals("{\"ok\":true,\"grammarCount\":1,\"issues\":[]}", report);
+        assertEquals("{\"reportVersion\":1,\"mode\":\"validate\",\"ok\":true,\"grammarCount\":1,\"issues\":[]}", report);
     }
 
     @Test
@@ -305,6 +305,8 @@ public class CodegenMainTest {
 
         String report = Files.readString(reportFile);
         assertTrue(report.contains("\"ok\":true"));
+        assertTrue(report.contains("\"reportVersion\":1"));
+        assertTrue(report.contains("\"mode\":\"generate\""));
         assertTrue(report.contains("\"generatedCount\":1"));
         assertTrue(report.contains("\"generatedFiles\":["));
         assertTrue(report.contains("ValidAST.java"));

@@ -815,6 +815,9 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
   --report-file build/validation-report.json
 ```
 
+JSON reports always include stable top-level fields:
+`reportVersion` and `mode` (`validate` or `generate`).
+
 | Option | Description | Default |
 |---|---|---|
 | `--grammar <file>` | Path to `.ubnf` file | (required) |
