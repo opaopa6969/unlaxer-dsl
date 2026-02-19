@@ -1,0 +1,301 @@
+package org.example.snapshot;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import org.eclipse.lsp4j.debug.*;
+import org.eclipse.lsp4j.debug.services.*;
+import org.unlaxer.Parsed;
+import org.unlaxer.StringSource;
+import org.unlaxer.Token;
+import org.unlaxer.context.ParseContext;
+import org.unlaxer.parser.Parser;
+
+public class SnapshotDebugAdapter implements IDebugProtocolServer {
+
+    private IDebugProtocolClient client;
+    private String pendingProgram;
+    private boolean stopOnEntry;
+    private String sourceContent = "";
+    private List<Token> stepPoints = new ArrayList<>();
+    private int stepIndex = 0;
+    private Set<Integer> breakpointLines = new HashSet<>();
+
+    public void connect(IDebugProtocolClient client) {
+        this.client = client;
+    }
+
+    @Override
+    public CompletableFuture<Capabilities> initialize(InitializeRequestArguments args) {
+        Capabilities cap = new Capabilities();
+        cap.setSupportsConfigurationDoneRequest(true);
+        return CompletableFuture.completedFuture(cap);
+    }
+
+    @Override
+    public CompletableFuture<Void> launch(Map<String, Object> args) {
+        pendingProgram = (String) args.getOrDefault("program", "");
+        stopOnEntry = Boolean.TRUE.equals(args.get("stopOnEntry"));
+        client.initialized();
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletableFuture<Void> configurationDone(ConfigurationDoneArguments args) {
+        if (!parseAndCollectSteps()) {
+            return CompletableFuture.completedFuture(null); // error already sent
+        }
+        if (stopOnEntry && !stepPoints.isEmpty()) {
+            StoppedEventArguments stopped = new StoppedEventArguments();
+            stopped.setReason("entry");
+            stopped.setThreadId(1);
+            stopped.setAllThreadsStopped(true);
+            client.stopped(stopped);
+        } else if (!breakpointLines.isEmpty()) {
+            // run to first breakpoint
+            int bp = findBreakpointIndex(-1);
+            if (bp >= 0) {
+                stepIndex = bp;
+                StoppedEventArguments stopped = new StoppedEventArguments();
+                stopped.setReason("breakpoint");
+                stopped.setThreadId(1);
+                stopped.setAllThreadsStopped(true);
+                client.stopped(stopped);
+            } else {
+                sendOutput("stdout", "Parsed successfully: " + pendingProgram + "\n");
+                sendTerminated();
+            }
+        } else {
+            sendOutput("stdout", "Parsed successfully: " + pendingProgram + "\n");
+            sendTerminated();
+        }
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletableFuture<SetBreakpointsResponse> setBreakpoints(SetBreakpointsArguments args) {
+        breakpointLines.clear();
+        SetBreakpointsResponse response = new SetBreakpointsResponse();
+        SourceBreakpoint[] requested = args.getBreakpoints();
+        int count = requested == null ? 0 : requested.length;
+        Breakpoint[] breakpoints = new Breakpoint[count];
+        for (int i = 0; i < count; i++) {
+            int line = requested[i].getLine();
+            breakpointLines.add(line);
+            Breakpoint bp = new Breakpoint();
+            bp.setVerified(true);
+            bp.setLine(line);
+            breakpoints[i] = bp;
+        }
+        response.setBreakpoints(breakpoints);
+        return CompletableFuture.completedFuture(response);
+    }
+
+    @Override
+    public CompletableFuture<Void> next(NextArguments args) {
+        stepIndex++;
+        if (stepIndex >= stepPoints.size()) {
+            sendOutput("stdout", "Completed: " + pendingProgram + "\n");
+            sendTerminated();
+        } else {
+            StoppedEventArguments stopped = new StoppedEventArguments();
+            stopped.setReason("step");
+            stopped.setThreadId(1);
+            stopped.setAllThreadsStopped(true);
+            client.stopped(stopped);
+        }
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletableFuture<ContinueResponse> continue_(ContinueArguments args) {
+        ContinueResponse response = new ContinueResponse();
+        response.setAllThreadsContinued(true);
+        int bp = findBreakpointIndex(stepIndex);
+        if (bp >= 0) {
+            stepIndex = bp;
+            StoppedEventArguments stopped = new StoppedEventArguments();
+            stopped.setReason("breakpoint");
+            stopped.setThreadId(1);
+            stopped.setAllThreadsStopped(true);
+            client.stopped(stopped);
+        } else {
+            sendOutput("stdout", "Completed: " + pendingProgram + "\n");
+            sendTerminated();
+        }
+        return CompletableFuture.completedFuture(response);
+    }
+
+    @Override
+    public CompletableFuture<ThreadsResponse> threads() {
+        ThreadsResponse response = new ThreadsResponse();
+        org.eclipse.lsp4j.debug.Thread thread = new org.eclipse.lsp4j.debug.Thread();
+        thread.setId(1);
+        thread.setName("main");
+        response.setThreads(new org.eclipse.lsp4j.debug.Thread[]{thread});
+        return CompletableFuture.completedFuture(response);
+    }
+
+    @Override
+    public CompletableFuture<StackTraceResponse> stackTrace(StackTraceArguments args) {
+        StackTraceResponse response = new StackTraceResponse();
+        if (!stepPoints.isEmpty() && stepIndex < stepPoints.size()) {
+            Token current = stepPoints.get(stepIndex);
+            int charOffset = current.source.offsetFromRoot().value();
+            int line = 0, col = 0;
+            for (int i = 0; i < charOffset && i < sourceContent.length(); i++) {
+                if (sourceContent.charAt(i) == '\n') { line++; col = 0; }
+                else { col++; }
+            }
+            StackFrame frame = new StackFrame();
+            frame.setId(0);
+            frame.setName("step " + (stepIndex + 1) + "/" + stepPoints.size());
+            frame.setLine(line + 1);   // DAP は 1-based
+            frame.setColumn(col + 1);
+            Source source = new Source();
+            source.setPath(pendingProgram);
+            source.setName(Path.of(pendingProgram).getFileName().toString());
+            frame.setSource(source);
+            response.setStackFrames(new StackFrame[]{frame});
+        } else if (pendingProgram != null && !pendingProgram.isEmpty()) {
+            StackFrame frame = new StackFrame();
+            frame.setId(0);
+            frame.setName("<program>");
+            frame.setLine(1);
+            frame.setColumn(0);
+            Source source = new Source();
+            source.setPath(pendingProgram);
+            frame.setSource(source);
+            response.setStackFrames(new StackFrame[]{frame});
+        } else {
+            response.setStackFrames(new StackFrame[0]);
+        }
+        return CompletableFuture.completedFuture(response);
+    }
+
+    @Override
+    public CompletableFuture<ScopesResponse> scopes(ScopesArguments args) {
+        ScopesResponse response = new ScopesResponse();
+        if (!stepPoints.isEmpty() && stepIndex < stepPoints.size()) {
+            Scope scope = new Scope();
+            scope.setName("Current Token");
+            scope.setVariablesReference(1);
+            scope.setExpensive(false);
+            response.setScopes(new Scope[]{scope});
+        } else {
+            response.setScopes(new Scope[0]);
+        }
+        return CompletableFuture.completedFuture(response);
+    }
+
+    @Override
+    public CompletableFuture<VariablesResponse> variables(VariablesArguments args) {
+        VariablesResponse response = new VariablesResponse();
+        if (!stepPoints.isEmpty() && stepIndex < stepPoints.size()) {
+            Token current = stepPoints.get(stepIndex);
+            String text = current.source.sourceAsString().strip();
+            String parserName = current.getParser().getClass().getSimpleName();
+            Variable var = new Variable();
+            var.setName(parserName);
+            var.setValue("\"" + text.replace("\"", "\\\"") + "\"");
+            var.setType("Token");
+            var.setVariablesReference(0);
+            response.setVariables(new Variable[]{var});
+        } else {
+            response.setVariables(new Variable[0]);
+        }
+        return CompletableFuture.completedFuture(response);
+    }
+
+    @Override
+    public CompletableFuture<Void> disconnect(DisconnectArguments args) {
+        System.exit(0);
+        return CompletableFuture.completedFuture(null);
+    }
+
+    private boolean parseAndCollectSteps() {
+        if (pendingProgram == null || pendingProgram.isEmpty()) {
+            sendOutput("stderr", "No program specified\n");
+            sendTerminated();
+            return false;
+        }
+        try {
+            sourceContent = Files.readString(Path.of(pendingProgram));
+        } catch (IOException e) {
+            sendOutput("stderr", "Cannot read file: " + pendingProgram + "\n");
+            sendTerminated();
+            return false;
+        }
+        Parser parser = SnapshotParsers.getRootParser();
+        ParseContext context = new ParseContext(StringSource.createRootSource(sourceContent));
+        Parsed result = parser.parse(context);
+        context.close();
+        boolean fullParse = result.isSucceeded() &&
+            result.getConsumed().source.sourceAsString().length() == sourceContent.length();
+        if (!fullParse) {
+            int offset = result.isSucceeded()
+                ? result.getConsumed().source.sourceAsString().length() : 0;
+            sendOutput("stderr", "Parse error at offset " + offset + "\n");
+            sendTerminated();
+            return false;
+        }
+        stepPoints = new ArrayList<>();
+        collectStepPoints(result.getConsumed(), stepPoints);
+        if (stepPoints.isEmpty()) {
+            stepPoints.add(result.getConsumed()); // fallback: root token
+        }
+        stepIndex = 0;
+        return true;
+    }
+
+    private void collectStepPoints(Token token, List<Token> out) {
+        if (token == null) return;
+        if (token.filteredChildren == null || token.filteredChildren.isEmpty()) {
+            out.add(token);
+            return;
+        }
+        for (Token child : token.filteredChildren) {
+            collectStepPoints(child, out);
+        }
+    }
+
+    private int getLineForToken(Token t) {
+        int charOffset = t.source.offsetFromRoot().value();
+        int line = 1;
+        for (int i = 0; i < charOffset && i < sourceContent.length(); i++) {
+            if (sourceContent.charAt(i) == '\n') { line++; }
+        }
+        return line;
+    }
+
+    private int findBreakpointIndex(int fromIndex) {
+        for (int i = fromIndex + 1; i < stepPoints.size(); i++) {
+            if (breakpointLines.contains(getLineForToken(stepPoints.get(i)))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void sendOutput(String category, String output) {
+        if (client == null) return;
+        OutputEventArguments event = new OutputEventArguments();
+        event.setCategory(category);
+        event.setOutput(output);
+        client.output(event);
+    }
+
+    private void sendTerminated() {
+        if (client == null) return;
+        client.terminated(new TerminatedEventArguments());
+        ExitedEventArguments exited = new ExitedEventArguments();
+        exited.setExitCode(0);
+        client.exited(exited);
+    }
+}

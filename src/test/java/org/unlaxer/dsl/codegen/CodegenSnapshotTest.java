@@ -90,6 +90,14 @@ public class CodegenSnapshotTest {
         assertEquals(normalize(expected), normalize(actual));
     }
 
+    @Test
+    public void testDapGeneratorSnapshot() throws Exception {
+        GrammarDecl grammar = parseGrammar(SNAPSHOT_GRAMMAR);
+        String actual = new DAPGenerator().generate(grammar).source();
+        String expected = Files.readString(Path.of("src/test/resources/golden/dap_snapshot.java.txt"));
+        assertEquals(normalize(expected), normalize(actual));
+    }
+
     private GrammarDecl parseGrammar(String source) {
         return UBNFMapper.parse(source).grammars().get(0);
     }
