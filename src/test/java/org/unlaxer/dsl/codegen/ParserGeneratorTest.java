@@ -244,9 +244,11 @@ public class ParserGeneratorTest {
         assertTrue("should generate precedence lookup",
             source.contains("getPrecedence(String ruleName)"));
         assertTrue("should map Expr precedence",
-            source.contains("case \"Expr\" -> PRECEDENCE_EXPR;"));
-        assertTrue("should map Expr associativity to RIGHT",
-            source.contains("case \"Expr\" -> Assoc.RIGHT;"));
+            source.contains("new OperatorSpec(\"Expr\", 30, Assoc.RIGHT)"));
+        assertTrue("should generate operator spec lookup API",
+            source.contains("getOperatorSpec(String ruleName)"));
+        assertTrue("should generate operator rule predicate",
+            source.contains("isOperatorRule(String ruleName)"));
         assertTrue("should generate operator spec table",
             source.contains("getOperatorSpecs()"));
     }

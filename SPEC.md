@@ -54,6 +54,7 @@ Current behavior:
 - Parser generator emits `PRECEDENCE_<RULE_NAME>` constants for annotated rules.
 - Parser generator emits operator metadata APIs: `getPrecedence(ruleName)` and `getAssociativity(ruleName)`.
 - Parser generator emits sorted operator specs: `getOperatorSpecs()`.
+- Parser generator emits `OperatorSpec` lookup helpers: `getOperatorSpec(ruleName)` and `isOperatorRule(ruleName)`.
 
 ### `@whitespace`
 
