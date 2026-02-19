@@ -240,17 +240,7 @@ public class LSPGenerator implements CodeGenerator {
         sb.append("            if (state == null) {\n");
         sb.append("                return CompletableFuture.completedFuture(new SemanticTokens(Collections.emptyList()));\n");
         sb.append("            }\n");
-        sb.append("            List<Integer> data = new ArrayList<>();\n");
-        sb.append("            String content = state.content();\n");
-        sb.append("            int validEnd = state.parseResult().consumedLength();\n");
-        sb.append("            if (validEnd > 0) {\n");
-        sb.append("                data.add(0); data.add(0); data.add(validEnd); data.add(0); data.add(0);\n");
-        sb.append("            }\n");
-        sb.append("            if (validEnd < content.length()) {\n");
-        sb.append("                int invalidLength = content.length() - validEnd;\n");
-        sb.append("                data.add(0); data.add(validEnd); data.add(invalidLength); data.add(1); data.add(0);\n");
-        sb.append("            }\n");
-        sb.append("            return CompletableFuture.completedFuture(new SemanticTokens(data));\n");
+        sb.append("            return CompletableFuture.completedFuture(new SemanticTokens(Collections.emptyList()));\n");
         sb.append("        }\n");
         sb.append("    }\n\n");
 

@@ -50,23 +50,30 @@ public class EvaluatorGenerator implements CodeGenerator {
         sb.append("    }\n\n");
 
         // evalInternal（sealed switch dispatch）
-        sb.append("    private T evalInternal(").append(astClass).append(" node) {\n");
-        sb.append("        return switch (node) {\n");
-        for (String name : classNames) {
-            String methodName = "eval" + name;
-            sb.append("            case ").append(astClass).append(".").append(name)
-              .append(" n -> ").append(methodName).append("(n);\n");
-        }
-        sb.append("        };\n");
-        sb.append("    }\n\n");
+        if (classNames.isEmpty()) {
+            sb.append("    private T evalInternal(").append(astClass).append(" node) {\n");
+            sb.append("        throw new UnsupportedOperationException(\"No mapping classes for evaluation\");\n");
+            sb.append("    }\n\n");
+        } else {
+            // evalInternal（sealed switch dispatch）
+            sb.append("    private T evalInternal(").append(astClass).append(" node) {\n");
+            sb.append("        return switch (node) {\n");
+            for (String name : classNames) {
+                String methodName = "eval" + name;
+                sb.append("            case ").append(astClass).append(".").append(name)
+                  .append(" n -> ").append(methodName).append("(n);\n");
+            }
+            sb.append("        };\n");
+            sb.append("    }\n\n");
 
-        // 抽象メソッド群
-        for (String name : classNames) {
-            String methodName = "eval" + name;
-            sb.append("    protected abstract T ").append(methodName).append("(")
-              .append(astClass).append(".").append(name).append(" node);\n");
+            // 抽象メソッド群
+            for (String name : classNames) {
+                String methodName = "eval" + name;
+                sb.append("    protected abstract T ").append(methodName).append("(")
+                  .append(astClass).append(".").append(name).append(" node);\n");
+            }
+            sb.append("\n");
         }
-        sb.append("\n");
 
         // DebugStrategy inner interface
         sb.append("    // =========================================================================\n");

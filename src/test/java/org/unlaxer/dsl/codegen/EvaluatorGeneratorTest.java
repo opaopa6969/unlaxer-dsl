@@ -182,6 +182,21 @@ public class EvaluatorGeneratorTest {
             source.contains("protected abstract T evalBinaryExpr("));
     }
 
+    @Test
+    public void testNoMappingGrammarGeneratesFallbackEvalInternal() {
+        String noMappingGrammar =
+            "grammar Plain {\n" +
+            "  @package: org.example.generated\n" +
+            "  @root\n" +
+            "  Plain ::= 'ok' ;\n" +
+            "}";
+        GrammarDecl grammar = parseGrammar(noMappingGrammar);
+        EvaluatorGenerator gen = new EvaluatorGenerator();
+        String source = gen.generate(grammar).source();
+        assertTrue("should contain fallback exception",
+            source.contains("No mapping classes for evaluation"));
+    }
+
     // =========================================================================
     // ヘルパー
     // =========================================================================

@@ -51,7 +51,7 @@ public class ASTGenerator implements CodeGenerator {
         sb.append("\n");
 
         if (mappingRules.isEmpty()) {
-            sb.append("public sealed interface ").append(className).append(" permits {\n}\n");
+            sb.append("public interface ").append(className).append(" {}\n");
             return new GeneratedSource(packageName, className, sb.toString());
         }
 

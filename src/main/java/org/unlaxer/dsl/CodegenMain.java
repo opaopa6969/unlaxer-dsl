@@ -1,8 +1,17 @@
 package org.unlaxer.dsl;
 
 import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
+import org.unlaxer.dsl.bootstrap.UBNFAST.UBNFFile;
 import org.unlaxer.dsl.bootstrap.UBNFMapper;
-import org.unlaxer.dsl.codegen.*;
+import org.unlaxer.dsl.codegen.ASTGenerator;
+import org.unlaxer.dsl.codegen.CodeGenerator;
+import org.unlaxer.dsl.codegen.DAPGenerator;
+import org.unlaxer.dsl.codegen.DAPLauncherGenerator;
+import org.unlaxer.dsl.codegen.EvaluatorGenerator;
+import org.unlaxer.dsl.codegen.LSPGenerator;
+import org.unlaxer.dsl.codegen.LSPLauncherGenerator;
+import org.unlaxer.dsl.codegen.MapperGenerator;
+import org.unlaxer.dsl.codegen.ParserGenerator;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,17 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * コマンドラインから UBNF grammar を読み込み、指定したジェネレーターで
- * Java ソースを生成してファイルに書き出す CLI ツール。
- *
- * <pre>
- * Usage: CodegenMain --grammar &lt;file&gt; --output &lt;dir&gt; [--generators &lt;list&gt;]
- *
- *   --grammar    .ubnf ファイルのパス
- *   --output     生成先ディレクトリ（package 構造で書き出す）
- *   --generators カンマ区切りのジェネレーター名（省略時: Parser,LSP,Launcher）
- *                使用可能: AST, Parser, Mapper, Evaluator, LSP, Launcher, DAP, DAPLauncher
- * </pre>
+ * CLI tool that reads UBNF grammars and generates Java sources.
  */
 public class CodegenMain {
 
@@ -34,9 +33,30 @@ public class CodegenMain {
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
-                case "--grammar"    -> grammarFile = args[++i];
-                case "--output"     -> outputDir   = args[++i];
-                case "--generators" -> generators  = Arrays.asList(args[++i].split(","));
+                case "--grammar" -> {
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for --grammar");
+                        printUsage();
+                        System.exit(1);
+                    }
+                    grammarFile = args[++i];
+                }
+                case "--output" -> {
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for --output");
+                        printUsage();
+                        System.exit(1);
+                    }
+                    outputDir = args[++i];
+                }
+                case "--generators" -> {
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for --generators");
+                        printUsage();
+                        System.exit(1);
+                    }
+                    generators = Arrays.asList(args[++i].split(","));
+                }
                 default -> {
                     System.err.println("Unknown argument: " + args[i]);
                     printUsage();
@@ -51,42 +71,44 @@ public class CodegenMain {
         }
 
         String source = Files.readString(Path.of(grammarFile));
-        GrammarDecl grammar = UBNFMapper.parse(source).grammars().get(0);
+        UBNFFile file = UBNFMapper.parse(source);
 
         Map<String, CodeGenerator> generatorMap = new LinkedHashMap<>();
-        generatorMap.put("AST",          new ASTGenerator());
-        generatorMap.put("Parser",       new ParserGenerator());
-        generatorMap.put("Mapper",       new MapperGenerator());
-        generatorMap.put("Evaluator",    new EvaluatorGenerator());
-        generatorMap.put("LSP",          new LSPGenerator());
-        generatorMap.put("Launcher",     new LSPLauncherGenerator());
-        generatorMap.put("DAP",          new DAPGenerator());
-        generatorMap.put("DAPLauncher",  new DAPLauncherGenerator());
+        generatorMap.put("AST", new ASTGenerator());
+        generatorMap.put("Parser", new ParserGenerator());
+        generatorMap.put("Mapper", new MapperGenerator());
+        generatorMap.put("Evaluator", new EvaluatorGenerator());
+        generatorMap.put("LSP", new LSPGenerator());
+        generatorMap.put("Launcher", new LSPLauncherGenerator());
+        generatorMap.put("DAP", new DAPGenerator());
+        generatorMap.put("DAPLauncher", new DAPLauncherGenerator());
 
         Path outPath = Path.of(outputDir);
 
-        for (String name : generators) {
-            CodeGenerator gen = generatorMap.get(name.trim());
-            if (gen == null) {
-                System.err.println("Unknown generator: " + name);
-                System.err.println("Available: " + String.join(", ", generatorMap.keySet()));
-                System.exit(1);
+        for (GrammarDecl grammar : file.grammars()) {
+            for (String name : generators) {
+                String key = name.trim();
+                CodeGenerator gen = generatorMap.get(key);
+                if (gen == null) {
+                    System.err.println("Unknown generator: " + name);
+                    System.err.println("Available: " + String.join(", ", generatorMap.keySet()));
+                    System.exit(1);
+                }
+
+                CodeGenerator.GeneratedSource src = gen.generate(grammar);
+                Path pkgDir = outPath.resolve(src.packageName().replace('.', '/'));
+                Files.createDirectories(pkgDir);
+                Path javaFile = pkgDir.resolve(src.className() + ".java");
+                Files.writeString(javaFile, src.source());
+                System.out.println("Generated: " + javaFile);
             }
-
-            CodeGenerator.GeneratedSource src = gen.generate(grammar);
-
-            Path pkgDir  = outPath.resolve(src.packageName().replace('.', '/'));
-            Files.createDirectories(pkgDir);
-            Path javaFile = pkgDir.resolve(src.className() + ".java");
-            Files.writeString(javaFile, src.source());
-            System.out.println("Generated: " + javaFile);
         }
     }
 
     private static void printUsage() {
         System.err.println(
-            "Usage: CodegenMain --grammar <file.ubnf> --output <dir>" +
-            " [--generators AST,Parser,Mapper,Evaluator,LSP,Launcher,DAP,DAPLauncher]"
+            "Usage: CodegenMain --grammar <file.ubnf> --output <dir>"
+                + " [--generators AST,Parser,Mapper,Evaluator,LSP,Launcher,DAP,DAPLauncher]"
         );
     }
 }

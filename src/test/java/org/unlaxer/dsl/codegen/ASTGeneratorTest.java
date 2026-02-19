@@ -161,6 +161,21 @@ public class ASTGeneratorTest {
             source.contains("implements TinyCalcAST"));
     }
 
+    @Test
+    public void testNoMappingGrammarGeneratesPlainInterface() {
+        String noMappingGrammar =
+            "grammar Plain {\n" +
+            "  @package: org.example.generated\n" +
+            "  @root\n" +
+            "  Plain ::= 'ok' ;\n" +
+            "}";
+        GrammarDecl grammar = parseGrammar(noMappingGrammar);
+        ASTGenerator gen = new ASTGenerator();
+        String source = gen.generate(grammar).source();
+        assertTrue("should generate plain interface", source.contains("public interface PlainAST {}"));
+        assertTrue("should not generate malformed permits", !source.contains("permits {"));
+    }
+
     // =========================================================================
     // ヘルパー
     // =========================================================================

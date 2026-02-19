@@ -291,12 +291,25 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("            sendTerminated();\n");
         sb.append("            return false;\n");
         sb.append("        }\n");
-        sb.append("        stepPoints = new ArrayList<>(result.getConsumed().filteredChildren);\n");
+        sb.append("        stepPoints = new ArrayList<>();\n");
+        sb.append("        collectStepPoints(result.getConsumed(), stepPoints);\n");
         sb.append("        if (stepPoints.isEmpty()) {\n");
         sb.append("            stepPoints.add(result.getConsumed()); // fallback: root token\n");
         sb.append("        }\n");
         sb.append("        stepIndex = 0;\n");
         sb.append("        return true;\n");
+        sb.append("    }\n\n");
+
+        // collectStepPoints() - depth-first token collection
+        sb.append("    private void collectStepPoints(Token token, List<Token> out) {\n");
+        sb.append("        if (token == null) return;\n");
+        sb.append("        if (token.filteredChildren == null || token.filteredChildren.isEmpty()) {\n");
+        sb.append("            out.add(token);\n");
+        sb.append("            return;\n");
+        sb.append("        }\n");
+        sb.append("        for (Token child : token.filteredChildren) {\n");
+        sb.append("            collectStepPoints(child, out);\n");
+        sb.append("        }\n");
         sb.append("    }\n\n");
 
         // getLineForToken() - 1-based line number from char offset
