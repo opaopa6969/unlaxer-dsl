@@ -251,6 +251,8 @@ public class CodegenMainTest {
             assertTrue(msg.startsWith("{\"reportVersion\":1,\"mode\":\"validate\",\"ok\":false"));
             assertTrue(msg.contains("\"grammar\":\"Invalid\""));
             assertTrue(msg.contains("\"code\":\"E-MAPPING-MISSING-CAPTURE\""));
+            assertTrue(msg.contains("\"severity\":\"ERROR\""));
+            assertTrue(msg.contains("\"category\":\"MAPPING\""));
             assertTrue(msg.contains("\"issues\":["));
         }
     }

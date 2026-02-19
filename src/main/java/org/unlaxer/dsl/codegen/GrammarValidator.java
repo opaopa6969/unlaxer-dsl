@@ -34,6 +34,32 @@ public final class GrammarValidator {
     private GrammarValidator() {}
 
     public record ValidationIssue(String code, String message, String hint) {
+        public String severity() {
+            if (code != null && code.startsWith("W-")) {
+                return "WARNING";
+            }
+            return "ERROR";
+        }
+
+        public String category() {
+            if (code == null) {
+                return "GENERAL";
+            }
+            if (code.startsWith("E-MAPPING-")) {
+                return "MAPPING";
+            }
+            if (code.startsWith("E-ASSOC-") || code.startsWith("E-RIGHTASSOC-")) {
+                return "ASSOCIATIVITY";
+            }
+            if (code.startsWith("E-WHITESPACE-")) {
+                return "WHITESPACE";
+            }
+            if (code.startsWith("E-PRECEDENCE-")) {
+                return "PRECEDENCE";
+            }
+            return "GENERAL";
+        }
+
         public String format() {
             return message + " [code: " + code + "] [hint: " + hint + "]";
         }

@@ -120,7 +120,12 @@ public class CodegenMain {
                 for (GrammarValidator.ValidationIssue issue : issues) {
                     validationErrors.add("grammar " + grammar.name() + ": " + issue.format());
                     validationRows.add(new ValidationRow(
-                        grammar.name(), issue.code(), issue.message(), issue.hint()
+                        grammar.name(),
+                        issue.code(),
+                        issue.severity(),
+                        issue.category(),
+                        issue.message(),
+                        issue.hint()
                     ));
                 }
             }
@@ -195,7 +200,14 @@ public class CodegenMain {
         );
     }
 
-    private record ValidationRow(String grammar, String code, String message, String hint) {}
+    private record ValidationRow(
+        String grammar,
+        String code,
+        String severity,
+        String category,
+        String message,
+        String hint
+    ) {}
 
     private static String toValidationJsonReport(List<ValidationRow> rows) {
         StringBuilder sb = new StringBuilder();
@@ -208,6 +220,8 @@ public class CodegenMain {
             sb.append("{")
                 .append("\"grammar\":\"").append(escapeJson(row.grammar())).append("\",")
                 .append("\"code\":\"").append(escapeJson(row.code())).append("\",")
+                .append("\"severity\":\"").append(escapeJson(row.severity())).append("\",")
+                .append("\"category\":\"").append(escapeJson(row.category())).append("\",")
                 .append("\"message\":\"").append(escapeJson(row.message())).append("\",")
                 .append("\"hint\":\"").append(escapeJson(row.hint())).append("\"")
                 .append("}");
