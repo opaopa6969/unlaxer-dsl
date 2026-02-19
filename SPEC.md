@@ -20,7 +20,7 @@ Contract:
 
 Current behavior:
 
-- Violations fail fast during code generation (`GrammarValidator.validateOrThrow`) with a clear error message and a short fix hint.
+- Violations fail fast during code generation (`GrammarValidator.validateOrThrow`) with a clear error message, stable error code, and short fix hint.
 
 ### `@leftAssoc`
 

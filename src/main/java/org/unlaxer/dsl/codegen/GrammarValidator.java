@@ -88,23 +88,32 @@ public final class GrammarValidator {
         }
 
         if (!duplicateParams.isEmpty()) {
-            errors.add("rule " + rule.name() + " @mapping(" + mapping.className()
-                + ") has duplicate params: " + duplicateParams);
+            addError(errors,
+                "rule " + rule.name() + " @mapping(" + mapping.className()
+                    + ") has duplicate params: " + duplicateParams,
+                "Remove duplicate parameter names in @mapping params.",
+                "E-MAPPING-DUPLICATE-PARAM");
         }
 
         Set<String> captures = collectCaptureNames(rule.body());
 
         for (String param : paramSet) {
             if (!captures.contains(param)) {
-                errors.add("rule " + rule.name() + " @mapping(" + mapping.className()
-                    + ") param '" + param + "' has no matching capture");
+                addError(errors,
+                    "rule " + rule.name() + " @mapping(" + mapping.className()
+                        + ") param '" + param + "' has no matching capture",
+                    "Add @" + param + " capture in the rule body or remove it from params.",
+                    "E-MAPPING-MISSING-CAPTURE");
             }
         }
 
         for (String capture : captures) {
             if (!paramSet.contains(capture)) {
-                errors.add("rule " + rule.name() + " has capture @" + capture
-                    + " not listed in @mapping(" + mapping.className() + ") params");
+                addError(errors,
+                    "rule " + rule.name() + " has capture @" + capture
+                        + " not listed in @mapping(" + mapping.className() + ") params",
+                    "Add '" + capture + "' to @mapping params.",
+                    "E-MAPPING-UNLISTED-CAPTURE");
             }
         }
     }
@@ -120,7 +129,8 @@ public final class GrammarValidator {
         if (hasLeftAssoc && hasRightAssoc) {
             addError(errors,
                 "rule " + rule.name() + " cannot use both @leftAssoc and @rightAssoc",
-                "Keep exactly one associativity annotation per rule.");
+                "Keep exactly one associativity annotation per rule.",
+                "E-ASSOC-BOTH");
             return;
         }
 
@@ -129,7 +139,8 @@ public final class GrammarValidator {
         if (mapping == null) {
             addError(errors,
                 "rule " + rule.name() + " uses " + assocName + " but has no @mapping",
-                "Add @mapping(ClassName, params=[left, op, right]) to this rule.");
+                "Add @mapping(ClassName, params=[left, op, right]) to this rule.",
+                "E-ASSOC-NO-MAPPING");
         } else {
             Set<String> params = new LinkedHashSet<>(mapping.paramNames());
             for (String required : List.of("left", "op", "right")) {
@@ -137,7 +148,8 @@ public final class GrammarValidator {
                     addError(errors,
                         "rule " + rule.name() + " uses " + assocName + " but @mapping("
                             + mapping.className() + ") params does not contain '" + required + "'",
-                        "Include left/op/right in @mapping params.");
+                        "Include left/op/right in @mapping params.",
+                        "E-ASSOC-MAPPING-PARAM");
                 }
             }
         }
@@ -147,14 +159,16 @@ public final class GrammarValidator {
                 addError(errors,
                     "rule " + rule.name() + " uses " + assocName + " but capture @"
                         + required + " is missing",
-                    "Add @" + required + " capture in the rule body.");
+                    "Add @" + required + " capture in the rule body.",
+                    "E-ASSOC-MISSING-CAPTURE");
             }
         }
 
         if (!containsRepeat(rule.body())) {
             addError(errors,
                 "rule " + rule.name() + " uses " + assocName + " but has no repeat segment",
-                "Use canonical operator pattern: Base { Op Right }.");
+                "Use canonical operator pattern: Base { Op Right }.",
+                "E-ASSOC-NO-REPEAT");
         }
 
         if (hasRightAssoc && !isCanonicalRightAssocShape(rule)) {
@@ -162,7 +176,8 @@ public final class GrammarValidator {
                 "rule " + rule.name()
                     + " uses @rightAssoc but body is not canonical: expected Base { Op "
                     + rule.name() + " }",
-                "Rewrite right-assoc rule as Base { op " + rule.name() + " }.");
+                "Rewrite right-assoc rule as Base { op " + rule.name() + " }.",
+                "E-RIGHTASSOC-NONCANONICAL");
         }
     }
 
@@ -173,7 +188,10 @@ public final class GrammarValidator {
                 if (s.value() instanceof StringSettingValue sv) {
                     String style = sv.value().trim();
                     if (!style.equalsIgnoreCase("javaStyle")) {
-                        errors.add("global @whitespace style must be javaStyle: " + style);
+                        addError(errors,
+                            "global @whitespace style must be javaStyle: " + style,
+                            "Use '@whitespace: javaStyle'.",
+                            "E-WHITESPACE-GLOBAL-STYLE");
                     }
                 }
             });
@@ -182,8 +200,11 @@ public final class GrammarValidator {
     private static void validateRuleWhitespace(RuleDecl rule, WhitespaceAnnotation w, List<String> errors) {
         String style = w.style().orElse("javaStyle").trim();
         if (!style.equalsIgnoreCase("javaStyle") && !style.equalsIgnoreCase("none")) {
-            errors.add("rule " + rule.name() + " uses unsupported @whitespace style: " + style
-                + " (allowed: javaStyle, none)");
+            addError(errors,
+                "rule " + rule.name() + " uses unsupported @whitespace style: " + style
+                    + " (allowed: javaStyle, none)",
+                "Use @whitespace or @whitespace(none).",
+                "E-WHITESPACE-RULE-STYLE");
         }
     }
 
@@ -197,13 +218,15 @@ public final class GrammarValidator {
         if (precedenceAnnotations.size() > 1) {
             addError(errors,
                 "rule " + rule.name() + " has duplicate @precedence annotations",
-                "Keep a single @precedence(level=...) annotation.");
+                "Keep a single @precedence(level=...) annotation.",
+                "E-PRECEDENCE-DUPLICATE");
         }
         for (PrecedenceAnnotation p : precedenceAnnotations) {
             if (p.level() < 0) {
                 addError(errors,
                     "rule " + rule.name() + " has invalid @precedence level: " + p.level(),
-                    "Use a non-negative integer (e.g. @precedence(level=10)).");
+                    "Use a non-negative integer (e.g. @precedence(level=10)).",
+                    "E-PRECEDENCE-NEGATIVE");
             }
         }
         if (hasLeftAssoc && hasRightAssoc) {
@@ -213,7 +236,8 @@ public final class GrammarValidator {
         if (!precedenceAnnotations.isEmpty() && !hasLeftAssoc && !hasRightAssoc) {
             addError(errors,
                 "rule " + rule.name() + " uses @precedence but has no @leftAssoc/@rightAssoc",
-                "Add one associativity annotation alongside @precedence.");
+                "Add one associativity annotation alongside @precedence.",
+                "E-PRECEDENCE-NO-ASSOC");
         }
     }
 
@@ -244,7 +268,8 @@ public final class GrammarValidator {
                         "rule " + rule.name() + " precedence " + precedence
                             + " must be lower than referenced operator rule "
                             + refName + " precedence " + refPrecedence,
-                        "Decrease " + rule.name() + " level or increase " + refName + " level.");
+                        "Decrease " + rule.name() + " level or increase " + refName + " level.",
+                        "E-PRECEDENCE-ORDER");
                 }
             }
         }
@@ -262,7 +287,8 @@ public final class GrammarValidator {
                 addError(errors,
                     "rule " + rule.name() + " uses @" + assoc.toLowerCase()
                         + "Assoc but has no @precedence",
-                    "Add @precedence(level=...) to this operator rule.");
+                    "Add @precedence(level=...) to this operator rule.",
+                    "E-ASSOC-NO-PRECEDENCE");
                 continue;
             }
             String existing = assocByLevel.get(level);
@@ -274,13 +300,14 @@ public final class GrammarValidator {
                 addError(errors,
                     "precedence level " + level
                         + " mixes associativity: " + existing + " and " + assoc,
-                    "Use one associativity per precedence level.");
+                    "Use one associativity per precedence level.",
+                    "E-PRECEDENCE-MIXED-ASSOC");
             }
         }
     }
 
-    private static void addError(List<String> errors, String message, String hint) {
-        errors.add(message + " [hint: " + hint + "]");
+    private static void addError(List<String> errors, String message, String hint, String code) {
+        errors.add(message + " [code: " + code + "] [hint: " + hint + "]");
     }
 
     private static boolean hasAssoc(RuleDecl rule) {

@@ -219,6 +219,7 @@ public class GrammarValidatorTest {
             fail("expected validation error");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("uses @rightAssoc but has no @mapping"));
+            assertTrue(e.getMessage().contains("[code: E-ASSOC-NO-MAPPING]"));
         }
     }
 
