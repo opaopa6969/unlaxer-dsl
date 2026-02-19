@@ -44,6 +44,18 @@ public class MapperGeneratorTest {
         "    | IDENTIFIER ;\n" +
         "}";
 
+    private static final String RIGHT_ASSOC_GRAMMAR =
+        "grammar Pow {\n" +
+        "  @package: org.example.pow\n" +
+        "  token NUMBER = NumberParser\n" +
+        "  @root\n" +
+        "  @mapping(PowNode, params=[left, op, right])\n" +
+        "  @rightAssoc\n" +
+        "  @precedence(level=30)\n" +
+        "  Expr ::= Atom @left { '^' @op Expr @right } ;\n" +
+        "  Atom ::= NUMBER ;\n" +
+        "}";
+
     @Test
     public void testGeneratedPackageName() {
         GrammarDecl grammar = parseGrammar(TINYCALC_GRAMMAR);
@@ -160,6 +172,24 @@ public class MapperGeneratorTest {
         assertTrue("should mention keyword param", source.contains("keyword"));
         assertTrue("should mention name param", source.contains("name"));
         assertTrue("should mention init param", source.contains("init"));
+    }
+
+    @Test
+    public void testRightAssocMapperContainsFoldMethod() {
+        GrammarDecl grammar = parseGrammar(RIGHT_ASSOC_GRAMMAR);
+        MapperGenerator gen = new MapperGenerator();
+        String source = gen.generate(grammar).source();
+        assertTrue("should contain foldRightAssoc method",
+            source.contains("foldRightAssocPowNode"));
+    }
+
+    @Test
+    public void testRightAssocMapperUsesRightFoldInToMethod() {
+        GrammarDecl grammar = parseGrammar(RIGHT_ASSOC_GRAMMAR);
+        MapperGenerator gen = new MapperGenerator();
+        String source = gen.generate(grammar).source();
+        assertTrue("to method should call right fold",
+            source.contains("return foldRightAssocPowNode(left, ops, rights);"));
     }
 
     // =========================================================================

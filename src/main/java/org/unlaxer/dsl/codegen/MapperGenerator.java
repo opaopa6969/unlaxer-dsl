@@ -3,6 +3,7 @@ package org.unlaxer.dsl.codegen;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.LeftAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.MappingAnnotation;
+import org.unlaxer.dsl.bootstrap.UBNFAST.RightAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RootAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.StringSettingValue;
@@ -86,6 +87,7 @@ public class MapperGenerator implements CodeGenerator {
             RuleDecl rule = entry.getValue();
             MappingAnnotation mapping = getMappingAnnotation(rule).orElseThrow();
             boolean leftAssoc = isLeftAssocRule(rule, mapping);
+            boolean rightAssoc = isRightAssocRule(rule, mapping);
             String methodName = "to" + className;
 
             sb.append("    static ").append(astClass).append(".").append(className)
@@ -98,6 +100,13 @@ public class MapperGenerator implements CodeGenerator {
                 sb.append("        List<String> ops = List.of();\n");
                 sb.append("        List<").append(astClass).append(".").append(className).append("> rights = List.of();\n");
                 sb.append("        return foldLeftAssoc").append(className).append("(left, ops, rights);\n");
+            } else if (rightAssoc) {
+                sb.append("        // TODO: extract left seed node from token\n");
+                sb.append("        // TODO: extract repeated operators and right operands from token\n");
+                sb.append("        ").append(astClass).append(".").append(className).append(" left = null;\n");
+                sb.append("        List<String> ops = List.of();\n");
+                sb.append("        List<").append(astClass).append(".").append(className).append("> rights = List.of();\n");
+                sb.append("        return foldRightAssoc").append(className).append("(left, ops, rights);\n");
             } else {
                 for (String param : mapping.paramNames()) {
                     sb.append("        // TODO: extract ").append(param).append("\n");
@@ -139,6 +148,35 @@ public class MapperGenerator implements CodeGenerator {
             sb.append("    }\n\n");
         }
 
+        for (Map.Entry<String, RuleDecl> entry : mappingRules.entrySet()) {
+            String className = entry.getKey();
+            RuleDecl rule = entry.getValue();
+            MappingAnnotation mapping = getMappingAnnotation(rule).orElseThrow();
+            if (!isRightAssocRule(rule, mapping)) {
+                continue;
+            }
+
+            sb.append("    static ").append(astClass).append(".").append(className)
+              .append(" foldRightAssoc").append(className).append("(\n");
+            sb.append("        ").append(astClass).append(".").append(className).append(" left,\n");
+            sb.append("        List<String> ops,\n");
+            sb.append("        List<").append(astClass).append(".").append(className).append("> rights\n");
+            sb.append("    ) {\n");
+            sb.append("        if (left == null) return null;\n");
+            sb.append("        if (ops.size() != rights.size()) {\n");
+            sb.append("            throw new IllegalArgumentException(\"ops/rights length mismatch\");\n");
+            sb.append("        }\n");
+            sb.append("        if (ops.isEmpty()) return left;\n");
+            sb.append("        ").append(astClass).append(".").append(className).append(" current = rights.get(ops.size() - 1);\n");
+            sb.append("        for (int i = ops.size() - 2; i >= 0; i--) {\n");
+            sb.append("            current = new ").append(astClass).append(".").append(className)
+              .append("(rights.get(i), ops.get(i + 1), current);\n");
+            sb.append("        }\n");
+            sb.append("        return new ").append(astClass).append(".").append(className)
+              .append("(left, ops.get(0), current);\n");
+            sb.append("    }\n\n");
+        }
+
         sb.append("    // =========================================================================\n");
         sb.append("    // Utilities\n");
         sb.append("    // =========================================================================\n\n");
@@ -172,6 +210,15 @@ public class MapperGenerator implements CodeGenerator {
     private boolean isLeftAssocRule(RuleDecl rule, MappingAnnotation mapping) {
         boolean hasLeftAssoc = rule.annotations().stream().anyMatch(a -> a instanceof LeftAssocAnnotation);
         if (!hasLeftAssoc) {
+            return false;
+        }
+        List<String> params = mapping.paramNames();
+        return params.contains("left") && params.contains("op") && params.contains("right");
+    }
+
+    private boolean isRightAssocRule(RuleDecl rule, MappingAnnotation mapping) {
+        boolean hasRightAssoc = rule.annotations().stream().anyMatch(a -> a instanceof RightAssocAnnotation);
+        if (!hasRightAssoc) {
             return false;
         }
         List<String> params = mapping.paramNames();
