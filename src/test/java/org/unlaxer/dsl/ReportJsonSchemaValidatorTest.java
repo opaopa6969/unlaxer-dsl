@@ -24,6 +24,29 @@ public class ReportJsonSchemaValidatorTest {
     }
 
     @Test
+    public void testAcceptsGenerateSuccessV1() {
+        String json = ReportJsonWriter.generationSuccess(
+            1,
+            "dev",
+            "2026-01-01T00:00:00Z",
+            1,
+            List.of("org/example/ValidAST.java")
+        );
+        ReportJsonSchemaValidator.validate(1, json);
+    }
+
+    @Test
+    public void testRejectsUnsupportedVersion() {
+        String json = ReportJsonWriter.validationSuccess(1, "dev", "2026-01-01T00:00:00Z", 1);
+        try {
+            ReportJsonSchemaValidator.validate(2, json);
+            fail("expected unsupported version error");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
+    }
+
+    @Test
     public void testRejectsMissingRequiredKey() {
         String broken = "{\"reportVersion\":1,\"toolVersion\":\"dev\",\"generatedAt\":\"x\",\"mode\":\"validate\",\"ok\":true,\"issues\":[]}";
         try {

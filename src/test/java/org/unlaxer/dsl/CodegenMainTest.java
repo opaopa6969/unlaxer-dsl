@@ -542,6 +542,60 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testReportSchemaCheckOptionWithValidationFailureJson() throws Exception {
+        String source = """
+            grammar Invalid {
+              @package: org.example.invalid
+              @root
+              @mapping(RootNode, params=[value, missing])
+              Invalid ::= 'x' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-schema-check-invalid", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "json",
+            "--report-schema-check"
+        );
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        String payload = result.err().trim();
+        assertTrue(payload.startsWith("{\"reportVersion\":1,"));
+        assertTrue(payload.contains("\"mode\":\"validate\""));
+        assertTrue(payload.contains("\"ok\":false"));
+    }
+
+    @Test
+    public void testReportSchemaCheckOptionWithGenerationJson() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-schema-check-generate", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-schema-check-generate-out");
+        Path reportFile = Files.createTempFile("codegen-main-schema-check-generate-report", ".json");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--report-format", "json",
+            "--report-file", reportFile.toString(),
+            "--report-schema-check"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.out().contains("\"mode\":\"generate\""));
+        assertTrue(Files.readString(reportFile).contains("\"mode\":\"generate\""));
+    }
+
+    @Test
     public void testGeneratedAtUsesProvidedClock() throws Exception {
         String source = """
             grammar Valid {
