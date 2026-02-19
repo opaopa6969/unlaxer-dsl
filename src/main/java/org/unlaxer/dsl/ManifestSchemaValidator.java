@@ -45,16 +45,17 @@ final class ManifestSchemaValidator {
                 "files"
             )
         );
-        requireEnum(obj, "mode", Set.of("validate", "generate"));
+        String mode = requireEnum(obj, "mode", Set.of("validate", "generate"));
         requireDateTimeString(obj, "generatedAt");
         requireString(obj, "toolVersion");
         requireString(obj, "argsHash");
-        requireBoolean(obj, "ok");
-        requireNullableEnum(
+        boolean ok = requireBoolean(obj, "ok");
+        String failReason = requireNullableEnum(
             obj,
             "failReasonCode",
             Set.of("FAIL_ON_WARNING", "FAIL_ON_WARNINGS_COUNT", "FAIL_ON_SKIPPED", "FAIL_ON_CONFLICT", "FAIL_ON_CLEANED")
         );
+        requireOkFailReasonConsistency(mode, ok, failReason);
         requireIntegerMin(obj, "exitCode", 0);
         requireIntegerMin(obj, "warningsCount", 0);
         requireIntegerMin(obj, "writtenCount", 0);
@@ -113,12 +114,12 @@ final class ManifestSchemaValidator {
                         "dryRunCount"
                     )
                 );
-                requireEnum(obj, "mode", Set.of("validate", "generate"));
+                String mode = requireEnum(obj, "mode", Set.of("validate", "generate"));
                 requireDateTimeString(obj, "generatedAt");
                 requireString(obj, "toolVersion");
                 requireString(obj, "argsHash");
-                requireBoolean(obj, "ok");
-                requireNullableEnum(
+                boolean ok = requireBoolean(obj, "ok");
+                String failReason = requireNullableEnum(
                     obj,
                     "failReasonCode",
                     Set.of(
@@ -129,6 +130,7 @@ final class ManifestSchemaValidator {
                         "FAIL_ON_CLEANED"
                     )
                 );
+                requireOkFailReasonConsistency(mode, ok, failReason);
                 requireIntegerMin(obj, "exitCode", 0);
                 requireIntegerMin(obj, "warningsCount", 0);
                 requireIntegerMin(obj, "writtenCount", 0);
@@ -173,20 +175,31 @@ final class ManifestSchemaValidator {
         return (String) value;
     }
 
-    private static void requireEnum(Map<String, Object> obj, String key, Set<String> allowed) {
+    private static String requireEnum(Map<String, Object> obj, String key, Set<String> allowed) {
         String value = requireString(obj, key);
         if (!allowed.contains(value)) {
             fail("E-MANIFEST-SCHEMA-CONSTRAINT", "Unsupported value for " + key + ": " + value);
         }
+        return value;
     }
 
-    private static void requireNullableEnum(Map<String, Object> obj, String key, Set<String> allowed) {
+    private static String requireNullableEnum(Map<String, Object> obj, String key, Set<String> allowed) {
         String value = requireNullableString(obj, key);
         if (value == null) {
-            return;
+            return null;
         }
         if (!allowed.contains(value)) {
             fail("E-MANIFEST-SCHEMA-CONSTRAINT", "Unsupported value for " + key + ": " + value);
+        }
+        return value;
+    }
+
+    private static void requireOkFailReasonConsistency(String mode, boolean ok, String failReason) {
+        if (ok && failReason != null) {
+            fail("E-MANIFEST-SCHEMA-CONSTRAINT", "failReasonCode must be null when ok=true");
+        }
+        if ("generate".equals(mode) && !ok && failReason == null) {
+            fail("E-MANIFEST-SCHEMA-CONSTRAINT", "failReasonCode must be non-null when mode=generate and ok=false");
         }
     }
 

@@ -158,4 +158,32 @@ public class ReportJsonSchemaValidatorTest {
             assertEquals("E-REPORT-SCHEMA-TYPE", expected.code());
         }
     }
+
+    @Test
+    public void testRejectsGenerateOkTrueWithFailReasonCode() {
+        String broken = "{\"reportVersion\":1,\"schemaVersion\":\"1.0\",\"schemaUrl\":\"https://unlaxer.dev/schema/report-v1.json\","
+            + "\"toolVersion\":\"dev\",\"argsHash\":\"hash\",\"generatedAt\":\"2026-01-01T00:00:00Z\",\"mode\":\"generate\","
+            + "\"ok\":true,\"failReasonCode\":\"FAIL_ON_CONFLICT\",\"grammarCount\":1,\"generatedCount\":1,\"warningsCount\":0,"
+            + "\"writtenCount\":1,\"skippedCount\":0,\"conflictCount\":0,\"dryRunCount\":0,\"generatedFiles\":[\"x\"]}";
+        try {
+            ReportJsonSchemaValidator.validate(1, broken);
+            fail("expected schema validation error");
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-REPORT-SCHEMA-CONSTRAINT", expected.code());
+        }
+    }
+
+    @Test
+    public void testRejectsGenerateOkFalseWithoutFailReasonCode() {
+        String broken = "{\"reportVersion\":1,\"schemaVersion\":\"1.0\",\"schemaUrl\":\"https://unlaxer.dev/schema/report-v1.json\","
+            + "\"toolVersion\":\"dev\",\"argsHash\":\"hash\",\"generatedAt\":\"2026-01-01T00:00:00Z\",\"mode\":\"generate\","
+            + "\"ok\":false,\"failReasonCode\":null,\"grammarCount\":1,\"generatedCount\":0,\"warningsCount\":0,"
+            + "\"writtenCount\":0,\"skippedCount\":0,\"conflictCount\":1,\"dryRunCount\":0,\"generatedFiles\":[]}";
+        try {
+            ReportJsonSchemaValidator.validate(1, broken);
+            fail("expected schema validation error");
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-REPORT-SCHEMA-CONSTRAINT", expected.code());
+        }
+    }
 }

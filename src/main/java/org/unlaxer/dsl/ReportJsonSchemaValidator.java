@@ -145,12 +145,13 @@ final class ReportJsonSchemaValidator {
             requireString(obj, "argsHash");
             requireDateTimeString(obj, "generatedAt");
             requireConstString(obj, "mode", "generate");
-            requireBoolean(obj, "ok");
-            requireNullableEnum(
+            boolean generateOk = requireBoolean(obj, "ok");
+            String failReason = requireNullableEnum(
                 obj,
                 "failReasonCode",
                 Set.of("FAIL_ON_SKIPPED", "FAIL_ON_CONFLICT", "FAIL_ON_CLEANED")
             );
+            requireOkFailReasonConsistency(generateOk, failReason, true, "generate");
             requireIntegerMin(obj, "grammarCount", 0);
             requireIntegerMin(obj, "generatedCount", 0);
             requireIntegerMin(obj, "warningsCount", 0);
@@ -251,13 +252,28 @@ final class ReportJsonSchemaValidator {
         }
     }
 
-    private static void requireNullableEnum(Map<String, Object> obj, String key, Set<String> allowed) {
+    private static String requireNullableEnum(Map<String, Object> obj, String key, Set<String> allowed) {
         String value = requireNullableString(obj, key);
         if (value == null) {
-            return;
+            return null;
         }
         if (!allowed.contains(value)) {
             fail("E-REPORT-SCHEMA-CONSTRAINT", "Unsupported value for " + key + ": " + value);
+        }
+        return value;
+    }
+
+    private static void requireOkFailReasonConsistency(
+        boolean ok,
+        String failReason,
+        boolean requireFailReasonWhenNotOk,
+        String mode
+    ) {
+        if (ok && failReason != null) {
+            fail("E-REPORT-SCHEMA-CONSTRAINT", "failReasonCode must be null when ok=true");
+        }
+        if (!ok && requireFailReasonWhenNotOk && failReason == null) {
+            fail("E-REPORT-SCHEMA-CONSTRAINT", "failReasonCode must be non-null when mode=" + mode + " and ok=false");
         }
     }
 
