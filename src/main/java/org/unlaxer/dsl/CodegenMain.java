@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
@@ -220,12 +221,22 @@ public class CodegenMain {
     ) {}
 
     private static String toValidationJsonReport(List<ValidationRow> rows) {
+        Map<String, Integer> severityCounts = new TreeMap<>();
+        Map<String, Integer> categoryCounts = new TreeMap<>();
+        for (ValidationRow row : rows) {
+            severityCounts.merge(row.severity(), 1, Integer::sum);
+            categoryCounts.merge(row.category(), 1, Integer::sum);
+        }
+
         StringBuilder sb = new StringBuilder();
         sb.append("{\"reportVersion\":").append(REPORT_VERSION)
             .append(",\"toolVersion\":\"").append(escapeJson(TOOL_VERSION)).append("\"")
             .append(",\"generatedAt\":\"").append(escapeJson(Instant.now().toString())).append("\"")
             .append(",\"mode\":\"validate\",\"ok\":false,\"issueCount\":")
-            .append(rows.size()).append(",\"issues\":[");
+            .append(rows.size())
+            .append(",\"severityCounts\":").append(toCountsJson(severityCounts))
+            .append(",\"categoryCounts\":").append(toCountsJson(categoryCounts))
+            .append(",\"issues\":[");
         for (int i = 0; i < rows.size(); i++) {
             ValidationRow row = rows.get(i);
             if (i > 0) sb.append(",");
@@ -277,6 +288,21 @@ public class CodegenMain {
 
     private static String toTextIssue(ValidationRow row) {
         return row.message() + " [code: " + row.code() + "] [hint: " + row.hint() + "]";
+    }
+
+    private static String toCountsJson(Map<String, Integer> counts) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{");
+        boolean first = true;
+        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            if (!first) {
+                sb.append(",");
+            }
+            first = false;
+            sb.append("\"").append(escapeJson(entry.getKey())).append("\":").append(entry.getValue());
+        }
+        sb.append("}");
+        return sb.toString();
     }
 
     private static String resolveToolVersion() {

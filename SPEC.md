@@ -88,6 +88,8 @@ Current behavior:
 - `toolVersion` is sourced from artifact `Implementation-Version`; fallback is `dev`.
 - Validation failure `issues[]` entries include structured metadata:
   `rule`, `code`, `severity`, `category`, `message`, and `hint` (plus `grammar`).
+- Validation failure reports include aggregate summaries:
+  `severityCounts` and `categoryCounts`.
 - Validation `issues[]` order is deterministic (sorted by `grammar`, `rule`, `code`, `message`).
 
 ## LSP / DAP Expectations

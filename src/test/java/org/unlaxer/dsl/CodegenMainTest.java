@@ -266,6 +266,8 @@ public class CodegenMainTest {
             assertGeneratedAtIsIsoInstant(msg);
             assertTrue(msg.contains("\"mode\":\"validate\""));
             assertTrue(msg.contains("\"ok\":false"));
+            assertTrue(msg.contains("\"severityCounts\":{\"ERROR\":1}"));
+            assertTrue(msg.contains("\"categoryCounts\":{\"MAPPING\":1}"));
             assertTrue(msg.contains("\"grammar\":\"Invalid\""));
             assertTrue(msg.contains("\"rule\":\"Invalid\""));
             assertTrue(msg.contains("\"code\":\"E-MAPPING-MISSING-CAPTURE\""));

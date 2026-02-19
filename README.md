@@ -820,6 +820,7 @@ JSON reports always include stable top-level fields:
 `toolVersion` uses artifact `Implementation-Version` when available, otherwise `dev`.
 Validation failure entries in `issues[]` include:
 `grammar`, `rule`, `code`, `severity`, `category`, `message`, and `hint`.
+Validation failure reports also include `severityCounts` and `categoryCounts` summaries.
 
 | Option | Description | Default |
 |---|---|---|

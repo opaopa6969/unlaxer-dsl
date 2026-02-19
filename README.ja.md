@@ -1020,6 +1020,7 @@ JSON レポートは安定したトップレベル項目として
 `toolVersion` は取得可能なら artifact の `Implementation-Version`、未設定時は `dev` を使う。
 バリデーション失敗時の `issues[]` 要素は
 `grammar`, `rule`, `code`, `severity`, `category`, `message`, `hint` を含む。
+失敗レポートには `severityCounts` と `categoryCounts` の集計も含む。
 
 | オプション | 説明 | デフォルト |
 |---|---|---|
