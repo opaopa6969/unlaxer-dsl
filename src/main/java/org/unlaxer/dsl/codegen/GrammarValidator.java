@@ -33,7 +33,11 @@ public final class GrammarValidator {
 
     private GrammarValidator() {}
 
-    public record ValidationIssue(String code, String message, String hint) {
+    public record ValidationIssue(String code, String message, String hint, String rule) {
+        public ValidationIssue(String code, String message, String hint) {
+            this(code, message, hint, null);
+        }
+
         public String severity() {
             if (code != null && code.startsWith("W-")) {
                 return "WARNING";
@@ -125,7 +129,7 @@ public final class GrammarValidator {
         }
 
         if (!duplicateParams.isEmpty()) {
-            addError(errors,
+            addRuleError(errors, rule.name(),
                 "rule " + rule.name() + " @mapping(" + mapping.className()
                     + ") has duplicate params: " + duplicateParams,
                 "Remove duplicate parameter names in @mapping params.",
@@ -136,7 +140,7 @@ public final class GrammarValidator {
 
         for (String param : paramSet) {
             if (!captures.contains(param)) {
-                addError(errors,
+                addRuleError(errors, rule.name(),
                     "rule " + rule.name() + " @mapping(" + mapping.className()
                         + ") param '" + param + "' has no matching capture",
                     "Add @" + param + " capture in the rule body or remove it from params.",
@@ -146,7 +150,7 @@ public final class GrammarValidator {
 
         for (String capture : captures) {
             if (!paramSet.contains(capture)) {
-                addError(errors,
+                addRuleError(errors, rule.name(),
                     "rule " + rule.name() + " has capture @" + capture
                         + " not listed in @mapping(" + mapping.className() + ") params",
                     "Add '" + capture + "' to @mapping params.",
@@ -164,7 +168,7 @@ public final class GrammarValidator {
     ) {
         String assocName = hasRightAssoc ? "@rightAssoc" : "@leftAssoc";
         if (hasLeftAssoc && hasRightAssoc) {
-            addError(errors,
+            addRuleError(errors, rule.name(),
                 "rule " + rule.name() + " cannot use both @leftAssoc and @rightAssoc",
                 "Keep exactly one associativity annotation per rule.",
                 "E-ASSOC-BOTH");
@@ -174,7 +178,7 @@ public final class GrammarValidator {
         Set<String> captures = collectCaptureNames(rule.body());
 
         if (mapping == null) {
-            addError(errors,
+            addRuleError(errors, rule.name(),
                 "rule " + rule.name() + " uses " + assocName + " but has no @mapping",
                 "Add @mapping(ClassName, params=[left, op, right]) to this rule.",
                 "E-ASSOC-NO-MAPPING");
@@ -182,7 +186,7 @@ public final class GrammarValidator {
             Set<String> params = new LinkedHashSet<>(mapping.paramNames());
             for (String required : List.of("left", "op", "right")) {
                 if (!params.contains(required)) {
-                    addError(errors,
+                    addRuleError(errors, rule.name(),
                         "rule " + rule.name() + " uses " + assocName + " but @mapping("
                             + mapping.className() + ") params does not contain '" + required + "'",
                         "Include left/op/right in @mapping params.",
@@ -193,7 +197,7 @@ public final class GrammarValidator {
 
         for (String required : List.of("left", "op", "right")) {
             if (!captures.contains(required)) {
-                addError(errors,
+                addRuleError(errors, rule.name(),
                     "rule " + rule.name() + " uses " + assocName + " but capture @"
                         + required + " is missing",
                     "Add @" + required + " capture in the rule body.",
@@ -202,14 +206,14 @@ public final class GrammarValidator {
         }
 
         if (!containsRepeat(rule.body())) {
-            addError(errors,
+            addRuleError(errors, rule.name(),
                 "rule " + rule.name() + " uses " + assocName + " but has no repeat segment",
                 "Use canonical operator pattern: Base { Op Right }.",
                 "E-ASSOC-NO-REPEAT");
         }
 
         if (hasRightAssoc && !isCanonicalRightAssocShape(rule)) {
-            addError(errors,
+            addRuleError(errors, rule.name(),
                 "rule " + rule.name()
                     + " uses @rightAssoc but body is not canonical: expected Base { Op "
                     + rule.name() + " }",
@@ -237,7 +241,7 @@ public final class GrammarValidator {
     private static void validateRuleWhitespace(RuleDecl rule, WhitespaceAnnotation w, List<ValidationIssue> errors) {
         String style = w.style().orElse("javaStyle").trim();
         if (!style.equalsIgnoreCase("javaStyle") && !style.equalsIgnoreCase("none")) {
-            addError(errors,
+            addRuleError(errors, rule.name(),
                 "rule " + rule.name() + " uses unsupported @whitespace style: " + style
                     + " (allowed: javaStyle, none)",
                 "Use @whitespace or @whitespace(none).",
@@ -253,14 +257,14 @@ public final class GrammarValidator {
         List<ValidationIssue> errors
     ) {
         if (precedenceAnnotations.size() > 1) {
-            addError(errors,
+            addRuleError(errors, rule.name(),
                 "rule " + rule.name() + " has duplicate @precedence annotations",
                 "Keep a single @precedence(level=...) annotation.",
                 "E-PRECEDENCE-DUPLICATE");
         }
         for (PrecedenceAnnotation p : precedenceAnnotations) {
             if (p.level() < 0) {
-                addError(errors,
+                addRuleError(errors, rule.name(),
                     "rule " + rule.name() + " has invalid @precedence level: " + p.level(),
                     "Use a non-negative integer (e.g. @precedence(level=10)).",
                     "E-PRECEDENCE-NEGATIVE");
@@ -271,7 +275,7 @@ public final class GrammarValidator {
             return;
         }
         if (!precedenceAnnotations.isEmpty() && !hasLeftAssoc && !hasRightAssoc) {
-            addError(errors,
+            addRuleError(errors, rule.name(),
                 "rule " + rule.name() + " uses @precedence but has no @leftAssoc/@rightAssoc",
                 "Add one associativity annotation alongside @precedence.",
                 "E-PRECEDENCE-NO-ASSOC");
@@ -301,7 +305,7 @@ public final class GrammarValidator {
                     continue;
                 }
                 if (refPrecedence <= precedence) {
-                    addError(errors,
+                    addRuleError(errors, rule.name(),
                         "rule " + rule.name() + " precedence " + precedence
                             + " must be lower than referenced operator rule "
                             + refName + " precedence " + refPrecedence,
@@ -321,7 +325,7 @@ public final class GrammarValidator {
             }
             Integer level = findPrecedenceLevel(rule);
             if (level == null) {
-                addError(errors,
+                addRuleError(errors, rule.name(),
                     "rule " + rule.name() + " uses @" + assoc.toLowerCase()
                         + "Assoc but has no @precedence",
                     "Add @precedence(level=...) to this operator rule.",
@@ -334,13 +338,23 @@ public final class GrammarValidator {
                 continue;
             }
             if (!existing.equals(assoc)) {
-                addError(errors,
+                addRuleError(errors, rule.name(),
                     "precedence level " + level
                         + " mixes associativity: " + existing + " and " + assoc,
                     "Use one associativity per precedence level.",
                     "E-PRECEDENCE-MIXED-ASSOC");
             }
         }
+    }
+
+    private static void addRuleError(
+        List<ValidationIssue> errors,
+        String rule,
+        String message,
+        String hint,
+        String code
+    ) {
+        errors.add(new ValidationIssue(code, message, hint, rule));
     }
 
     private static void addError(List<ValidationIssue> errors, String message, String hint, String code) {

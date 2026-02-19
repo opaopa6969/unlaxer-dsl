@@ -121,6 +121,7 @@ public class CodegenMain {
                     validationErrors.add("grammar " + grammar.name() + ": " + issue.format());
                     validationRows.add(new ValidationRow(
                         grammar.name(),
+                        issue.rule(),
                         issue.code(),
                         issue.severity(),
                         issue.category(),
@@ -202,6 +203,7 @@ public class CodegenMain {
 
     private record ValidationRow(
         String grammar,
+        String rule,
         String code,
         String severity,
         String category,
@@ -219,7 +221,13 @@ public class CodegenMain {
             if (i > 0) sb.append(",");
             sb.append("{")
                 .append("\"grammar\":\"").append(escapeJson(row.grammar())).append("\",")
-                .append("\"code\":\"").append(escapeJson(row.code())).append("\",")
+                .append("\"rule\":");
+            if (row.rule() == null) {
+                sb.append("null,");
+            } else {
+                sb.append("\"").append(escapeJson(row.rule())).append("\",");
+            }
+            sb.append("\"code\":\"").append(escapeJson(row.code())).append("\",")
                 .append("\"severity\":\"").append(escapeJson(row.severity())).append("\",")
                 .append("\"category\":\"").append(escapeJson(row.category())).append("\",")
                 .append("\"message\":\"").append(escapeJson(row.message())).append("\",")

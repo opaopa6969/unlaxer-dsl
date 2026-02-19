@@ -241,6 +241,7 @@ public class GrammarValidatorTest {
         assertEquals("E-ASSOC-NO-MAPPING", issues.get(0).code());
         assertEquals("ERROR", issues.get(0).severity());
         assertEquals("ASSOCIATIVITY", issues.get(0).category());
+        assertEquals("Expr", issues.get(0).rule());
         assertTrue(issues.get(0).message().contains("uses @rightAssoc but has no @mapping"));
         assertTrue(issues.get(0).hint().contains("@mapping"));
     }

@@ -85,7 +85,7 @@ Current behavior:
 - In normal generation mode with `--report-format json`, CLI emits generation summary (`generatedCount`, `generatedFiles`).
 - JSON report schema includes stable top-level fields: `reportVersion` and `mode` (`validate` or `generate`).
 - Validation failure `issues[]` entries include structured metadata:
-  `code`, `severity`, `category`, `message`, and `hint` (plus `grammar`).
+  `rule`, `code`, `severity`, `category`, `message`, and `hint` (plus `grammar`).
 
 ## LSP / DAP Expectations
 
