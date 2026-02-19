@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URI;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 
@@ -92,7 +93,13 @@ public class DAPCompileVerificationTest {
             .toList();
 
         String classpath = System.getProperty("java.class.path");
-        List<String> options = List.of("--enable-preview", "--release", "21", "-classpath", classpath);
+        String tmpDir;
+        try {
+            tmpDir = Files.createTempDirectory("compile-verify").toString();
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
+        List<String> options = List.of("--enable-preview", "--release", "21", "-classpath", classpath, "-d", tmpDir);
 
         StringWriter diagnostics = new StringWriter();
         JavaCompiler.CompilationTask task = compiler.getTask(

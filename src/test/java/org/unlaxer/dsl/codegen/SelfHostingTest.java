@@ -196,7 +196,13 @@ public class SelfHostingTest {
         };
 
         String classpath = System.getProperty("java.class.path");
-        List<String> options = List.of("--enable-preview", "--release", "21", "-classpath", classpath);
+        String tmpDir;
+        try {
+            tmpDir = Files.createTempDirectory("compile-verify").toString();
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
+        List<String> options = List.of("--enable-preview", "--release", "21", "-classpath", classpath, "-d", tmpDir);
 
         StringWriter diag = new StringWriter();
         boolean ok = compiler.getTask(new PrintWriter(diag), fm, null, options, null, List.of(src)).call();
