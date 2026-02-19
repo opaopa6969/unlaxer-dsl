@@ -57,6 +57,7 @@ Current behavior:
 - Parser generator emits `OperatorSpec` lookup helpers: `getOperatorSpec(ruleName)` and `isOperatorRule(ruleName)`.
 - Parser generator emits precedence-step helper: `getNextHigherPrecedence(ruleName)`.
 - Parser generator emits parser-resolution helpers: `getOperatorParser(ruleName)`, `getLowestPrecedenceOperator()`, and `getLowestPrecedenceParser()`.
+- Parser generator emits precedence-level helpers: `getPrecedenceLevels()`, `getOperatorsAtPrecedence(level)`, and `getOperatorParsersAtPrecedence(level)`.
 
 ### `@whitespace`
 

@@ -828,6 +828,19 @@ public class ParserGenerator implements CodeGenerator {
         sb.append("            : java.util.Optional.of(OPERATOR_SPECS.get(0));\n");
         sb.append("    }\n\n");
 
+        sb.append("    public static java.util.List<Integer> getPrecedenceLevels() {\n");
+        sb.append("        return OPERATOR_SPECS.stream()\n");
+        sb.append("            .map(OperatorSpec::precedence)\n");
+        sb.append("            .distinct()\n");
+        sb.append("            .toList();\n");
+        sb.append("    }\n\n");
+
+        sb.append("    public static java.util.List<OperatorSpec> getOperatorsAtPrecedence(int precedence) {\n");
+        sb.append("        return OPERATOR_SPECS.stream()\n");
+        sb.append("            .filter(s -> s.precedence() == precedence)\n");
+        sb.append("            .toList();\n");
+        sb.append("    }\n\n");
+
         sb.append("    public static java.util.Optional<Parser> getOperatorParser(String ruleName) {\n");
         sb.append("        return switch (ruleName) {\n");
         for (RuleDecl rule : sorted) {
@@ -836,6 +849,14 @@ public class ParserGenerator implements CodeGenerator {
         }
         sb.append("            default -> java.util.Optional.empty();\n");
         sb.append("        };\n");
+        sb.append("    }\n\n");
+
+        sb.append("    public static java.util.List<Parser> getOperatorParsersAtPrecedence(int precedence) {\n");
+        sb.append("        return getOperatorsAtPrecedence(precedence).stream()\n");
+        sb.append("            .map(OperatorSpec::ruleName)\n");
+        sb.append("            .map(rule -> getOperatorParser(rule).orElse(null))\n");
+        sb.append("            .filter(java.util.Objects::nonNull)\n");
+        sb.append("            .toList();\n");
         sb.append("    }\n\n");
 
         sb.append("    public static java.util.Optional<Parser> getLowestPrecedenceParser() {\n");

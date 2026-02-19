@@ -253,8 +253,14 @@ public class ParserGeneratorTest {
             source.contains("getNextHigherPrecedence(String ruleName)"));
         assertTrue("should generate lowest-precedence operator helper",
             source.contains("getLowestPrecedenceOperator()"));
+        assertTrue("should generate precedence-level listing helper",
+            source.contains("getPrecedenceLevels()"));
+        assertTrue("should generate operator-at-precedence helper",
+            source.contains("getOperatorsAtPrecedence(int precedence)"));
         assertTrue("should generate operator parser resolver",
             source.contains("getOperatorParser(String ruleName)"));
+        assertTrue("should generate parser-at-precedence helper",
+            source.contains("getOperatorParsersAtPrecedence(int precedence)"));
         assertTrue("should generate lowest-precedence parser helper",
             source.contains("getLowestPrecedenceParser()"));
         assertTrue("should generate operator spec table",
