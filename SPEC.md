@@ -86,6 +86,7 @@ Current behavior:
 - JSON report schema includes stable top-level fields: `reportVersion` and `mode` (`validate` or `generate`).
 - Validation failure `issues[]` entries include structured metadata:
   `rule`, `code`, `severity`, `category`, `message`, and `hint` (plus `grammar`).
+- Validation `issues[]` order is deterministic (sorted by `grammar`, `rule`, `code`, `message`).
 
 ## LSP / DAP Expectations
 

@@ -259,6 +259,47 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testValidateOnlyJsonFailureReportIsSortedByGrammar() throws Exception {
+        String source = """
+            grammar InvalidB {
+              @package: org.example.invalid
+              @root
+              @mapping(PowNode, params=[left, op, right])
+              @rightAssoc
+              @precedence(level=30)
+              Expr ::= Atom @left { '^' @op Atom @right } ;
+              Atom ::= 'n' ;
+            }
+
+            grammar InvalidA {
+              @package: org.example.invalid
+              @root
+              @mapping(RootNode, params=[value, missing])
+              Invalid ::= 'x' @value ;
+            }
+            """;
+
+        Path grammarFile = Files.createTempFile("codegen-main-validate-only-json-invalid-sort", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        try {
+            CodegenMain.main(new String[] {
+                "--grammar", grammarFile.toString(),
+                "--validate-only",
+                "--report-format", "json"
+            });
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            int idxA = msg.indexOf("\"grammar\":\"InvalidA\"");
+            int idxB = msg.indexOf("\"grammar\":\"InvalidB\"");
+            assertTrue(idxA >= 0);
+            assertTrue(idxB >= 0);
+            assertTrue("issues should be sorted by grammar", idxA < idxB);
+        }
+    }
+
+    @Test
     public void testValidateOnlyJsonWritesReportFile() throws Exception {
         String source = """
             grammar Valid {

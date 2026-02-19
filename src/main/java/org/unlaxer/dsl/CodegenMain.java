@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -112,13 +113,11 @@ public class CodegenMain {
         generatorMap.put("DAP", new DAPGenerator());
         generatorMap.put("DAPLauncher", new DAPLauncherGenerator());
 
-        List<String> validationErrors = new ArrayList<>();
         List<ValidationRow> validationRows = new ArrayList<>();
         for (GrammarDecl grammar : file.grammars()) {
             List<GrammarValidator.ValidationIssue> issues = GrammarValidator.validate(grammar);
             if (!issues.isEmpty()) {
                 for (GrammarValidator.ValidationIssue issue : issues) {
-                    validationErrors.add("grammar " + grammar.name() + ": " + issue.format());
                     validationRows.add(new ValidationRow(
                         grammar.name(),
                         issue.rule(),
@@ -131,12 +130,16 @@ public class CodegenMain {
                 }
             }
         }
-        if (!validationErrors.isEmpty()) {
+        if (!validationRows.isEmpty()) {
+            List<ValidationRow> sortedRows = sortValidationRows(validationRows);
             if ("json".equals(reportFormat)) {
-                String json = toValidationJsonReport(validationRows);
+                String json = toValidationJsonReport(sortedRows);
                 writeReportIfNeeded(reportFile, json);
                 throw new IllegalArgumentException(json);
             }
+            List<String> validationErrors = sortedRows.stream()
+                .map(row -> "grammar " + row.grammar() + ": " + toTextIssue(row))
+                .toList();
             String text =
                 "Grammar validation failed:\n - " + String.join("\n - ", validationErrors)
             ;
@@ -250,6 +253,21 @@ public class CodegenMain {
         }
         sb.append("]}");
         return sb.toString();
+    }
+
+    private static List<ValidationRow> sortValidationRows(List<ValidationRow> rows) {
+        return rows.stream()
+            .sorted(
+                Comparator.comparing(ValidationRow::grammar)
+                    .thenComparing(ValidationRow::rule, Comparator.nullsFirst(String::compareTo))
+                    .thenComparing(ValidationRow::code)
+                    .thenComparing(ValidationRow::message)
+            )
+            .toList();
+    }
+
+    private static String toTextIssue(ValidationRow row) {
+        return row.message() + " [code: " + row.code() + "] [hint: " + row.hint() + "]";
     }
 
     private static String escapeJson(String s) {
