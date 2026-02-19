@@ -80,6 +80,7 @@ Current behavior:
 ### LSP
 
 - Diagnostics, hover, and keyword completion are supported.
+- Completion includes DSL core keywords and annotation keywords (`@root`, `@mapping`, `@whitespace`, `@leftAssoc`, `@rightAssoc`, `@precedence`) plus grammar terminals.
 - Semantic tokens currently return an empty token list to avoid invalid token encoding.
 
 ### DAP

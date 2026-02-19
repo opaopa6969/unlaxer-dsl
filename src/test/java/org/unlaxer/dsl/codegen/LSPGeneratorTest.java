@@ -132,4 +132,11 @@ public class LSPGeneratorTest {
     public void testContainsLsp4jImport() {
         assertTrue(result.source().contains("import org.eclipse.lsp4j"));
     }
+
+    @Test
+    public void testContainsAnnotationCompletionKeywords() {
+        assertTrue(result.source().contains("\"@leftAssoc\""));
+        assertTrue(result.source().contains("\"@rightAssoc\""));
+        assertTrue(result.source().contains("\"@precedence\""));
+    }
 }

@@ -259,6 +259,16 @@ public class LSPGenerator implements CodeGenerator {
 
     private List<String> collectKeywords(GrammarDecl grammar) {
         Set<String> kw = new LinkedHashSet<>();
+        kw.add("grammar");
+        kw.add("token");
+        kw.add("@root");
+        kw.add("@mapping");
+        kw.add("@whitespace");
+        kw.add("@leftAssoc");
+        kw.add("@rightAssoc");
+        kw.add("@precedence");
+        kw.add("params");
+        kw.add("level");
         for (RuleDecl rule : grammar.rules()) {
             collectFromBody(rule.body(), kw);
         }
