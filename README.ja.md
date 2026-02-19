@@ -1054,6 +1054,8 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
 JSON レポートは安定したトップレベル項目として
 `reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `argsHash`, `generatedAt`（UTC ISO-8601）, `mode`（`validate` / `generate`）を常に含む。
 `toolVersion` は取得可能なら artifact の `Implementation-Version`、未設定時は `dev` を使う。
+`argsHash` は raw argv ではなく意味的に正規化した CLI 設定の SHA-256 で、
+`--report-file` や `--output-manifest` のような出力先フラグだけでは変化しない。
 公開される v1 JSON schema は `docs/schema/report-v1.json` を参照。
 NDJSON イベント schema は `docs/schema/report-v1.ndjson.json` を参照。
 manifest schema は `docs/schema/manifest-v1.json` と `docs/schema/manifest-v1.ndjson.json` を参照。

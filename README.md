@@ -854,6 +854,8 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
 JSON reports always include stable top-level fields:
 `reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `argsHash`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
 `toolVersion` uses artifact `Implementation-Version` when available, otherwise `dev`.
+`argsHash` is SHA-256 over normalized semantic CLI settings (not raw argv), so destination-only flags such as
+`--report-file` and `--output-manifest` do not change it.
 The public v1 JSON schema is documented at `docs/schema/report-v1.json`.
 NDJSON event schema is documented at `docs/schema/report-v1.ndjson.json`.
 Manifest schemas are documented at `docs/schema/manifest-v1.json` and `docs/schema/manifest-v1.ndjson.json`.

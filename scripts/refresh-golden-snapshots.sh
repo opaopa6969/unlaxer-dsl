@@ -20,5 +20,6 @@ mvn -q -DincludeScope=test -Dmdep.outputFile="$CP_FILE" dependency:build-classpa
 CP="target/classes:target/test-classes:$(cat "$CP_FILE")"
 
 java --enable-preview -cp "$CP" org.unlaxer.dsl.codegen.SnapshotFixtureWriter --output-dir "$OUT_DIR"
+java --enable-preview -cp "$CP" org.unlaxer.dsl.CliFixtureWriter --output-dir "$OUT_DIR"
 
 echo "Golden snapshots refreshed under $OUT_DIR"

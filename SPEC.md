@@ -100,6 +100,11 @@ Current behavior:
 - In normal generation mode with `--report-format json`, CLI emits generation summary (`generatedCount`, `generatedFiles`).
 - JSON report schema includes stable top-level fields:
   `reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `argsHash`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
+- `argsHash` is SHA-256 of normalized semantic CLI settings (not raw argv).
+- `argsHash` includes: `grammar`, `output`, `generators`, `validate-only`, `dry-run`, `clean-output`, `strict`,
+  `report-format`, `manifest-format`, `report-version`, `report-schema-check`, `warnings-as-json`, `overwrite`, `fail-on`, and warnings threshold.
+- `argsHash` excludes destination-only paths and non-executing flags (for example: `--report-file`, `--output-manifest`, `--help`, `--version`).
+- `argsHash` normalization is versioned internally (`version=1`) for forward-compatible evolution.
 - JSON report payloads include `warningsCount` for warning aggregation.
 - Generation payloads include overwrite/dry-run stats: `writtenCount`, `skippedCount`, `conflictCount`, `dryRunCount`.
 - Fail-on-triggered report payloads include `failReasonCode` (for example, `FAIL_ON_CONFLICT`).
@@ -167,10 +172,12 @@ Generate success:
 ## Golden Fixture Maintenance
 
 - Snapshot fixtures are stored under `src/test/resources/golden/`.
-- `org.unlaxer.dsl.codegen.SnapshotFixtureWriter` rewrites all fixtures from the current generators.
+- Generator fixtures are rewritten by `org.unlaxer.dsl.codegen.SnapshotFixtureWriter`.
+- CLI report/manifest fixtures are rewritten by `org.unlaxer.dsl.CliFixtureWriter`.
 - `SnapshotFixtureWriter` supports `--output-dir <path>` for safe dry-runs from tests or local verification.
 - `scripts/refresh-golden-snapshots.sh` also supports `--output-dir <path>`.
 - `scripts/check-golden-snapshots.sh` verifies committed fixtures against regenerated output.
-- `SnapshotFixtureData` keeps snapshot grammars and fixture file lists in one place.
+- `SnapshotFixtureData` and `CliFixtureData` keep fixture grammars and file lists in one place.
 - `SnapshotFixtureGoldenConsistencyTest` verifies writer output matches committed fixtures.
+- `CliFixtureGoldenConsistencyTest` verifies CLI fixture writer output matches committed fixtures.
 - Fixtures currently cover AST/Parser/Mapper/Evaluator/LSP/LSPLauncher/DAP/DAPLauncher (plus right-assoc parser/mapper variants).
