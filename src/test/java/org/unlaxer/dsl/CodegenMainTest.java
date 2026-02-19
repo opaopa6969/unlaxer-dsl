@@ -1056,6 +1056,58 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testNdjsonGenerationSkipPathKeepsStdoutJsonOnly() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-skip-json-only", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-ndjson-skip-json-only-out");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        RunResult first = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST"
+        );
+        assertEquals(CodegenMain.EXIT_OK, first.exitCode());
+
+        RunResult second = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--overwrite", "if-different",
+            "--report-format", "ndjson",
+            "--fail-on", "none"
+        );
+        assertEquals(CodegenMain.EXIT_OK, second.exitCode());
+        assertFalse(second.out().contains("Skipped (unchanged):"));
+        assertTrue(second.out().contains("\"action\":\"skipped\""));
+        for (String line : second.out().trim().split("\\R")) {
+            String trimmed = line.trim();
+            assertTrue("ndjson stdout line must be JSON: " + trimmed, trimmed.startsWith("{") && trimmed.endsWith("}"));
+        }
+    }
+
+    @Test
+    public void testNdjsonGenerationDryRunPathKeepsStdoutJsonOnly() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-dryrun-json-only", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-ndjson-dryrun-json-only-out");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--dry-run",
+            "--report-format", "ndjson"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertFalse(result.out().contains("Dry-run: would generate"));
+        assertTrue(result.out().contains("\"action\":\"dry-run\""));
+        for (String line : result.out().trim().split("\\R")) {
+            String trimmed = line.trim();
+            assertTrue("ndjson stdout line must be JSON: " + trimmed, trimmed.startsWith("{") && trimmed.endsWith("}"));
+        }
+    }
+
+    @Test
     public void testFailOnSkippedReturnsGenerationError() throws Exception {
         String source = """
             grammar Valid {
