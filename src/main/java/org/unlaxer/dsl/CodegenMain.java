@@ -69,6 +69,7 @@ public class CodegenMain {
                 + " [--report-file <path>]"
                 + " [--report-version 1]"
                 + " [--report-schema-check]"
+                + " [--warnings-as-json]"
         );
     }
 

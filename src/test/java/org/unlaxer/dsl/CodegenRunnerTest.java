@@ -1,9 +1,18 @@
 package org.unlaxer.dsl;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Test;
 
@@ -25,5 +34,75 @@ public class CodegenRunnerTest {
         );
         assertFalse(CodegenRunner.hasErrorRows(rows));
         assertTrue(CodegenRunner.hasWarningRows(rows));
+    }
+
+    @Test
+    public void testExecuteUsesInjectedFileSystemPort() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        RecordingFs fs = new RecordingFs();
+        fs.files.put("g.ubnf", source);
+
+        CodegenCliParser.CliOptions config = new CodegenCliParser.CliOptions(
+            "g.ubnf",
+            null,
+            List.of("Parser"),
+            true,
+            false,
+            false,
+            false,
+            "json",
+            null,
+            1,
+            false,
+            false
+        );
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        int exitCode = CodegenRunner.execute(
+            config,
+            new PrintStream(out),
+            new PrintStream(err),
+            Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC),
+            "test",
+            fs
+        );
+
+        assertEquals(CodegenMain.EXIT_OK, exitCode);
+        assertTrue(out.toString().contains("\"mode\":\"validate\""));
+        assertTrue(out.toString().contains("\"generatedAt\":\"2026-01-01T00:00:00Z\""));
+        assertTrue(fs.createdDirs.isEmpty());
+        assertTrue(fs.writes.isEmpty());
+    }
+
+    private static final class RecordingFs implements CodegenRunner.FileSystemPort {
+        private final Map<String, String> files = new HashMap<>();
+        private final List<String> createdDirs = new java.util.ArrayList<>();
+        private final Map<String, String> writes = new HashMap<>();
+
+        @Override
+        public String readString(Path path) {
+            String value = files.get(path.toString());
+            if (value == null) {
+                throw new IllegalArgumentException("missing file: " + path);
+            }
+            return value;
+        }
+
+        @Override
+        public void createDirectories(Path path) {
+            createdDirs.add(path.toString());
+        }
+
+        @Override
+        public void writeString(Path path, String content) {
+            writes.put(path.toString(), content);
+        }
     }
 }

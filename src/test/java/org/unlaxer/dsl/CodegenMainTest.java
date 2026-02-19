@@ -510,6 +510,7 @@ public class CodegenMainTest {
         assertTrue(result.out().contains("--help"));
         assertTrue(result.out().contains("--version"));
         assertTrue(result.out().contains("--strict"));
+        assertTrue(result.out().contains("--warnings-as-json"));
     }
 
     @Test
@@ -598,6 +599,7 @@ public class CodegenMainTest {
         assertTrue(result.err().contains("--report-version 1"));
         assertTrue(result.err().contains("--strict"));
         assertTrue(result.err().contains("--report-schema-check"));
+        assertTrue(result.err().contains("--warnings-as-json"));
     }
 
     @Test
@@ -711,6 +713,31 @@ public class CodegenMainTest {
         assertEquals(CodegenMain.EXIT_OK, result.exitCode());
         assertTrue(result.err().contains("Validation warnings:"));
         assertTrue(result.err().contains("W-GENERAL-NO-ROOT"));
+    }
+
+    @Test
+    public void testWarningsCanBeEmittedAsJsonInTextMode() throws Exception {
+        String source = """
+            grammar WarnOnly {
+              @package: org.example.warn
+              @mapping(RootNode, params=[value])
+              Start ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-warning-json", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--warnings-as-json"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.out().contains("Validation succeeded"));
+        String warningPayload = result.err().trim();
+        assertTrue(warningPayload.startsWith("{\"reportVersion\":1,"));
+        assertTrue(warningPayload.contains("\"severity\":\"WARNING\""));
+        assertTrue(warningPayload.contains("\"code\":\"W-GENERAL-NO-ROOT\""));
     }
 
     @Test

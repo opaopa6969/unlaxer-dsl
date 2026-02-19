@@ -34,6 +34,12 @@ final class CodegenRunner {
 
     private CodegenRunner() {}
 
+    interface FileSystemPort {
+        String readString(Path path) throws IOException;
+        void createDirectories(Path path) throws IOException;
+        void writeString(Path path, String content) throws IOException;
+    }
+
     static int execute(
         CodegenCliParser.CliOptions config,
         PrintStream out,
@@ -41,7 +47,18 @@ final class CodegenRunner {
         Clock clock,
         String toolVersion
     ) throws IOException {
-        String source = Files.readString(Path.of(config.grammarFile()));
+        return execute(config, out, err, clock, toolVersion, new JdkFileSystemPort());
+    }
+
+    static int execute(
+        CodegenCliParser.CliOptions config,
+        PrintStream out,
+        PrintStream err,
+        Clock clock,
+        String toolVersion,
+        FileSystemPort fs
+    ) throws IOException {
+        String source = fs.readString(Path.of(config.grammarFile()));
         UBNFFile file = UBNFMapper.parse(source);
 
         Map<String, CodeGenerator> generatorMap = generatorMap();
@@ -53,18 +70,24 @@ final class CodegenRunner {
         boolean hasWarnings = hasWarningRows(sortedRows);
 
         String generatedAt = Instant.now(clock).toString();
+        String warningJson = hasWarnings
+            ? ReportJsonWriter.validationFailure(config.reportVersion(), toolVersion, generatedAt, sortedRows)
+            : null;
 
         if (hasErrors || (config.strict() && hasWarnings)) {
             int exitCode = hasErrors ? CodegenMain.EXIT_VALIDATION_ERROR : CodegenMain.EXIT_STRICT_VALIDATION_ERROR;
-            if ("json".equals(config.reportFormat())) {
-                String json = ReportJsonWriter.validationFailure(
-                    config.reportVersion(),
-                    toolVersion,
-                    generatedAt,
-                    sortedRows
-                );
-                validateJsonIfRequested(config, json);
-                writeReportIfNeeded(config.reportFile(), json);
+            boolean emitJson = "json".equals(config.reportFormat()) || (config.warningsAsJson() && !hasErrors);
+            if (emitJson) {
+                String json = warningJson != null
+                    ? warningJson
+                    : ReportJsonWriter.validationFailure(
+                        config.reportVersion(),
+                        toolVersion,
+                        generatedAt,
+                        sortedRows
+                    );
+                validateJsonIfRequested(config, json, true);
+                writeReportIfNeeded(config.reportFile(), json, fs);
                 err.println(json);
                 return exitCode;
             }
@@ -76,13 +99,18 @@ final class CodegenRunner {
                 .map(row -> "grammar " + row.grammar() + ": " + toTextIssue(row))
                 .toList();
             String text = prefix + ":\n - " + String.join("\n - ", validationMessages);
-            writeReportIfNeeded(config.reportFile(), text);
+            writeReportIfNeeded(config.reportFile(), text, fs);
             err.println(text);
             return exitCode;
         }
 
         if (hasWarnings) {
-            emitWarnings(err, sortedRows);
+            if (config.warningsAsJson()) {
+                validateJsonIfRequested(config, warningJson, config.reportSchemaCheck());
+                err.println(warningJson);
+            } else {
+                emitWarnings(err, sortedRows);
+            }
         }
 
         if (config.validateOnly()) {
@@ -93,13 +121,13 @@ final class CodegenRunner {
                     generatedAt,
                     file.grammars().size()
                 );
-                validateJsonIfRequested(config, json);
+                validateJsonIfRequested(config, json, true);
                 out.println(json);
-                writeReportIfNeeded(config.reportFile(), json);
+                writeReportIfNeeded(config.reportFile(), json, fs);
             } else {
                 String text = "Validation succeeded for " + file.grammars().size() + " grammar(s).";
                 out.println(text);
-                writeReportIfNeeded(config.reportFile(), text);
+                writeReportIfNeeded(config.reportFile(), text, fs);
             }
             return CodegenMain.EXIT_OK;
         }
@@ -119,9 +147,9 @@ final class CodegenRunner {
 
                 CodeGenerator.GeneratedSource src = gen.generate(grammar);
                 Path pkgDir = outPath.resolve(src.packageName().replace('.', '/'));
-                Files.createDirectories(pkgDir);
+                fs.createDirectories(pkgDir);
                 Path javaFile = pkgDir.resolve(src.className() + ".java");
-                Files.writeString(javaFile, src.source());
+                fs.writeString(javaFile, src.source());
                 out.println("Generated: " + javaFile);
                 generatedFiles.add(javaFile.toString());
             }
@@ -135,14 +163,14 @@ final class CodegenRunner {
                 file.grammars().size(),
                 generatedFiles
             );
-            validateJsonIfRequested(config, json);
+            validateJsonIfRequested(config, json, true);
             out.println(json);
-            writeReportIfNeeded(config.reportFile(), json);
+            writeReportIfNeeded(config.reportFile(), json, fs);
         } else if (config.reportFile() != null) {
             String text = "Generated files:\n" + generatedFiles.stream()
                 .map(p -> " - " + p)
                 .collect(Collectors.joining("\n"));
-            writeReportIfNeeded(config.reportFile(), text);
+            writeReportIfNeeded(config.reportFile(), text, fs);
         }
 
         return CodegenMain.EXIT_OK;
@@ -221,22 +249,43 @@ final class CodegenRunner {
         }
     }
 
-    private static void validateJsonIfRequested(CodegenCliParser.CliOptions config, String json) {
-        if (!config.reportSchemaCheck() || !"json".equals(config.reportFormat())) {
+    private static void validateJsonIfRequested(
+        CodegenCliParser.CliOptions config,
+        String json,
+        boolean shouldValidate
+    ) {
+        if (!shouldValidate || !config.reportSchemaCheck()) {
             return;
         }
         ReportJsonSchemaValidator.validate(config.reportVersion(), json);
     }
 
-    private static void writeReportIfNeeded(String reportFile, String content) throws IOException {
+    private static void writeReportIfNeeded(String reportFile, String content, FileSystemPort fs) throws IOException {
         if (reportFile == null) {
             return;
         }
         Path reportPath = Path.of(reportFile);
         Path parent = reportPath.getParent();
         if (parent != null) {
-            Files.createDirectories(parent);
+            fs.createDirectories(parent);
         }
-        Files.writeString(reportPath, content);
+        fs.writeString(reportPath, content);
+    }
+
+    private static final class JdkFileSystemPort implements FileSystemPort {
+        @Override
+        public String readString(Path path) throws IOException {
+            return Files.readString(path);
+        }
+
+        @Override
+        public void createDirectories(Path path) throws IOException {
+            Files.createDirectories(path);
+        }
+
+        @Override
+        public void writeString(Path path, String content) throws IOException {
+            Files.writeString(path, content);
+        }
     }
 }

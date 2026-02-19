@@ -19,6 +19,7 @@ EXPECTED_FLAGS=(
   '--report-file'
   '--report-version'
   '--report-schema-check'
+  '--warnings-as-json'
 )
 
 extract_table_flags() {

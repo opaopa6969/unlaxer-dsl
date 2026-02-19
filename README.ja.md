@@ -1072,10 +1072,12 @@ JSON レポートは安定したトップレベル項目として
 | `--report-file <path>` | レポート内容をファイル出力 | （なし） |
 | `--report-version 1` | JSON レポートスキーマのバージョン | `1` |
 | `--report-schema-check` | JSON ペイロードを出力前にスキーマ検証する | `false` |
+| `--warnings-as-json` | warning 診断を stderr に JSON で出力する（text モード） | `false` |
 
 使用可能な生成器名: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 `--generators` はカンマ区切り値をトリムし、空要素はエラーとして拒否する（例: `"AST, LSP"` は有効）。
 `--report-schema-check` で失敗した場合のメッセージは `E-REPORT-SCHEMA-*` で始まる。
+`--warnings-as-json` は warning をバリデーション失敗JSONと同じ形で出力する。
 
 終了コード:
 

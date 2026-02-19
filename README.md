@@ -872,10 +872,12 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 | `--report-file <path>` | Write report payload to a file | (none) |
 | `--report-version 1` | JSON report schema version | `1` |
 | `--report-schema-check` | Validate JSON payload shape before emitting it | `false` |
+| `--warnings-as-json` | Emit warning diagnostics as JSON to stderr (text mode) | `false` |
 
 Available generator names: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
 `--generators` values are trimmed by comma, empty entries are rejected (for example, `"AST, LSP"` is valid).
 When `--report-schema-check` fails, error messages are prefixed with `E-REPORT-SCHEMA-*`.
+`--warnings-as-json` emits warning payloads using the same JSON shape as validation failure reports.
 
 Exit codes:
 

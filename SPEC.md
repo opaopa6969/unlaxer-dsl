@@ -88,6 +88,7 @@ Current behavior:
 - `--report-file <path>` writes the final report payload (text/json) to a file.
 - `--report-version 1` selects JSON schema version (currently only version `1` is supported).
 - `--report-schema-check` validates JSON payload schema before emitting/writing reports.
+- `--warnings-as-json` emits warning diagnostics as JSON to stderr even when `--report-format text` is used.
 - On schema-check failure, CLI emits stable error codes prefixed with `E-REPORT-SCHEMA-*`.
 - In normal generation mode with `--report-format json`, CLI emits generation summary (`generatedCount`, `generatedFiles`).
 - JSON report schema includes stable top-level fields:
