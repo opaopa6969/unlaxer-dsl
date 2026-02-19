@@ -1,6 +1,7 @@
 # unlaxer-dsl
 [English](README.md) | [日本語](README.ja.md)
 [仕様メモ](SPEC.md)
+[Parser IR 設計ドラフト](docs/PARSER-IR-DRAFT.md)
 
 UBNF（Unlaxer BNF）記法で書いた文法定義から、Java のパーサー・AST・マッパー・エバリュエーター・LSP サーバー・DAP デバッグアダプターを自動生成し、VS Code 拡張（VSIX）までビルドできるツールです。
 
