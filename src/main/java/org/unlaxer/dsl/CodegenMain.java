@@ -32,6 +32,7 @@ public class CodegenMain {
         String grammarFile = null;
         String outputDir = null;
         List<String> generators = List.of("Parser", "LSP", "Launcher");
+        boolean validateOnly = false;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -59,6 +60,7 @@ public class CodegenMain {
                     }
                     generators = Arrays.asList(args[++i].split(","));
                 }
+                case "--validate-only" -> validateOnly = true;
                 default -> {
                     System.err.println("Unknown argument: " + args[i]);
                     printUsage();
@@ -67,7 +69,7 @@ public class CodegenMain {
             }
         }
 
-        if (grammarFile == null || outputDir == null) {
+        if (grammarFile == null || (!validateOnly && outputDir == null)) {
             printUsage();
             System.exit(1);
         }
@@ -85,8 +87,6 @@ public class CodegenMain {
         generatorMap.put("DAP", new DAPGenerator());
         generatorMap.put("DAPLauncher", new DAPLauncherGenerator());
 
-        Path outPath = Path.of(outputDir);
-
         List<String> validationErrors = new ArrayList<>();
         for (GrammarDecl grammar : file.grammars()) {
             List<GrammarValidator.ValidationIssue> issues = GrammarValidator.validate(grammar);
@@ -101,6 +101,11 @@ public class CodegenMain {
                 "Grammar validation failed:\n - " + String.join("\n - ", validationErrors)
             );
         }
+        if (validateOnly) {
+            System.out.println("Validation succeeded for " + file.grammars().size() + " grammar(s).");
+            return;
+        }
+        Path outPath = Path.of(outputDir);
 
         for (GrammarDecl grammar : file.grammars()) {
             for (String name : generators) {
@@ -126,6 +131,7 @@ public class CodegenMain {
         System.err.println(
             "Usage: CodegenMain --grammar <file.ubnf> --output <dir>"
                 + " [--generators AST,Parser,Mapper,Evaluator,LSP,Launcher,DAP,DAPLauncher]"
+                + " [--validate-only]"
         );
     }
 }

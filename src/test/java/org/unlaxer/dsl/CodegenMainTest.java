@@ -140,4 +140,28 @@ public class CodegenMainTest {
             assertTrue(e.getMessage().contains("[code:"));
         }
     }
+
+    @Test
+    public void testValidateOnlySkipsGeneration() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+
+        Path grammarFile = Files.createTempFile("codegen-main-validate-only", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-validate-only-out");
+        Files.writeString(grammarFile, source);
+
+        CodegenMain.main(new String[] {
+            "--grammar", grammarFile.toString(),
+            "--validate-only"
+        });
+
+        Path ast = outputDir.resolve("org/example/valid/ValidAST.java");
+        assertTrue("validate-only should not generate files", !Files.exists(ast));
+    }
 }
