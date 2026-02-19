@@ -95,3 +95,8 @@ Current behavior:
 1. Rule-level whitespace override semantics.
 2. Parser generation that actually consumes `@precedence` + associativity metadata.
 3. Explicit token import namespace configuration.
+
+## Golden Fixture Maintenance
+
+- Snapshot fixtures are stored under `src/test/resources/golden/`.
+- `org.unlaxer.dsl.codegen.SnapshotFixtureWriter` rewrites all fixtures from the current generators.
