@@ -159,6 +159,41 @@ public class CodegenCliParserTest {
     }
 
     @Test
+    public void testParseManifestFormatNdjson() throws Exception {
+        var options = CodegenCliParser.parse(new String[] {
+            "--grammar", "a.ubnf",
+            "--validate-only",
+            "--manifest-format", "ndjson"
+        });
+        assertEquals("ndjson", options.manifestFormat());
+    }
+
+    @Test
+    public void testParseFailOnCleaned() throws Exception {
+        var options = CodegenCliParser.parse(new String[] {
+            "--grammar", "a.ubnf",
+            "--output", "out",
+            "--fail-on", "cleaned"
+        });
+        assertEquals("cleaned", options.failOn());
+    }
+
+    @Test
+    public void testRejectUnsupportedManifestFormat() {
+        try {
+            CodegenCliParser.parse(new String[] {
+                "--grammar", "a.ubnf",
+                "--validate-only",
+                "--manifest-format", "yaml"
+            });
+            fail("expected parser usage error");
+        } catch (CodegenCliParser.UsageException e) {
+            assertFalse(e.showUsage());
+            assertTrue(e.getMessage().contains("Unsupported --manifest-format"));
+        }
+    }
+
+    @Test
     public void testRejectUnsupportedReportVersion() {
         try {
             CodegenCliParser.parse(new String[] {

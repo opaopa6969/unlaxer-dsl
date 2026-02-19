@@ -20,23 +20,45 @@ public class ReportJsonSchemaValidatorTest {
         var row = new ReportJsonWriter.ValidationIssueRow(
             "G", "Start", "E-X", "ERROR", "GENERAL", "m", "h"
         );
-        String json = ReportJsonWriter.validationFailure(1, "dev", "hash", "2026-01-01T00:00:00Z", List.of(row));
+        String json = ReportJsonWriter.validationFailure(1, "dev", "hash", "2026-01-01T00:00:00Z", null, List.of(row));
         ReportJsonSchemaValidator.validate(1, json);
     }
 
     @Test
     public void testAcceptsGenerateSuccessV1() {
-        String json = ReportJsonWriter.generationSuccess(
+        String json = ReportJsonWriter.generationResult(
             1,
             "dev",
             "hash",
             "2026-01-01T00:00:00Z",
+            true,
+            null,
             1,
             List.of("org/example/ValidAST.java"),
             0,
             1,
             0,
             0,
+            0
+        );
+        ReportJsonSchemaValidator.validate(1, json);
+    }
+
+    @Test
+    public void testAcceptsGenerateFailureWithReasonCodeV1() {
+        String json = ReportJsonWriter.generationResult(
+            1,
+            "dev",
+            "hash",
+            "2026-01-01T00:00:00Z",
+            false,
+            "FAIL_ON_CONFLICT",
+            1,
+            List.of(),
+            0,
+            0,
+            0,
+            1,
             0
         );
         ReportJsonSchemaValidator.validate(1, json);

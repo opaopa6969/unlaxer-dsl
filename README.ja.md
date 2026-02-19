@@ -1052,10 +1052,11 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
 ```
 
 JSON レポートは安定したトップレベル項目として
-`reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `generatedAt`（UTC ISO-8601）, `mode`（`validate` / `generate`）を常に含む。
+`reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `argsHash`, `generatedAt`（UTC ISO-8601）, `mode`（`validate` / `generate`）を常に含む。
 `toolVersion` は取得可能なら artifact の `Implementation-Version`、未設定時は `dev` を使う。
 公開される v1 JSON schema は `docs/schema/report-v1.json` を参照。
 NDJSON イベント schema は `docs/schema/report-v1.ndjson.json` を参照。
+manifest schema は `docs/schema/manifest-v1.json` と `docs/schema/manifest-v1.ndjson.json` を参照。
 バリデーション失敗時の `issues[]` 要素は
 `grammar`, `rule`, `code`, `severity`, `category`, `message`, `hint` を含む。
 失敗レポートには `severityCounts` と `categoryCounts` の集計も含む。
@@ -1068,7 +1069,7 @@ NDJSON イベント schema は `docs/schema/report-v1.ndjson.json` を参照。
 | `--dry-run` | 生成ファイルを書き込まずに出力先だけ確認する | `false` |
 | `--clean-output` | 生成予定ファイルを事前に削除してから生成する | `false` |
 | `--overwrite never\|if-different\|always` | 既存ファイル上書きポリシー | `always` |
-| `--fail-on none\|warning\|skipped\|conflict\|warnings-count>=N` | 追加の失敗判定ポリシー | `conflict` |
+| `--fail-on none\|warning\|skipped\|conflict\|cleaned\|warnings-count>=N` | 追加の失敗判定ポリシー | `conflict` |
 | `--strict` | warning をバリデーション失敗として扱う | `false` |
 | `--help`, `-h` | 使用方法を表示して終了 | `false` |
 | `--version`, `-v` | ツールバージョンを表示して終了 | `false` |
@@ -1076,6 +1077,7 @@ NDJSON イベント schema は `docs/schema/report-v1.ndjson.json` を参照。
 | `--report-format text\|json\|ndjson` | 出力/レポート形式 | `text` |
 | `--report-file <path>` | レポート内容をファイル出力 | （なし） |
 | `--output-manifest <path>` | 生成/検証アクションmanifest JSONを出力 | （なし） |
+| `--manifest-format json\|ndjson` | manifest 出力形式（`--output-manifest`） | `json` |
 | `--report-version 1` | JSON レポートスキーマのバージョン | `1` |
 | `--report-schema-check` | JSON ペイロードを出力前にスキーマ検証する | `false` |
 | `--warnings-as-json` | warning 診断を stderr に JSON で出力する（text モード） | `false` |
@@ -1085,9 +1087,10 @@ NDJSON イベント schema は `docs/schema/report-v1.ndjson.json` を参照。
 `--report-schema-check` で失敗した場合のメッセージは `E-REPORT-SCHEMA-*` で始まる。
 `--warnings-as-json` は warning をバリデーション失敗JSONと同じ形で出力する。
 JSON ペイロードには `warningsCount` が含まれ、`issues[]` を走査せず warning 件数を確認できる。
-生成JSONには `writtenCount`, `skippedCount`, `conflictCount`, `dryRunCount` も含まれる。
+生成JSONには `writtenCount`, `skippedCount`, `conflictCount`, `dryRunCount` も含まれ、ポリシー失敗時は `failReasonCode` も含まれる。
 `ndjson` は 1 行 1 JSON（file イベント + summary イベント）でストリーミング連携しやすい。
 `--fail-on warnings-count>=N` で warning 件数が `N` 以上なら失敗させられる。
+`--report-schema-check` は `--output-manifest` 指定時に manifest ペイロードも検証する。
 
 終了コード:
 

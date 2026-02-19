@@ -91,6 +91,7 @@ public class ReportJsonSchemaCompatibilityTest {
                 "generatedAt",
                 "mode",
                 "ok",
+                "failReasonCode",
                 "issueCount",
                 "warningsCount",
                 "severityCounts",
@@ -104,6 +105,7 @@ public class ReportJsonSchemaCompatibilityTest {
         assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
         assertTrue(!JsonTestUtil.getString(obj, "argsHash").isBlank());
         assertEquals(false, JsonTestUtil.getBoolean(obj, "ok"));
+        assertEquals(null, obj.get("failReasonCode"));
         assertEquals(0L, JsonTestUtil.getLong(obj, "warningsCount"));
         var severityCounts = JsonTestUtil.getObject(obj, "severityCounts");
         assertEquals(1L, JsonTestUtil.getLong(severityCounts, "ERROR"));
@@ -146,6 +148,7 @@ public class ReportJsonSchemaCompatibilityTest {
                 "generatedAt",
                 "mode",
                 "ok",
+                "failReasonCode",
                 "grammarCount",
                 "generatedCount",
                 "warningsCount",
@@ -162,12 +165,47 @@ public class ReportJsonSchemaCompatibilityTest {
         assertEquals("https://unlaxer.dev/schema/report-v1.json", JsonTestUtil.getString(obj, "schemaUrl"));
         assertTrue(!JsonTestUtil.getString(obj, "argsHash").isBlank());
         assertEquals(true, JsonTestUtil.getBoolean(obj, "ok"));
+        assertEquals(null, obj.get("failReasonCode"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "generatedCount"));
         assertEquals(0L, JsonTestUtil.getLong(obj, "warningsCount"));
         assertEquals(1L, JsonTestUtil.getLong(obj, "writtenCount"));
         assertEquals(0L, JsonTestUtil.getLong(obj, "skippedCount"));
         assertEquals(0L, JsonTestUtil.getLong(obj, "conflictCount"));
         assertEquals(0L, JsonTestUtil.getLong(obj, "dryRunCount"));
+    }
+
+    @Test
+    public void testGenerateFailureTopLevelSchemaV1() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("schema-generate-failure", ".ubnf");
+        Path outputDir = Files.createTempDirectory("schema-generate-failure-out");
+        Files.writeString(grammarFile, source);
+        Path ast = outputDir.resolve("org/example/valid/ValidAST.java");
+        Files.createDirectories(ast.getParent());
+        Files.writeString(ast, "// existing");
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--overwrite", "never",
+            "--fail-on", "conflict",
+            "--report-format", "json"
+        );
+
+        assertEquals(CodegenMain.EXIT_GENERATION_ERROR, result.exitCode());
+        String[] lines = result.err().trim().split("\\R");
+        var obj = JsonTestUtil.parseObject(lines[lines.length - 1]);
+        assertEquals("generate", JsonTestUtil.getString(obj, "mode"));
+        assertEquals(false, JsonTestUtil.getBoolean(obj, "ok"));
+        assertEquals("FAIL_ON_CONFLICT", JsonTestUtil.getString(obj, "failReasonCode"));
     }
 
     private static RunResult runCodegen(String... args) {

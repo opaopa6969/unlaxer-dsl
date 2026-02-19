@@ -40,19 +40,22 @@ final class ReportJsonWriter {
         String toolVersion,
         String argsHash,
         String generatedAt,
+        String failReasonCode,
         List<ValidationIssueRow> rows
     ) {
         return switch (reportVersion) {
-            case 1 -> ReportJsonWriterV1.validationFailure(toolVersion, argsHash, generatedAt, rows);
+            case 1 -> ReportJsonWriterV1.validationFailure(toolVersion, argsHash, generatedAt, failReasonCode, rows);
             default -> throw unsupportedVersion(reportVersion);
         };
     }
 
-    static String generationSuccess(
+    static String generationResult(
         int reportVersion,
         String toolVersion,
         String argsHash,
         String generatedAt,
+        boolean ok,
+        String failReasonCode,
         int grammarCount,
         List<String> generatedFiles,
         int warningsCount,
@@ -62,10 +65,12 @@ final class ReportJsonWriter {
         int dryRunCount
     ) {
         return switch (reportVersion) {
-            case 1 -> ReportJsonWriterV1.generationSuccess(
+            case 1 -> ReportJsonWriterV1.generationResult(
                 toolVersion,
                 argsHash,
                 generatedAt,
+                ok,
+                failReasonCode,
                 grammarCount,
                 generatedFiles,
                 warningsCount,

@@ -73,7 +73,7 @@ public class ReportJsonSchemaDocumentConsistencyTest {
     @Test
     public void testGenerateSuccessPayloadMatchesSchemaDocument() throws Exception {
         Map<String, Object> schema = loadSchemaDocument();
-        Map<String, Object> variant = schemaVariant(schema, "generate-success");
+        Map<String, Object> variant = schemaVariant(schema, "generate-result");
 
         String source = """
             grammar Valid {

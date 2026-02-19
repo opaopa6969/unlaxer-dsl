@@ -537,6 +537,7 @@ public class CodegenMainTest {
         assertTrue(result.out().contains("--overwrite"));
         assertTrue(result.out().contains("--fail-on"));
         assertTrue(result.out().contains("--output-manifest"));
+        assertTrue(result.out().contains("--manifest-format"));
         assertTrue(result.out().contains("text|json|ndjson"));
         assertTrue(result.out().contains("--warnings-as-json"));
     }
@@ -631,6 +632,7 @@ public class CodegenMainTest {
         assertTrue(result.err().contains("--overwrite"));
         assertTrue(result.err().contains("--fail-on"));
         assertTrue(result.err().contains("--output-manifest"));
+        assertTrue(result.err().contains("--manifest-format"));
         assertTrue(result.err().contains("--report-schema-check"));
         assertTrue(result.err().contains("--warnings-as-json"));
     }
@@ -1075,10 +1077,12 @@ public class CodegenMainTest {
             "--output", outputDir.toString(),
             "--generators", "AST",
             "--overwrite", "if-different",
-            "--fail-on", "skipped"
+            "--fail-on", "skipped",
+            "--report-format", "json"
         );
         assertEquals(CodegenMain.EXIT_GENERATION_ERROR, second.exitCode());
         assertTrue(second.err().contains("Fail-on policy triggered: skipped=1"));
+        assertTrue(second.err().contains("\"failReasonCode\":\"FAIL_ON_SKIPPED\""));
     }
 
     @Test
@@ -1129,6 +1133,135 @@ public class CodegenMainTest {
         assertTrue(payload.contains("\"mode\":\"generate\""));
         assertTrue(payload.contains("\"writtenCount\":1"));
         assertTrue(payload.contains("\"files\":["));
+    }
+
+    @Test
+    public void testOutputManifestNdjsonIsWritten() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-manifest-ndjson", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-manifest-ndjson-out");
+        Path manifest = Files.createTempFile("codegen-main-manifest-ndjson", ".ndjson");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--output-manifest", manifest.toString(),
+            "--manifest-format", "ndjson"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        String payload = Files.readString(manifest);
+        assertTrue(payload.contains("\"event\":\"file\""));
+        assertTrue(payload.contains("\"event\":\"manifest-summary\""));
+        assertTrue(payload.contains("\"failReasonCode\":null"));
+    }
+
+    @Test
+    public void testManifestSchemaCheckValidationRunsForNdjson() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-manifest-schema-check", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-manifest-schema-check-out");
+        Path manifest = Files.createTempFile("codegen-main-manifest-schema-check", ".ndjson");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--output-manifest", manifest.toString(),
+            "--manifest-format", "ndjson",
+            "--report-schema-check"
+        );
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(Files.readString(manifest).contains("\"manifest-summary\""));
+    }
+
+    @Test
+    public void testFailOnCleanedReturnsReasonCodeInJson() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-failon-cleaned", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-failon-cleaned-out");
+        Files.writeString(grammarFile, source);
+        Path ast = outputDir.resolve("org/example/valid/ValidAST.java");
+        Files.createDirectories(ast.getParent());
+        Files.writeString(ast, "// stale");
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--clean-output",
+            "--fail-on", "cleaned",
+            "--report-format", "json"
+        );
+        assertEquals(CodegenMain.EXIT_GENERATION_ERROR, result.exitCode());
+        assertTrue(result.err().contains("\"mode\":\"generate\""));
+        assertTrue(result.err().contains("\"ok\":false"));
+        assertTrue(result.err().contains("\"failReasonCode\":\"FAIL_ON_CLEANED\""));
+    }
+
+    @Test
+    public void testArgsHashIgnoresReportAndManifestDestinationPaths() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              Valid ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-argshash", ".ubnf");
+        Path outputDir = Files.createTempDirectory("codegen-main-argshash-out");
+        Path report1 = Files.createTempFile("codegen-main-argshash-1", ".json");
+        Path report2 = Files.createTempFile("codegen-main-argshash-2", ".json");
+        Path manifest1 = Files.createTempFile("codegen-main-argshash-1", ".manifest.json");
+        Path manifest2 = Files.createTempFile("codegen-main-argshash-2", ".manifest.json");
+        Files.writeString(grammarFile, source);
+
+        RunResult first = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--report-format", "json",
+            "--report-file", report1.toString(),
+            "--output-manifest", manifest1.toString()
+        );
+        RunResult second = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--output", outputDir.toString(),
+            "--generators", "AST",
+            "--report-format", "json",
+            "--report-file", report2.toString(),
+            "--output-manifest", manifest2.toString()
+        );
+
+        assertEquals(CodegenMain.EXIT_OK, first.exitCode());
+        assertEquals(CodegenMain.EXIT_OK, second.exitCode());
+        String hash1 = extractJsonStringField(first.out(), "argsHash");
+        String hash2 = extractJsonStringField(second.out(), "argsHash");
+        assertEquals(hash1, hash2);
     }
 
     @Test

@@ -41,7 +41,7 @@ public class CodegenMain {
                 out.println(TOOL_VERSION);
                 return EXIT_OK;
             }
-            return CodegenRunner.execute(config, out, err, clock, TOOL_VERSION, argsHash(args));
+            return CodegenRunner.execute(config, out, err, clock, TOOL_VERSION, argsHash(config));
         } catch (CodegenCliParser.UsageException e) {
             if (e.getMessage() != null && !e.getMessage().isBlank()) {
                 err.println(e.getMessage());
@@ -94,17 +94,25 @@ public class CodegenMain {
         return version;
     }
 
-    private static String argsHash(String[] args) {
+    private static String argsHash(CodegenCliParser.CliOptions config) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            if (args != null) {
-                for (String arg : args) {
-                    if (arg != null) {
-                        md.update(arg.getBytes(StandardCharsets.UTF_8));
-                    }
-                    md.update((byte) 0);
-                }
-            }
+            updateHash(md, "version", "1");
+            updateHash(md, "grammar", config.grammarFile());
+            updateHash(md, "output", config.outputDir());
+            updateHash(md, "generators", String.join(",", config.generators()));
+            updateHash(md, "validateOnly", Boolean.toString(config.validateOnly()));
+            updateHash(md, "dryRun", Boolean.toString(config.dryRun()));
+            updateHash(md, "cleanOutput", Boolean.toString(config.cleanOutput()));
+            updateHash(md, "strict", Boolean.toString(config.strict()));
+            updateHash(md, "reportFormat", config.reportFormat());
+            updateHash(md, "manifestFormat", config.manifestFormat());
+            updateHash(md, "reportVersion", Integer.toString(config.reportVersion()));
+            updateHash(md, "reportSchemaCheck", Boolean.toString(config.reportSchemaCheck()));
+            updateHash(md, "warningsAsJson", Boolean.toString(config.warningsAsJson()));
+            updateHash(md, "overwrite", config.overwrite());
+            updateHash(md, "failOn", config.failOn());
+            updateHash(md, "failOnWarningsThreshold", Integer.toString(config.failOnWarningsThreshold()));
             byte[] digest = md.digest();
             StringBuilder sb = new StringBuilder(digest.length * 2);
             for (byte b : digest) {
@@ -115,5 +123,14 @@ public class CodegenMain {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 unavailable", e);
         }
+    }
+
+    private static void updateHash(MessageDigest md, String key, String value) {
+        md.update(key.getBytes(StandardCharsets.UTF_8));
+        md.update((byte) '=');
+        if (value != null) {
+            md.update(value.getBytes(StandardCharsets.UTF_8));
+        }
+        md.update((byte) 0);
     }
 }

@@ -32,6 +32,7 @@ final class ReportJsonWriterV1 {
         String toolVersion,
         String argsHash,
         String generatedAt,
+        String failReasonCode,
         List<ReportJsonWriter.ValidationIssueRow> rows
     ) {
         Map<String, Integer> severityCounts = new TreeMap<>();
@@ -49,7 +50,13 @@ final class ReportJsonWriterV1 {
             .append(",\"toolVersion\":\"").append(ReportJsonWriter.escapeJson(toolVersion)).append("\"")
             .append(",\"argsHash\":\"").append(ReportJsonWriter.escapeJson(argsHash)).append("\"")
             .append(",\"generatedAt\":\"").append(ReportJsonWriter.escapeJson(generatedAt)).append("\"")
-            .append(",\"mode\":\"validate\",\"ok\":false,\"issueCount\":")
+            .append(",\"mode\":\"validate\",\"ok\":false,\"failReasonCode\":");
+        if (failReasonCode == null) {
+            sb.append("null");
+        } else {
+            sb.append("\"").append(ReportJsonWriter.escapeJson(failReasonCode)).append("\"");
+        }
+        sb.append(",\"issueCount\":")
             .append(rows.size())
             .append(",\"warningsCount\":").append(warningsCount)
             .append(",\"severityCounts\":").append(toCountsJson(severityCounts))
@@ -80,10 +87,12 @@ final class ReportJsonWriterV1 {
         return sb.toString();
     }
 
-    static String generationSuccess(
+    static String generationResult(
         String toolVersion,
         String argsHash,
         String generatedAt,
+        boolean ok,
+        String failReasonCode,
         int grammarCount,
         List<String> generatedFiles,
         int warningsCount,
@@ -99,7 +108,14 @@ final class ReportJsonWriterV1 {
             .append(",\"toolVersion\":\"").append(ReportJsonWriter.escapeJson(toolVersion)).append("\"")
             .append(",\"argsHash\":\"").append(ReportJsonWriter.escapeJson(argsHash)).append("\"")
             .append(",\"generatedAt\":\"").append(ReportJsonWriter.escapeJson(generatedAt)).append("\"")
-            .append(",\"mode\":\"generate\",\"ok\":true,\"grammarCount\":")
+            .append(",\"mode\":\"generate\",\"ok\":").append(ok)
+            .append(",\"failReasonCode\":");
+        if (failReasonCode == null) {
+            sb.append("null");
+        } else {
+            sb.append("\"").append(ReportJsonWriter.escapeJson(failReasonCode)).append("\"");
+        }
+        sb.append(",\"grammarCount\":")
             .append(grammarCount)
             .append(",\"generatedCount\":").append(generatedFiles.size())
             .append(",\"warningsCount\":").append(warningsCount)

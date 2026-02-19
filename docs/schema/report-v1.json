@@ -51,6 +51,7 @@
         "generatedAt",
         "mode",
         "ok",
+        "failReasonCode",
         "issueCount",
         "warningsCount",
         "severityCounts",
@@ -67,6 +68,12 @@
         "generatedAt": { "type": "string", "format": "date-time" },
         "mode": { "const": "validate" },
         "ok": { "const": false },
+        "failReasonCode": {
+          "oneOf": [
+            { "type": "null" },
+            { "enum": ["FAIL_ON_WARNING", "FAIL_ON_WARNINGS_COUNT"] }
+          ]
+        },
         "issueCount": { "type": "integer", "minimum": 1 },
         "warningsCount": { "type": "integer", "minimum": 0 },
         "severityCounts": { "$ref": "#/$defs/countMap" },
@@ -79,7 +86,7 @@
       }
     },
     {
-      "title": "generate-success",
+      "title": "generate-result",
       "type": "object",
       "required": [
         "reportVersion",
@@ -90,6 +97,7 @@
         "generatedAt",
         "mode",
         "ok",
+        "failReasonCode",
         "grammarCount",
         "generatedCount",
         "warningsCount",
@@ -108,7 +116,13 @@
         "argsHash": { "type": "string", "minLength": 1 },
         "generatedAt": { "type": "string", "format": "date-time" },
         "mode": { "const": "generate" },
-        "ok": { "const": true },
+        "ok": { "type": "boolean" },
+        "failReasonCode": {
+          "oneOf": [
+            { "type": "null" },
+            { "enum": ["FAIL_ON_SKIPPED", "FAIL_ON_CONFLICT", "FAIL_ON_CLEANED"] }
+          ]
+        },
         "grammarCount": { "type": "integer", "minimum": 0 },
         "generatedCount": { "type": "integer", "minimum": 0 },
         "warningsCount": { "type": "integer", "minimum": 0 },

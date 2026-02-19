@@ -25,7 +25,7 @@ public class ReportJsonWriterTest {
             "G", "Start", "E-X", "ERROR", "GENERAL", "m", "h"
         );
         try {
-            ReportJsonWriter.validationFailure(999, "dev", "hash", "2026-01-01T00:00:00Z", List.of(row));
+            ReportJsonWriter.validationFailure(999, "dev", "hash", "2026-01-01T00:00:00Z", null, List.of(row));
             fail("expected unsupported reportVersion error");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("Unsupported reportVersion"));

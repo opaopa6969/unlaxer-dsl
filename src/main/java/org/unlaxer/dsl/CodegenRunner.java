@@ -74,14 +74,21 @@ final class CodegenRunner {
         boolean hasErrors = hasErrorRows(sortedRows);
         boolean hasWarnings = hasWarningRows(sortedRows);
         int warningsCount = countWarnings(sortedRows);
-        boolean warningPolicyTriggered = hasWarnings
-            && (shouldFailOn(config, "warning") || shouldFailOnWarningsThreshold(config, warningsCount));
+        String validationPolicyFailReason = validationPolicyFailReason(config, warningsCount);
+        boolean warningPolicyTriggered = validationPolicyFailReason != null;
 
         String generatedAt = Instant.now(clock).toString();
         List<FileEvent> fileEvents = new ArrayList<>();
 
         String warningJson = hasWarnings
-            ? ReportJsonWriter.validationFailure(config.reportVersion(), toolVersion, argsHash, generatedAt, sortedRows)
+            ? ReportJsonWriter.validationFailure(
+                config.reportVersion(),
+                toolVersion,
+                argsHash,
+                generatedAt,
+                validationPolicyFailReason,
+                sortedRows
+            )
             : null;
 
         if (hasErrors || warningPolicyTriggered) {
@@ -95,6 +102,7 @@ final class CodegenRunner {
                         toolVersion,
                         argsHash,
                         generatedAt,
+                        validationPolicyFailReason,
                         sortedRows
                     );
                 validateJsonIfRequested(config, json, true);
@@ -118,6 +126,7 @@ final class CodegenRunner {
                     0,
                     0,
                     false,
+                    validationPolicyFailReason,
                     exitCode
                 );
                 return exitCode;
@@ -146,6 +155,7 @@ final class CodegenRunner {
                 0,
                 0,
                 false,
+                validationPolicyFailReason,
                 exitCode
             );
             return exitCode;
@@ -200,6 +210,7 @@ final class CodegenRunner {
                 0,
                 0,
                 true,
+                null,
                 CodegenMain.EXIT_OK
             );
             return CodegenMain.EXIT_OK;
@@ -279,76 +290,27 @@ final class CodegenRunner {
             }
         }
 
-        if (shouldFailOn(config, "skipped") && skippedCount > 0) {
-            err.println("Fail-on policy triggered: skipped=" + skippedCount);
-            writeManifestIfNeeded(
-                config,
-                fs,
-                "generate",
-                generatedAt,
-                toolVersion,
-                argsHash,
-                fileEvents,
-                warningsCount,
-                writtenCount,
+        String generationFailReason = generationPolicyFailReason(config, fileEvents, skippedCount, conflictCount);
+        boolean generationOk = generationFailReason == null;
+        int generationExitCode = generationOk ? CodegenMain.EXIT_OK : CodegenMain.EXIT_GENERATION_ERROR;
+        if (!generationOk) {
+            emitGenerationPolicyFailureMessage(
+                err,
+                generationFailReason,
                 skippedCount,
                 conflictCount,
-                dryRunCount,
-                false,
-                CodegenMain.EXIT_GENERATION_ERROR
+                countEvents(fileEvents, "cleaned")
             );
-            return CodegenMain.EXIT_GENERATION_ERROR;
-        }
-        if (shouldFailOn(config, "conflict") && conflictCount > 0) {
-            err.println("Fail-on policy triggered: conflict=" + conflictCount);
-            writeManifestIfNeeded(
-                config,
-                fs,
-                "generate",
-                generatedAt,
-                toolVersion,
-                argsHash,
-                fileEvents,
-                warningsCount,
-                writtenCount,
-                skippedCount,
-                conflictCount,
-                dryRunCount,
-                false,
-                CodegenMain.EXIT_GENERATION_ERROR
-            );
-            return CodegenMain.EXIT_GENERATION_ERROR;
-        }
-        if (shouldFailOn(config, "cleaned")) {
-            int cleanedCount = countEvents(fileEvents, "cleaned");
-            if (cleanedCount > 0) {
-                err.println("Fail-on policy triggered: cleaned=" + cleanedCount);
-                writeManifestIfNeeded(
-                    config,
-                    fs,
-                    "generate",
-                    generatedAt,
-                    toolVersion,
-                    argsHash,
-                    fileEvents,
-                    warningsCount,
-                    writtenCount,
-                    skippedCount,
-                    conflictCount,
-                    dryRunCount,
-                    false,
-                    CodegenMain.EXIT_GENERATION_ERROR
-                );
-                return CodegenMain.EXIT_GENERATION_ERROR;
-            }
         }
 
         if (isJsonLike(config.reportFormat())) {
-            String json = ReportJsonWriter.generationSuccess(
+            String json = ReportJsonWriter.generationResult(
                 config.reportVersion(),
                 toolVersion,
                 argsHash,
                 generatedAt,
+                generationOk,
+                generationFailReason,
                 file.grammars().size(),
                 generatedFiles,
                 warningsCount,
@@ -361,7 +323,11 @@ final class CodegenRunner {
             if ("ndjson".equals(config.reportFormat())) {
                 out.println(ndjsonReportEvent("generate-summary", json));
             } else {
-                out.println(json);
+                if (generationOk) {
+                    out.println(json);
+                } else {
+                    err.println(json);
+                }
             }
             writeReportIfNeeded(config.reportFile(), json, fs);
         } else if (config.reportFile() != null) {
@@ -384,11 +350,12 @@ final class CodegenRunner {
             skippedCount,
             conflictCount,
             dryRunCount,
-            true,
-            CodegenMain.EXIT_OK
+            generationOk,
+            generationFailReason,
+            generationExitCode
         );
 
-        return CodegenMain.EXIT_OK;
+        return generationExitCode;
     }
 
     static boolean hasErrorRows(List<ReportJsonWriter.ValidationIssueRow> rows) {
@@ -514,6 +481,50 @@ final class CodegenRunner {
         return warningsCount >= config.failOnWarningsThreshold();
     }
 
+    private static String validationPolicyFailReason(CodegenCliParser.CliOptions config, int warningsCount) {
+        if (warningsCount > 0 && shouldFailOnWarningsThreshold(config, warningsCount)) {
+            return "FAIL_ON_WARNINGS_COUNT";
+        }
+        if (shouldFailOn(config, "warning") && warningsCount > 0) {
+            return "FAIL_ON_WARNING";
+        }
+        return null;
+    }
+
+    private static String generationPolicyFailReason(
+        CodegenCliParser.CliOptions config,
+        List<FileEvent> fileEvents,
+        int skippedCount,
+        int conflictCount
+    ) {
+        if (shouldFailOn(config, "skipped") && skippedCount > 0) {
+            return "FAIL_ON_SKIPPED";
+        }
+        if (shouldFailOn(config, "conflict") && conflictCount > 0) {
+            return "FAIL_ON_CONFLICT";
+        }
+        int cleanedCount = countEvents(fileEvents, "cleaned");
+        if (shouldFailOn(config, "cleaned") && cleanedCount > 0) {
+            return "FAIL_ON_CLEANED";
+        }
+        return null;
+    }
+
+    private static void emitGenerationPolicyFailureMessage(
+        PrintStream err,
+        String failReasonCode,
+        int skippedCount,
+        int conflictCount,
+        int cleanedCount
+    ) {
+        switch (failReasonCode) {
+            case "FAIL_ON_SKIPPED" -> err.println("Fail-on policy triggered: skipped=" + skippedCount);
+            case "FAIL_ON_CONFLICT" -> err.println("Fail-on policy triggered: conflict=" + conflictCount);
+            case "FAIL_ON_CLEANED" -> err.println("Fail-on policy triggered: cleaned=" + cleanedCount);
+            default -> err.println("Fail-on policy triggered: " + failReasonCode);
+        }
+    }
+
     private static void validateJsonIfRequested(
         CodegenCliParser.CliOptions config,
         String json,
@@ -635,6 +646,7 @@ final class CodegenRunner {
         int conflictCount,
         int dryRunCount,
         boolean ok,
+        String failReasonCode,
         int exitCode
     ) throws IOException {
         if (config.outputManifest() == null) {
@@ -659,6 +671,7 @@ final class CodegenRunner {
                 conflictCount,
                 dryRunCount,
                 ok,
+                failReasonCode,
                 exitCode
             );
         } else {
@@ -674,9 +687,11 @@ final class CodegenRunner {
                 conflictCount,
                 dryRunCount,
                 ok,
+                failReasonCode,
                 exitCode
             );
         }
+        validateManifestIfRequested(config, payload);
         fs.writeString(manifestPath, payload);
     }
 
@@ -692,6 +707,7 @@ final class CodegenRunner {
         int conflictCount,
         int dryRunCount,
         boolean ok,
+        String failReasonCode,
         int exitCode
     ) {
         StringBuilder sb = new StringBuilder();
@@ -701,6 +717,13 @@ final class CodegenRunner {
             .append("\"toolVersion\":\"").append(ReportJsonWriter.escapeJson(toolVersion)).append("\",")
             .append("\"argsHash\":\"").append(ReportJsonWriter.escapeJson(argsHash)).append("\",")
             .append("\"ok\":").append(ok).append(",")
+            .append("\"failReasonCode\":");
+        if (failReasonCode == null) {
+            sb.append("null");
+        } else {
+            sb.append("\"").append(ReportJsonWriter.escapeJson(failReasonCode)).append("\"");
+        }
+        sb.append(",")
             .append("\"exitCode\":").append(exitCode).append(",")
             .append("\"warningsCount\":").append(warningsCount).append(",")
             .append("\"writtenCount\":").append(writtenCount).append(",")
@@ -732,6 +755,7 @@ final class CodegenRunner {
         int conflictCount,
         int dryRunCount,
         boolean ok,
+        String failReasonCode,
         int exitCode
     ) {
         StringBuilder sb = new StringBuilder();
@@ -748,6 +772,13 @@ final class CodegenRunner {
             .append("\"toolVersion\":\"").append(ReportJsonWriter.escapeJson(toolVersion)).append("\",")
             .append("\"argsHash\":\"").append(ReportJsonWriter.escapeJson(argsHash)).append("\",")
             .append("\"ok\":").append(ok).append(",")
+            .append("\"failReasonCode\":");
+        if (failReasonCode == null) {
+            sb.append("null");
+        } else {
+            sb.append("\"").append(ReportJsonWriter.escapeJson(failReasonCode)).append("\"");
+        }
+        sb.append(",")
             .append("\"exitCode\":").append(exitCode).append(",")
             .append("\"warningsCount\":").append(warningsCount).append(",")
             .append("\"writtenCount\":").append(writtenCount).append(",")
@@ -756,6 +787,13 @@ final class CodegenRunner {
             .append("\"dryRunCount\":").append(dryRunCount)
             .append("}");
         return sb.toString();
+    }
+
+    private static void validateManifestIfRequested(CodegenCliParser.CliOptions config, String payload) {
+        if (!config.reportSchemaCheck()) {
+            return;
+        }
+        ManifestSchemaValidator.validate(config.manifestFormat(), payload);
     }
 
     private record FileEvent(String action, String path) {}

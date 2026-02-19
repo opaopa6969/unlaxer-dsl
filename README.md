@@ -852,10 +852,11 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
 ```
 
 JSON reports always include stable top-level fields:
-`reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
+`reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `argsHash`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
 `toolVersion` uses artifact `Implementation-Version` when available, otherwise `dev`.
 The public v1 JSON schema is documented at `docs/schema/report-v1.json`.
 NDJSON event schema is documented at `docs/schema/report-v1.ndjson.json`.
+Manifest schemas are documented at `docs/schema/manifest-v1.json` and `docs/schema/manifest-v1.ndjson.json`.
 Validation failure entries in `issues[]` include:
 `grammar`, `rule`, `code`, `severity`, `category`, `message`, and `hint`.
 Validation failure reports also include `severityCounts` and `categoryCounts` summaries.
@@ -868,7 +869,7 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 | `--dry-run` | Preview generated file paths without writing files | `false` |
 | `--clean-output` | Delete planned target files before generation | `false` |
 | `--overwrite never\|if-different\|always` | Overwrite policy for existing files | `always` |
-| `--fail-on none\|warning\|skipped\|conflict\|warnings-count>=N` | Additional failure policy trigger | `conflict` |
+| `--fail-on none\|warning\|skipped\|conflict\|cleaned\|warnings-count>=N` | Additional failure policy trigger | `conflict` |
 | `--strict` | Treat warnings as validation failures | `false` |
 | `--help`, `-h` | Print usage and exit | `false` |
 | `--version`, `-v` | Print tool version and exit | `false` |
@@ -876,6 +877,7 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 | `--report-format text\|json\|ndjson` | Output/report format | `text` |
 | `--report-file <path>` | Write report payload to a file | (none) |
 | `--output-manifest <path>` | Write generation/validation action manifest JSON | (none) |
+| `--manifest-format json\|ndjson` | Manifest output format (`--output-manifest`) | `json` |
 | `--report-version 1` | JSON report schema version | `1` |
 | `--report-schema-check` | Validate JSON payload shape before emitting it | `false` |
 | `--warnings-as-json` | Emit warning diagnostics as JSON to stderr (text mode) | `false` |
@@ -885,9 +887,10 @@ Available generator names: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launc
 When `--report-schema-check` fails, error messages are prefixed with `E-REPORT-SCHEMA-*`.
 `--warnings-as-json` emits warning payloads using the same JSON shape as validation failure reports.
 JSON payloads expose `warningsCount` so clients can detect warnings without scanning `issues[]`.
-Generation JSON payloads also expose `writtenCount`, `skippedCount`, `conflictCount`, and `dryRunCount`.
+Generation JSON payloads also expose `writtenCount`, `skippedCount`, `conflictCount`, and `dryRunCount`, with `failReasonCode` on policy failure.
 `ndjson` emits one JSON object per line (file events + summary event) for streaming-friendly integrations.
 `--fail-on warnings-count>=N` fails when warning count reaches/exceeds `N`.
+`--report-schema-check` also validates manifest payloads when `--output-manifest` is used.
 
 Exit codes:
 

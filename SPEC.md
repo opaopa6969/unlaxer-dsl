@@ -81,7 +81,7 @@ Current behavior:
 - `--dry-run` previews generated file paths without writing outputs.
 - `--clean-output` removes planned target files before generation starts.
 - `--overwrite never|if-different|always` controls overwrite behavior for existing files.
-- `--fail-on none|warning|skipped|conflict|warnings-count>=N` applies extra failure policy checks after execution.
+- `--fail-on none|warning|skipped|conflict|cleaned|warnings-count>=N` applies extra failure policy checks after execution.
 - `--help`/`-h` prints usage and exits with code `0`.
 - `--version`/`-v` prints resolved tool version and exits with code `0`.
 - `--strict` treats validation warnings as failures (exit code `5`).
@@ -92,15 +92,17 @@ Current behavior:
 - `--report-format ndjson` emits newline-delimited JSON events (`file` events plus summary report event).
 - `--report-file <path>` writes the final report payload (text/json) to a file.
 - `--output-manifest <path>` writes action manifest JSON (written/skipped/conflict/dry-run files and counts).
+- `--manifest-format json|ndjson` controls manifest output format when `--output-manifest` is used.
 - `--report-version 1` selects JSON schema version (currently only version `1` is supported).
 - `--report-schema-check` validates JSON payload schema before emitting/writing reports.
 - `--warnings-as-json` emits warning diagnostics as JSON to stderr even when `--report-format text` is used.
 - On schema-check failure, CLI emits stable error codes prefixed with `E-REPORT-SCHEMA-*`.
 - In normal generation mode with `--report-format json`, CLI emits generation summary (`generatedCount`, `generatedFiles`).
 - JSON report schema includes stable top-level fields:
-  `reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
+  `reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `argsHash`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
 - JSON report payloads include `warningsCount` for warning aggregation.
-- Generation success payloads include overwrite/dry-run stats: `writtenCount`, `skippedCount`, `conflictCount`, `dryRunCount`.
+- Generation payloads include overwrite/dry-run stats: `writtenCount`, `skippedCount`, `conflictCount`, `dryRunCount`.
+- Fail-on-triggered report payloads include `failReasonCode` (for example, `FAIL_ON_CONFLICT`).
 - `toolVersion` is sourced from artifact `Implementation-Version`; fallback is `dev`.
 - Validation failure `issues[]` entries include structured metadata:
   `rule`, `code`, `severity`, `category`, `message`, and `hint` (plus `grammar`).
@@ -113,6 +115,7 @@ Current behavior:
 - `ReportJsonSchemaCompatibilityTest` pins top-level JSON schema order/keys for report version 1.
 - The public JSON schema contract for v1 lives at `docs/schema/report-v1.json`.
 - NDJSON event schema contract lives at `docs/schema/report-v1.ndjson.json`.
+- Manifest schema contracts live at `docs/schema/manifest-v1.json` and `docs/schema/manifest-v1.ndjson.json`.
 - `CodegenMain.runWithClock(...)` exists for deterministic timestamp testing.
 
 ### JSON Report Examples
@@ -132,13 +135,13 @@ Validate success:
 Validate failure:
 
 ```json
-{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","argsHash":"<argsHash>","generatedAt":"<generatedAt>","mode":"validate","ok":false,"issueCount":1,"warningsCount":0,"severityCounts":{"ERROR":1},"categoryCounts":{"MAPPING":1},"issues":[{"grammar":"Invalid","rule":"Invalid","code":"E-MAPPING-MISSING-CAPTURE","severity":"ERROR","category":"MAPPING","message":"rule Invalid @mapping(RootNode) param 'missing' has no matching capture","hint":"Add @missing capture in the rule body or remove it from params."}]}
+{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","argsHash":"<argsHash>","generatedAt":"<generatedAt>","mode":"validate","ok":false,"failReasonCode":null,"issueCount":1,"warningsCount":0,"severityCounts":{"ERROR":1},"categoryCounts":{"MAPPING":1},"issues":[{"grammar":"Invalid","rule":"Invalid","code":"E-MAPPING-MISSING-CAPTURE","severity":"ERROR","category":"MAPPING","message":"rule Invalid @mapping(RootNode) param 'missing' has no matching capture","hint":"Add @missing capture in the rule body or remove it from params."}]}
 ```
 
 Generate success:
 
 ```json
-{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","argsHash":"<argsHash>","generatedAt":"<generatedAt>","mode":"generate","ok":true,"grammarCount":1,"generatedCount":1,"warningsCount":0,"writtenCount":1,"skippedCount":0,"conflictCount":0,"dryRunCount":0,"generatedFiles":["/path/to/out/org/example/valid/ValidAST.java"]}
+{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","argsHash":"<argsHash>","generatedAt":"<generatedAt>","mode":"generate","ok":true,"failReasonCode":null,"grammarCount":1,"generatedCount":1,"warningsCount":0,"writtenCount":1,"skippedCount":0,"conflictCount":0,"dryRunCount":0,"generatedFiles":["/path/to/out/org/example/valid/ValidAST.java"]}
 ```
 <!-- JSON_REPORT_EXAMPLES_END -->
 

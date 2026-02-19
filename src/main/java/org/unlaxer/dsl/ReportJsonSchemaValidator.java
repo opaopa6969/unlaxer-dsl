@@ -68,6 +68,7 @@ final class ReportJsonSchemaValidator {
                     "generatedAt",
                     "mode",
                     "ok",
+                    "failReasonCode",
                     "issueCount",
                     "warningsCount",
                     "severityCounts",
@@ -81,6 +82,7 @@ final class ReportJsonSchemaValidator {
             requireString(obj, "toolVersion");
             requireString(obj, "argsHash");
             requireString(obj, "generatedAt");
+            requireNullableString(obj, "failReasonCode");
             requireNumber(obj, "issueCount");
             requireNumber(obj, "warningsCount");
             requireObject(obj, "severityCounts");
@@ -89,7 +91,7 @@ final class ReportJsonSchemaValidator {
             return;
         }
 
-        if ("generate".equals(mode) && ok) {
+        if ("generate".equals(mode)) {
             requireTopLevelOrder(
                 obj,
                 List.of(
@@ -101,6 +103,7 @@ final class ReportJsonSchemaValidator {
                     "generatedAt",
                     "mode",
                     "ok",
+                    "failReasonCode",
                     "grammarCount",
                     "generatedCount",
                     "warningsCount",
@@ -117,6 +120,7 @@ final class ReportJsonSchemaValidator {
             requireString(obj, "toolVersion");
             requireString(obj, "argsHash");
             requireString(obj, "generatedAt");
+            requireNullableString(obj, "failReasonCode");
             requireNumber(obj, "grammarCount");
             requireNumber(obj, "generatedCount");
             requireNumber(obj, "warningsCount");
@@ -166,6 +170,17 @@ final class ReportJsonSchemaValidator {
             fail("E-REPORT-SCHEMA-TYPE", "Expected number for key: " + key);
         }
         return (Number) value;
+    }
+
+    private static String requireNullableString(Map<String, Object> obj, String key) {
+        Object value = requireKey(obj, key);
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof String s)) {
+            fail("E-REPORT-SCHEMA-TYPE", "Expected nullable string for key: " + key);
+        }
+        return (String) value;
     }
 
     @SuppressWarnings("unchecked")
