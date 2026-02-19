@@ -514,7 +514,7 @@ public class CodegenMainTest {
         );
 
         assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
-        Map<String, Object> event = JsonTestUtil.parseObject(result.out().trim());
+        Map<String, Object> event = JsonTestUtil.parseObject(lastJsonLine(result.out()));
         assertEquals("cli-error", JsonTestUtil.getString(event, "event"));
         assertEquals("E-CLI-UNKNOWN-GENERATOR", JsonTestUtil.getString(event, "code"));
         assertEquals(null, event.get("detail"));
@@ -632,6 +632,30 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testReportFileWriteFailureReturnsNdjsonCliErrorEvent() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-report-write-failure-ndjson", ".ubnf");
+        Files.writeString(grammarFile, CliFixtureData.VALID_GRAMMAR);
+        Path blocker = Files.createTempFile("codegen-main-report-blocker-ndjson", ".tmp");
+        Path reportFile = blocker.resolve("report.json");
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "ndjson",
+            "--report-file", reportFile.toString()
+        );
+
+        assertEquals(CodegenMain.EXIT_GENERATION_ERROR, result.exitCode());
+        Map<String, Object> event = JsonTestUtil.parseObject(lastJsonLine(result.out()));
+        assertEquals("cli-error", JsonTestUtil.getString(event, "event"));
+        assertEquals("E-IO", JsonTestUtil.getString(event, "code"));
+        assertFalse(JsonTestUtil.getString(event, "message").isBlank());
+        assertEquals(null, event.get("detail"));
+        assertEquals(List.of(), JsonTestUtil.getArray(event, "availableGenerators"));
+        assertTrue(result.err().isBlank());
+    }
+
+    @Test
     public void testUnknownGeneratorWithReportOptionsReturnsCliErrorAndNoReport() throws Exception {
         String source = """
             grammar Valid {
@@ -675,6 +699,19 @@ public class CodegenMainTest {
         assertTrue(result.err().contains("--manifest-format"));
         assertTrue(result.err().contains("--report-schema-check"));
         assertTrue(result.err().contains("--warnings-as-json"));
+    }
+
+    @Test
+    public void testUnknownOptionReturnsNdjsonCliUsageErrorEvent() {
+        RunResult result = runCodegen("--unknown-option", "--report-format", "ndjson");
+        assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
+        Map<String, Object> event = JsonTestUtil.parseObject(lastJsonLine(result.out()));
+        assertEquals("cli-error", JsonTestUtil.getString(event, "event"));
+        assertEquals("E-CLI-USAGE", JsonTestUtil.getString(event, "code"));
+        assertFalse(JsonTestUtil.getString(event, "message").isBlank());
+        assertTrue(event.get("detail") == null || "Use --help to view usage.".equals(event.get("detail")));
+        assertEquals(List.of(), JsonTestUtil.getArray(event, "availableGenerators"));
+        assertTrue(result.err().isBlank());
     }
 
     @Test
@@ -1943,6 +1980,17 @@ public class CodegenMainTest {
             return null;
         }
         return matcher.group(1);
+    }
+
+    private static String lastJsonLine(String text) {
+        String[] lines = text.trim().split("\\R");
+        for (int i = lines.length - 1; i >= 0; i--) {
+            String line = lines[i].trim();
+            if (line.startsWith("{") && line.endsWith("}")) {
+                return line;
+            }
+        }
+        throw new IllegalStateException("JSON line not found");
     }
 
     private record RunResult(int exitCode, String out, String err) {}

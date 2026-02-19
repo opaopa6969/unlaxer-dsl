@@ -893,6 +893,7 @@ Generation JSON payloads also expose `writtenCount`, `skippedCount`, `conflictCo
 `ndjson` emits one JSON object per line (file events + summary event) for streaming-friendly integrations.
 `ndjson` also emits `cli-error` events for CLI failures (usage/argument errors and runtime CLI failures such as unknown generator names).
 `cli-error` fields are stable: `code`, `message`, nullable `detail`, and `availableGenerators` (empty unless relevant).
+Common `code` values include `E-CLI-USAGE`, `E-CLI-UNKNOWN-GENERATOR`, `E-CLI-UNSAFE-CLEAN-OUTPUT`, `E-IO`, and `E-RUNTIME`.
 In `ndjson` mode, `stdout` is JSON-lines only (no human progress text).
 In `ndjson` generation mode, conflict/fail-on human messages are suppressed from `stderr`.
 In `ndjson` validation failure paths, `stderr` is also JSON-lines only.
