@@ -996,6 +996,55 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testNdjsonValidateFailureStderrIsJsonOnly() throws Exception {
+        String source = """
+            grammar Invalid {
+              @package: org.example.invalid
+              @root
+              @mapping(RootNode, params=[value, missing])
+              Invalid ::= 'x' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-validate-failure", ".ubnf");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--report-format", "ndjson"
+        );
+
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        String err = result.err().trim();
+        assertTrue(err.contains("\"event\":\"validate-failure\""));
+        for (String line : err.split("\\R")) {
+            String trimmed = line.trim();
+            assertTrue("ndjson stderr line must be JSON: " + trimmed, trimmed.startsWith("{") && trimmed.endsWith("}"));
+        }
+    }
+
+    @Test
+    public void testNdjsonStrictFailureStderrIsJsonOnly() throws Exception {
+        Path grammarFile = Files.createTempFile("codegen-main-ndjson-strict-failure", ".ubnf");
+        Files.writeString(grammarFile, CliFixtureData.WARN_ONLY_GRAMMAR);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--validate-only",
+            "--fail-on", "warning",
+            "--report-format", "ndjson"
+        );
+
+        assertEquals(CodegenMain.EXIT_STRICT_VALIDATION_ERROR, result.exitCode());
+        String err = result.err().trim();
+        assertTrue(err.contains("\"event\":\"strict-failure\""));
+        for (String line : err.split("\\R")) {
+            String trimmed = line.trim();
+            assertTrue("ndjson stderr line must be JSON: " + trimmed, trimmed.startsWith("{") && trimmed.endsWith("}"));
+        }
+    }
+
+    @Test
     public void testNdjsonGenerationOutputIncludesFileEventsAndSummary() throws Exception {
         String source = """
             grammar Valid {

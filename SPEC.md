@@ -92,6 +92,7 @@ Current behavior:
 - `--report-format ndjson` emits newline-delimited JSON events (`file` events plus summary report event).
 - In `ndjson` mode, `stdout` remains JSON-lines only (human progress text is suppressed).
 - In `ndjson` generation mode, conflict/fail-on human error messages are suppressed from `stderr`.
+- In `ndjson` validation failure paths, `stderr` also remains JSON-lines only.
 - `--report-file <path>` writes the final report payload (text/json) to a file.
 - `--output-manifest <path>` writes action manifest JSON (written/skipped/conflict/dry-run files and counts).
 - `--manifest-format json|ndjson` controls manifest output format when `--output-manifest` is used.
