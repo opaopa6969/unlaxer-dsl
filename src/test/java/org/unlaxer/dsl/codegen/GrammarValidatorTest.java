@@ -292,6 +292,54 @@ public class GrammarValidatorTest {
         }
     }
 
+    @Test
+    public void testAssocWithoutPrecedenceFails() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @mapping(ExprNode, params=[left, op, right])\n"
+                + "  @leftAssoc\n"
+                + "  Expr ::= Term @left { '+' @op Term @right } ;\n"
+                + "  Term ::= 'n' ;\n"
+                + "}"
+        );
+
+        try {
+            GrammarValidator.validateOrThrow(grammar);
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("uses @leftAssoc but has no @precedence"));
+        }
+    }
+
+    @Test
+    public void testMixedAssociativityAtSamePrecedenceFails() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @mapping(ExprNode, params=[left, op, right])\n"
+                + "  @leftAssoc\n"
+                + "  @precedence(level=10)\n"
+                + "  Expr ::= Term @left { '+' @op Term @right } ;\n"
+                + "  @mapping(PowNode, params=[left, op, right])\n"
+                + "  @rightAssoc\n"
+                + "  @precedence(level=10)\n"
+                + "  Pow ::= Atom @left { '^' @op Pow @right } ;\n"
+                + "  Term ::= 'n' ;\n"
+                + "  Atom ::= 'n' ;\n"
+                + "}"
+        );
+
+        try {
+            GrammarValidator.validateOrThrow(grammar);
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("mixes associativity"));
+        }
+    }
+
     private GrammarDecl parseGrammar(String source) {
         return UBNFMapper.parse(source).grammars().get(0);
     }

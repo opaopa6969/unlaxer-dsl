@@ -45,12 +45,15 @@ Contract:
 3. `@precedence` currently requires either `@leftAssoc` or `@rightAssoc` on the same rule.
 4. `@leftAssoc` and `@rightAssoc` cannot be used together on one rule.
 5. If an operator rule references another operator rule and both have `@precedence`, the referenced rule must have a higher precedence level.
+6. Every `@leftAssoc` / `@rightAssoc` rule must declare `@precedence`.
+7. A single precedence level cannot mix left/right associativity.
 
 Current behavior:
 
 - Violations fail fast during code generation (`GrammarValidator.validateOrThrow`) with a clear error message.
 - Parser generator emits `PRECEDENCE_<RULE_NAME>` constants for annotated rules.
 - Parser generator emits operator metadata APIs: `getPrecedence(ruleName)` and `getAssociativity(ruleName)`.
+- Parser generator emits sorted operator specs: `getOperatorSpecs()`.
 
 ### `@whitespace`
 

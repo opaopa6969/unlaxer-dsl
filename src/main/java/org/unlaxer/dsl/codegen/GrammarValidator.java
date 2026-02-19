@@ -20,8 +20,10 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.StringSettingValue;
 import org.unlaxer.dsl.bootstrap.UBNFAST.WhitespaceAnnotation;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -65,6 +67,7 @@ public final class GrammarValidator {
             validatePrecedence(rule, hasLeftAssoc, hasRightAssoc, precedenceAnnotations, errors);
         }
         validatePrecedenceTopology(grammar, errors);
+        validateAssociativityConsistency(grammar, errors);
 
         if (!errors.isEmpty()) {
             throw new IllegalArgumentException(
@@ -221,10 +224,50 @@ public final class GrammarValidator {
         }
     }
 
+    private static void validateAssociativityConsistency(GrammarDecl grammar, List<String> errors) {
+        Map<Integer, String> assocByLevel = new LinkedHashMap<>();
+        for (RuleDecl rule : grammar.rules()) {
+            String assoc = getAssocKind(rule);
+            if ("NONE".equals(assoc) || "BOTH".equals(assoc)) {
+                continue;
+            }
+            Integer level = findPrecedenceLevel(rule);
+            if (level == null) {
+                errors.add("rule " + rule.name() + " uses @" + assoc.toLowerCase()
+                    + "Assoc but has no @precedence");
+                continue;
+            }
+            String existing = assocByLevel.get(level);
+            if (existing == null) {
+                assocByLevel.put(level, assoc);
+                continue;
+            }
+            if (!existing.equals(assoc)) {
+                errors.add("precedence level " + level
+                    + " mixes associativity: " + existing + " and " + assoc);
+            }
+        }
+    }
+
     private static boolean hasAssoc(RuleDecl rule) {
         boolean left = rule.annotations().stream().anyMatch(a -> a instanceof LeftAssocAnnotation);
         boolean right = rule.annotations().stream().anyMatch(a -> a instanceof RightAssocAnnotation);
         return left || right;
+    }
+
+    private static String getAssocKind(RuleDecl rule) {
+        boolean left = rule.annotations().stream().anyMatch(a -> a instanceof LeftAssocAnnotation);
+        boolean right = rule.annotations().stream().anyMatch(a -> a instanceof RightAssocAnnotation);
+        if (left && right) {
+            return "BOTH";
+        }
+        if (left) {
+            return "LEFT";
+        }
+        if (right) {
+            return "RIGHT";
+        }
+        return "NONE";
     }
 
     private static Integer findPrecedenceLevel(RuleDecl rule) {

@@ -763,6 +763,7 @@ public class ParserGenerator implements CodeGenerator {
 
         StringBuilder sb = new StringBuilder();
         sb.append("    public enum Assoc { LEFT, RIGHT, NONE }\n\n");
+        sb.append("    public record OperatorSpec(String ruleName, int precedence, Assoc assoc) {}\n\n");
 
         sb.append("    public static int getPrecedence(String ruleName) {\n");
         sb.append("        return switch (ruleName) {\n");
@@ -787,6 +788,32 @@ public class ParserGenerator implements CodeGenerator {
         }
         sb.append("            default -> Assoc.NONE;\n");
         sb.append("        };\n");
+        sb.append("    }\n\n");
+
+        List<RuleDecl> sorted = operatorRules.stream()
+            .sorted((a, b) -> {
+                int pa = findPrecedenceLevel(a) == null ? -1 : findPrecedenceLevel(a);
+                int pb = findPrecedenceLevel(b) == null ? -1 : findPrecedenceLevel(b);
+                if (pa != pb) {
+                    return Integer.compare(pa, pb);
+                }
+                return a.name().compareTo(b.name());
+            })
+            .toList();
+
+        sb.append("    public static java.util.List<OperatorSpec> getOperatorSpecs() {\n");
+        sb.append("        return java.util.List.of(\n");
+        for (int i = 0; i < sorted.size(); i++) {
+            RuleDecl rule = sorted.get(i);
+            int level = findPrecedenceLevel(rule) == null ? -1 : findPrecedenceLevel(rule);
+            String suffix = i < sorted.size() - 1 ? "," : "";
+            sb.append("            new OperatorSpec(\"")
+                .append(rule.name()).append("\", ")
+                .append(level).append(", Assoc.")
+                .append(getAssocName(rule)).append(")")
+                .append(suffix).append("\n");
+        }
+        sb.append("        );\n");
         sb.append("    }\n\n");
 
         return sb.toString();

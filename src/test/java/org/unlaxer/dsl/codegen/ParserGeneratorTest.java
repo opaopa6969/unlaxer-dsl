@@ -71,6 +71,23 @@ public class ParserGeneratorTest {
         "  Atom ::= NUMBER ;\n" +
         "}";
 
+    private static final String OPERATOR_TABLE_GRAMMAR =
+        "grammar Ops {\n" +
+        "  @package: org.example.ops\n" +
+        "  @whitespace: javaStyle\n" +
+        "  token NUMBER = NumberParser\n" +
+        "  @root\n" +
+        "  @mapping(ExprNode, params=[left, op, right])\n" +
+        "  @leftAssoc\n" +
+        "  @precedence(level=10)\n" +
+        "  Expr ::= Term @left { '+' @op Term @right } ;\n" +
+        "  @mapping(TermNode, params=[left, op, right])\n" +
+        "  @leftAssoc\n" +
+        "  @precedence(level=20)\n" +
+        "  Term ::= Factor @left { '*' @op Factor @right } ;\n" +
+        "  Factor ::= NUMBER ;\n" +
+        "}";
+
     // =========================================================================
     // パッケージ名・クラス名
     // =========================================================================
@@ -230,6 +247,18 @@ public class ParserGeneratorTest {
             source.contains("case \"Expr\" -> PRECEDENCE_EXPR;"));
         assertTrue("should map Expr associativity to RIGHT",
             source.contains("case \"Expr\" -> Assoc.RIGHT;"));
+        assertTrue("should generate operator spec table",
+            source.contains("getOperatorSpecs()"));
+    }
+
+    @Test
+    public void testOperatorSpecsAreSortedByPrecedence() {
+        String source = generate(OPERATOR_TABLE_GRAMMAR);
+        int exprIdx = source.indexOf("new OperatorSpec(\"Expr\", 10, Assoc.LEFT)");
+        int termIdx = source.indexOf("new OperatorSpec(\"Term\", 20, Assoc.LEFT)");
+        assertTrue("Expr spec should exist", exprIdx >= 0);
+        assertTrue("Term spec should exist", termIdx >= 0);
+        assertTrue("lower precedence spec should appear first", exprIdx < termIdx);
     }
 
     @Test
