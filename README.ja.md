@@ -1093,6 +1093,7 @@ JSON ペイロードには `warningsCount` が含まれ、`issues[]` を走査�
 `ndjson` は 1 行 1 JSON（file イベント + summary イベント）でストリーミング連携しやすい。
 `ndjson` は CLI 失敗（引数/使用方法エラーと実行時エラー。例: 未知の generator）で `cli-error` イベントも出力する。
 `cli-error` のフィールドは `code`, `message`, nullable な `detail`, `availableGenerators`（通常は空配列）で安定化している。
+`code` は `E-[A-Z0-9-]+` パターンに従う。
 代表的な `code` は `E-CLI-USAGE`, `E-CLI-UNKNOWN-GENERATOR`, `E-CLI-UNSAFE-CLEAN-OUTPUT`, `E-IO`, `E-RUNTIME`。
 `ndjson` モードでは `stdout` は JSON 行のみ（人間向け進捗テキストは出力しない）。
 `ndjson` の生成モードでは conflict/fail-on の人間向けメッセージを `stderr` に出さない。

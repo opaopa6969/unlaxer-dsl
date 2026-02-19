@@ -72,7 +72,7 @@
       "additionalProperties": false,
       "properties": {
         "event": { "const": "cli-error" },
-        "code": { "type": "string", "minLength": 1 },
+        "code": { "type": "string", "pattern": "^E-[A-Z0-9-]+$" },
         "message": { "type": "string", "minLength": 1 },
         "detail": {
           "oneOf": [

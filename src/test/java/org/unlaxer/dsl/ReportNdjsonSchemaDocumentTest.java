@@ -55,4 +55,25 @@ public class ReportNdjsonSchemaDocumentTest {
         }
         throw new IllegalStateException("file-event schema not found");
     }
+
+    @Test
+    public void testNdjsonSchemaCliErrorCodeUsesStablePattern() throws Exception {
+        String json = Files.readString(Path.of("docs/schema/report-v1.ndjson.json"));
+        Map<String, Object> schema = JsonTestUtil.parseObject(json);
+        List<Object> oneOf = JsonTestUtil.getArray(schema, "oneOf");
+
+        for (Object o : oneOf) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> item = (Map<String, Object>) o;
+            if (!"cli-error".equals(JsonTestUtil.getString(item, "title"))) {
+                continue;
+            }
+            Map<String, Object> properties = JsonTestUtil.getObject(item, "properties");
+            Map<String, Object> code = JsonTestUtil.getObject(properties, "code");
+            assertTrue(code.containsKey("pattern"));
+            assertTrue("^E-[A-Z0-9-]+$".equals(code.get("pattern")));
+            return;
+        }
+        throw new IllegalStateException("cli-error schema not found");
+    }
 }
