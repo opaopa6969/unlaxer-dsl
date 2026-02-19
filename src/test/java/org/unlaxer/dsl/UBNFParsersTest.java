@@ -114,6 +114,12 @@ public class UBNFParsersTest {
     }
 
     @Test
+    public void testAnnotation_precedence() {
+        Parsed parsed = parse(Parser.get(UBNFParsers.AnnotationParser.class), "@precedence(level=10)");
+        assertTrue(parsed.isSucceeded());
+    }
+
+    @Test
     public void testAnnotation_mapping_noParams() {
         Parsed parsed = parse(Parser.get(UBNFParsers.MappingAnnotationParser.class),
             "@mapping(TinyCalcProgram)");

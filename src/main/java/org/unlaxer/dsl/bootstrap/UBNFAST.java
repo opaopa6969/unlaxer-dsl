@@ -94,6 +94,7 @@ public sealed interface UBNFAST permits
         UBNFAST.MappingAnnotation,
         UBNFAST.WhitespaceAnnotation,
         UBNFAST.LeftAssocAnnotation,
+        UBNFAST.PrecedenceAnnotation,
         UBNFAST.SimpleAnnotation {}
 
     /** @root */
@@ -110,6 +111,9 @@ public sealed interface UBNFAST permits
 
     /** @leftAssoc */
     record LeftAssocAnnotation() implements Annotation {}
+
+    /** @precedence(level=10) */
+    record PrecedenceAnnotation(int level) implements Annotation {}
 
     /** @name（上記以外の任意アノテーション） */
     record SimpleAnnotation(String name) implements Annotation {}

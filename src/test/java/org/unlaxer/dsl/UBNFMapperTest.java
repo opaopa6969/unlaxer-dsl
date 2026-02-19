@@ -15,6 +15,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GroupElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.LeftAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.MappingAnnotation;
+import org.unlaxer.dsl.bootstrap.UBNFAST.PrecedenceAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RepeatElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RootAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleDecl;
@@ -96,6 +97,19 @@ public class UBNFMapperTest {
         RuleDecl rule = file.grammars().get(0).rules().get(0);
         assertEquals(1, rule.annotations().size());
         assertTrue(rule.annotations().get(0) instanceof LeftAssocAnnotation);
+    }
+
+    @Test
+    public void testRuleDecl_annotations_precedence() {
+        UBNFFile file = UBNFMapper.parse(
+            "grammar G {\n"
+            + "  @precedence(level=42)\n"
+            + "  Expr ::= Term ;\n"
+            + "}");
+        RuleDecl rule = file.grammars().get(0).rules().get(0);
+        assertEquals(1, rule.annotations().size());
+        assertTrue(rule.annotations().get(0) instanceof PrecedenceAnnotation);
+        assertEquals(42, ((PrecedenceAnnotation) rule.annotations().get(0)).level());
     }
 
     @Test

@@ -158,6 +158,50 @@ public class GrammarValidatorTest {
         }
     }
 
+    @Test
+    public void testPrecedenceWithoutLeftAssocFails() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @mapping(ExprNode, params=[left, op, right])\n"
+                + "  @precedence(level=10)\n"
+                + "  Expr ::= Term @left { '+' @op Term @right } ;\n"
+                + "  Term ::= 'n' ;\n"
+                + "}"
+        );
+
+        try {
+            GrammarValidator.validateOrThrow(grammar);
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("uses @precedence but has no @leftAssoc"));
+        }
+    }
+
+    @Test
+    public void testDuplicatePrecedenceFails() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @mapping(ExprNode, params=[left, op, right])\n"
+                + "  @leftAssoc\n"
+                + "  @precedence(level=10)\n"
+                + "  @precedence(level=20)\n"
+                + "  Expr ::= Term @left { '+' @op Term @right } ;\n"
+                + "  Term ::= 'n' ;\n"
+                + "}"
+        );
+
+        try {
+            GrammarValidator.validateOrThrow(grammar);
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("duplicate @precedence annotations"));
+        }
+    }
+
     private GrammarDecl parseGrammar(String source) {
         return UBNFMapper.parse(source).grammars().get(0);
     }

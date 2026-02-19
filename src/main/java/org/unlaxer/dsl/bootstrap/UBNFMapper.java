@@ -20,6 +20,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.KeyValuePair;
 import org.unlaxer.dsl.bootstrap.UBNFAST.LeftAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.MappingAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.OptionalElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.PrecedenceAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RepeatElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RootAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleBody;
@@ -214,6 +215,8 @@ public class UBNFMapper {
                 result.add(toWhitespaceAnnotation(child));
             } else if (child.parser.getClass() == UBNFParsers.LeftAssocAnnotationParser.class) {
                 result.add(new LeftAssocAnnotation());
+            } else if (child.parser.getClass() == UBNFParsers.PrecedenceAnnotationParser.class) {
+                result.add(toPrecedenceAnnotation(child));
             } else if (child.parser.getClass() == UBNFParsers.SimpleAnnotationParser.class) {
                 result.add(toSimpleAnnotation(child));
             } else {
@@ -251,6 +254,14 @@ public class UBNFMapper {
         List<Token> identifiers = findDescendants(token, UBNFParsers.IdentifierParser.class);
         String name = identifiers.isEmpty() ? "" : identifiers.get(0).source.toString().trim();
         return new SimpleAnnotation(name);
+    }
+
+    static PrecedenceAnnotation toPrecedenceAnnotation(Token token) {
+        List<Token> numberTokens = findDescendants(token, UBNFParsers.UnsignedIntegerParser.class);
+        int level = numberTokens.isEmpty()
+            ? 0
+            : Integer.parseInt(numberTokens.get(0).source.toString().trim());
+        return new PrecedenceAnnotation(level);
     }
 
     // =========================================================================

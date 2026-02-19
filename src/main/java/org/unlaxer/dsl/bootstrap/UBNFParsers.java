@@ -44,7 +44,7 @@ import org.unlaxer.util.cache.SupplierBoundCache;
  * TokenDecl     ::= 'token' IDENTIFIER '=' CLASS_NAME
  * RuleDecl      ::= Annotation* IDENTIFIER '::=' RuleBody
  * Annotation    ::= '@root' | '@mapping(...)' | '@whitespace[(...)]'
- *                 | '@leftAssoc' | '@' IDENTIFIER
+ *                 | '@leftAssoc' | '@precedence(level=INTEGER)' | '@' IDENTIFIER
  * RuleBody      ::= ChoiceBody
  * ChoiceBody    ::= SequenceBody { '|' SequenceBody }
  * SequenceBody  ::= AnnotatedElement+
@@ -109,6 +109,15 @@ public class UBNFParsers {
         @Override
         public boolean isMatch(char target) {
             return '|' == target;
+        }
+    }
+
+    public static class DigitParser extends SingleCharacterParser {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public boolean isMatch(char target) {
+            return Character.isDigit(target);
         }
     }
 
@@ -189,6 +198,20 @@ public class UBNFParsers {
             return new Parsers(
                 Parser.get(AlphabetUnderScoreParser.class),
                 new ZeroOrMore(Parser.get(AlphabetNumericUnderScoreParser.class))
+            );
+        }
+    }
+
+    /**
+     * UNSIGNED_INTEGER: Digit+
+     */
+    public static class UnsignedIntegerParser extends UBNFLazyChain {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Parsers getLazyParsers() {
+            return new Parsers(
+                new OneOrMore(Parser.get(DigitParser.class))
             );
         }
     }
@@ -458,6 +481,25 @@ public class UBNFParsers {
     }
 
     /**
+     * PrecedenceAnnotation: '@precedence' '(' 'level' '=' UNSIGNED_INTEGER ')'
+     */
+    public static class PrecedenceAnnotationParser extends UBNFLazyChain {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Parsers getLazyParsers() {
+            return new Parsers(
+                new WordParser("@precedence"),
+                Parser.get(LeftParenthesisParser.class),
+                new WordParser("level"),
+                Parser.get(EqualParser.class),
+                Parser.get(UnsignedIntegerParser.class),
+                Parser.get(RightParenthesisParser.class)
+            );
+        }
+    }
+
+    /**
      * SimpleAnnotation: '@' IDENTIFIER
      * （上記の特殊アノテーションにマッチしない場合のフォールバック）
      */
@@ -475,7 +517,7 @@ public class UBNFParsers {
 
     /**
      * Annotation: RootAnnotation | MappingAnnotation | WhitespaceAnnotation
-     *           | LeftAssocAnnotation | SimpleAnnotation
+     *           | LeftAssocAnnotation | PrecedenceAnnotation | SimpleAnnotation
      */
     public static class AnnotationParser extends LazyChoice {
         private static final long serialVersionUID = 1L;
@@ -487,6 +529,7 @@ public class UBNFParsers {
                 Parser.get(MappingAnnotationParser.class),
                 Parser.get(WhitespaceAnnotationParser.class),
                 Parser.get(LeftAssocAnnotationParser.class),
+                Parser.get(PrecedenceAnnotationParser.class),
                 Parser.get(SimpleAnnotationParser.class)
             );
         }

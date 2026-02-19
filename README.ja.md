@@ -272,6 +272,7 @@ Expression ::= Term @left { ( '+' @op | '-' @op ) Term @right } ;
 | `@mapping(ClassName)` | パースツリーをマップする AST クラス名を指定 |
 | `@mapping(ClassName, params=[a, b, c])` | AST クラス名とフィールド名を指定。フィールド型はキャプチャ名から自動推論される |
 | `@leftAssoc` | 左結合演算子であることを宣言（left/op/right の capture・params 契約として検証される。パーサー生成自体は現状 grammar 駆動） |
+| `@precedence(level=10)` | 演算子ルールの優先順位メタデータ。現状 validator は `@leftAssoc` との併用を要求し、同一ルールでの重複指定を禁止 |
 | `@whitespace` | このルールの空白処理を個別に制御（global 設定より優先、オプション） |
 
 ---
@@ -1271,7 +1272,7 @@ Maven フェーズ別の処理内容：
 | `//.*$` | `comment.line.double-slash.ubnf` |
 | `\bgrammar\b`, `\btoken\b` | `keyword.control.ubnf` |
 | `::=`, `\|`, `;` | `keyword.operator.ubnf` |
-| `@root`, `@mapping`, `@whitespace`, `@leftAssoc` | `storage.modifier.ubnf` |
+| `@root`, `@mapping`, `@whitespace`, `@leftAssoc`, `@precedence` | `storage.modifier.ubnf` |
 | `'[^']*'` | `string.quoted.single.ubnf` |
 | `[A-Z][A-Z_0-9]*` | `entity.name.type.ubnf` |
 

@@ -9,6 +9,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.GroupElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.LeftAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.MappingAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.OptionalElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.PrecedenceAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RepeatElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleDecl;
@@ -36,12 +37,15 @@ public final class GrammarValidator {
         for (RuleDecl rule : grammar.rules()) {
             MappingAnnotation mapping = null;
             boolean hasLeftAssoc = false;
+            List<PrecedenceAnnotation> precedenceAnnotations = new ArrayList<>();
 
             for (Annotation annotation : rule.annotations()) {
                 if (annotation instanceof MappingAnnotation m) {
                     mapping = m;
                 } else if (annotation instanceof LeftAssocAnnotation) {
                     hasLeftAssoc = true;
+                } else if (annotation instanceof PrecedenceAnnotation p) {
+                    precedenceAnnotations.add(p);
                 } else if (annotation instanceof WhitespaceAnnotation w) {
                     validateRuleWhitespace(rule, w, errors);
                 }
@@ -53,6 +57,7 @@ public final class GrammarValidator {
             if (hasLeftAssoc) {
                 validateLeftAssoc(rule, mapping, errors);
             }
+            validatePrecedence(rule, hasLeftAssoc, precedenceAnnotations, errors);
         }
 
         if (!errors.isEmpty()) {
@@ -140,6 +145,25 @@ public final class GrammarValidator {
         if (!style.equalsIgnoreCase("javaStyle") && !style.equalsIgnoreCase("none")) {
             errors.add("rule " + rule.name() + " uses unsupported @whitespace style: " + style
                 + " (allowed: javaStyle, none)");
+        }
+    }
+
+    private static void validatePrecedence(
+        RuleDecl rule,
+        boolean hasLeftAssoc,
+        List<PrecedenceAnnotation> precedenceAnnotations,
+        List<String> errors
+    ) {
+        if (precedenceAnnotations.size() > 1) {
+            errors.add("rule " + rule.name() + " has duplicate @precedence annotations");
+        }
+        for (PrecedenceAnnotation p : precedenceAnnotations) {
+            if (p.level() < 0) {
+                errors.add("rule " + rule.name() + " has invalid @precedence level: " + p.level());
+            }
+        }
+        if (!precedenceAnnotations.isEmpty() && !hasLeftAssoc) {
+            errors.add("rule " + rule.name() + " uses @precedence but has no @leftAssoc");
         }
     }
 

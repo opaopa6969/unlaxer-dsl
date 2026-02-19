@@ -28,6 +28,18 @@ Current behavior:
 - It records intent but does not currently change parser generation behavior.
 - Future work: introduce operator-precedence/associativity aware generation.
 
+### `@precedence(level=...)`
+
+Contract:
+
+1. `level` is an integer (`0` or greater).
+2. A rule may declare `@precedence` at most once.
+3. `@precedence` currently requires `@leftAssoc` on the same rule.
+
+Current behavior:
+
+- Violations fail fast during code generation (`GrammarValidator.validateOrThrow`) with a clear error message.
+
 ### `@whitespace`
 
 - Global `@whitespace` in grammar settings controls delimiter insertion in generated parsers.
@@ -62,6 +74,6 @@ Current behavior:
 ## Future Tightening Candidates
 
 1. Rule-level whitespace override semantics.
-2. Formal precedence/associativity model for `@leftAssoc`.
+2. Parser generation that actually consumes `@precedence` + associativity metadata.
 3. Explicit token import namespace configuration.
 4. Golden test fixtures for generated source snapshots.
