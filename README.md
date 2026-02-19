@@ -864,6 +864,7 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 | `--report-schema-check` | Validate JSON payload shape before emitting it | `false` |
 
 Available generator names: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
+`--generators` values are trimmed by comma, empty entries are rejected (for example, `"AST, LSP"` is valid).
 
 Exit codes:
 

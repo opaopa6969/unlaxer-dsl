@@ -1064,6 +1064,7 @@ JSON レポートは安定したトップレベル項目として
 | `--report-schema-check` | JSON ペイロードを出力前にスキーマ検証する | `false` |
 
 使用可能な生成器名: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
+`--generators` はカンマ区切り値をトリムし、空要素はエラーとして拒否する（例: `"AST, LSP"` は有効）。
 
 終了コード:
 

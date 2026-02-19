@@ -77,6 +77,7 @@ Current behavior:
 
 - All `grammar` blocks in a single `.ubnf` file are processed (not only the first one).
 - Missing values for `--grammar`, `--output`, or `--generators` are treated as CLI errors.
+- `--generators` values are comma-split with whitespace trimming; empty entries are rejected as CLI errors.
 - Grammar validation runs before generation for each grammar block.
 - Validation failures are aggregated across grammar blocks and reported in one error.
 - `--validate-only` runs grammar validation without writing generated sources.
