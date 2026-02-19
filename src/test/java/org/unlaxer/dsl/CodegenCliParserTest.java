@@ -54,6 +54,51 @@ public class CodegenCliParserTest {
     }
 
     @Test
+    public void testRejectMissingReportVersionValue() {
+        try {
+            CodegenCliParser.parse(new String[] {
+                "--grammar", "a.ubnf",
+                "--validate-only",
+                "--report-version"
+            });
+            fail("expected parser usage error");
+        } catch (CodegenCliParser.UsageException e) {
+            assertTrue(e.showUsage());
+            assertTrue(e.getMessage().contains("Missing value for --report-version"));
+        }
+    }
+
+    @Test
+    public void testRejectUnsupportedReportFormat() {
+        try {
+            CodegenCliParser.parse(new String[] {
+                "--grammar", "a.ubnf",
+                "--validate-only",
+                "--report-format", "yaml"
+            });
+            fail("expected parser usage error");
+        } catch (CodegenCliParser.UsageException e) {
+            assertFalse(e.showUsage());
+            assertTrue(e.getMessage().contains("Unsupported --report-format"));
+        }
+    }
+
+    @Test
+    public void testRejectUnknownArgument() {
+        try {
+            CodegenCliParser.parse(new String[] {
+                "--grammar", "a.ubnf",
+                "--validate-only",
+                "--report-schema-check=true"
+            });
+            fail("expected parser usage error");
+        } catch (CodegenCliParser.UsageException e) {
+            assertTrue(e.showUsage());
+            assertTrue(e.getMessage().contains("Unknown argument"));
+        }
+    }
+
+    @Test
     public void testRejectMissingOutputWithoutValidateOnly() {
         try {
             CodegenCliParser.parse(new String[] {

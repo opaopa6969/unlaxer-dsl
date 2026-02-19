@@ -67,4 +67,25 @@ public class ReportJsonSchemaValidatorTest {
             // expected
         }
     }
+
+    @Test
+    public void testRejectsNonObjectPayload() {
+        try {
+            ReportJsonSchemaValidator.validate(1, "[]");
+            fail("expected schema validation error");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
+    }
+
+    @Test
+    public void testRejectsTrailingCharacters() {
+        String valid = ReportJsonWriter.validationSuccess(1, "dev", "2026-01-01T00:00:00Z", 1);
+        try {
+            ReportJsonSchemaValidator.validate(1, valid + " trailing");
+            fail("expected schema validation error");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
+    }
 }
