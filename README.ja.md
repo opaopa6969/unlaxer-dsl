@@ -1,4 +1,5 @@
 # unlaxer-dsl
+[English](README.md) | [日本語](README.ja.md)
 
 UBNF（Unlaxer BNF）記法で書いた文法定義から、Java のパーサー・AST・マッパー・エバリュエーター・LSP サーバー・DAP デバッグアダプターを自動生成し、VS Code 拡張（VSIX）までビルドできるツールです。
 

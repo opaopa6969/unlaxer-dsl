@@ -1,4 +1,5 @@
 # unlaxer-dsl
+[English](README.md) | [日本語](README.ja.md)
 
 A tool that automatically generates Java parsers, ASTs, mappers, and evaluators from grammar definitions written in UBNF (Unlaxer BNF) notation.
 
@@ -23,8 +24,12 @@ A tool that automatically generates Java parsers, ASTs, mappers, and evaluators 
   - [ParserGenerator](#parsergenerator)
   - [MapperGenerator](#mappergenerator)
   - [EvaluatorGenerator](#evaluatorgenerator)
-- [TinyCalc Tutorial](#tinycalc-tutorial)
+- [CodegenMain - CLI Tool](#codegenmain---cli-tool)
+- [Building the VS Code Extension (VSIX)](#building-the-vs-code-extension-vsix)
+- [Tutorial 1: TinyCalc](#tutorial-1-tinycalc)
+- [Tutorial 2: Building a VS Code Extension for UBNF](#tutorial-2-building-a-vs-code-extension-for-ubnf)
 - [Project Structure](#project-structure)
+- [Self-Hosting](#self-hosting)
 - [Roadmap](#roadmap)
 
 ---
@@ -772,7 +777,120 @@ public class TinyCalcCalculator extends TinyCalcEvaluator<Double> {
 
 ---
 
-## TinyCalc Tutorial
+## CodegenMain - CLI Tool
+
+`CodegenMain` is a CLI tool that reads a `.ubnf` file, runs specified generators in batch, and writes generated Java sources to files.
+
+```bash
+java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
+  --grammar path/to/my.ubnf \
+  --output  src/main/java \
+  --generators Parser,LSP,Launcher,DAP,DAPLauncher
+```
+
+| Option | Description | Default |
+|---|---|---|
+| `--grammar <file>` | Path to `.ubnf` file | (required) |
+| `--output <dir>` | Output root directory (written with package structure) | (required) |
+| `--generators <list>` | Comma-separated generator names | `Parser,LSP,Launcher` |
+
+Available generator names: `AST`, `Parser`, `Mapper`, `Evaluator`, `LSP`, `Launcher`, `DAP`, `DAPLauncher`
+
+---
+
+## Building the VS Code Extension (VSIX)
+
+The `tinycalc-vscode/` directory contains a sample VS Code extension for the TinyCalc language.
+Running `mvn verify` performs the full pipeline in one command: **grammar definition -> code generation -> fat jar -> VSIX**.
+
+### Prerequisite
+
+```bash
+# Install unlaxer-dsl into local Maven repository (first time only)
+cd unlaxer-dsl
+mvn install -DskipTests
+```
+
+### Build
+
+```bash
+cd tinycalc-vscode
+mvn verify
+# -> target/tinycalc-lsp-0.1.0.vsix
+```
+
+### What Each Maven Phase Does
+
+| Phase | Process | Output |
+|---|---|---|
+| `generate-sources` | `CodegenMain` reads `grammar/tinycalc.ubnf` and generates Java sources (Parser, LSP, Launcher, DAP, DAPLauncher) | `target/generated-sources/tinycalc/` |
+| `compile` | Compiles the 5 generated classes | `target/classes/` |
+| `package` | Creates fat jar with `maven-shade-plugin` (includes both LSP and DAP classes) and copies to `server-dist/` | `target/tinycalc-lsp-server.jar` |
+| `verify` | `npm install` -> `npx vsce package` (also compiles TypeScript internally) | `target/tinycalc-lsp-0.1.0.vsix` |
+
+### Install
+
+```bash
+code --install-extension tinycalc-vscode/target/tinycalc-lsp-0.1.0.vsix
+```
+
+When you open a `.tcalc` file, the LSP server starts automatically.
+
+To debug with DAP, press `F5` (or create `launch.json`).
+With a `.tcalc` file open in the editor, press `F5` and choose `TinyCalc Debug`;
+the file is parsed and results appear in the Debug Console.
+
+**Normal run (`stopOnEntry: false`):**
+
+```json
+// Example .vscode/launch.json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "tinycalc",
+      "request": "launch",
+      "name": "Debug TinyCalc File",
+      "program": "${file}"
+    }
+  ]
+}
+```
+
+**Step run (`stopOnEntry: true`):**
+
+With `stopOnEntry: true`, token-by-token stepping is enabled.
+Parsing stops at the first token, and `F10` (next) advances one token at a time.
+The Variables panel shows the current token text and parser class name.
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "tinycalc",
+      "request": "launch",
+      "name": "Step TinyCalc File",
+      "program": "${file}",
+      "stopOnEntry": true
+    }
+  ]
+}
+```
+
+| Action | Description |
+|---|---|
+| `F5` (Continue) | Run until next breakpoint (or finish if none) |
+| `F10` (Next) | Move to the next token |
+| Variables panel | Shows current token text and parser class name |
+| Editor highlight | Automatically indicates current token line/column |
+| Breakpoint | Click gutter (left of line number) to set. Becomes active immediately with `verified: true` |
+
+**LSP and DAP are packaged in the same fat jar.** The extension launches LSP via `-jar`, and DAP via `-cp ... TinyCalcDapLauncher`.
+
+---
+
+## Tutorial 1: TinyCalc
 
 TinyCalc is a small calculator DSL that supports variable declarations and basic arithmetic. Here is the flow from grammar definition to evaluation.
 
@@ -830,6 +948,199 @@ System.out.println(result); // 7.0
 
 ---
 
+## Tutorial 2: Building a VS Code Extension for UBNF
+
+In this tutorial, you will use `grammar/ubnf.ubnf` (the grammar definition of UBNF itself)
+as input and build a VS Code extension (VSIX) for `.ubnf` files from scratch.
+
+Unlike TinyCalc, this has a special constraint:
+**the grammar definition itself depends on handwritten implementation details**.
+This section explains both the build flow and the workaround.
+
+---
+
+### Background and Technical Constraint
+
+`grammar/ubnf.ubnf` contains the following token declaration:
+
+```ubnf
+token STRING = SingleQuotedParser
+```
+
+`SingleQuotedParser` is an **inner class** in `UBNFParsers.java` from `unlaxer-common`.
+If you generate parsers with normal `--generators Parser`, runtime `ClassNotFoundException` occurs.
+
+**Workaround**: generate only `--generators LSP,Launcher` (do not generate Parser),
+and manually place a shim class in `src/main/java/` that delegates `getRootParser()`
+to handwritten `org.unlaxer.dsl.bootstrap.UBNFParsers`.
+
+```
+Auto-generated: UBNFLanguageServer.java  (LSP server)
+                UBNFLspLauncher.java     (main class)
+Manual shim:    UBNFParsers.java         (delegates to bootstrap getRootParser())
+```
+
+---
+
+### Step 1: Create directories
+
+```bash
+mkdir -p unlaxer-dsl/ubnf-vscode/src/main/java/org/unlaxer/dsl/bootstrap/generated
+mkdir -p unlaxer-dsl/ubnf-vscode/syntaxes
+```
+
+---
+
+### Step 2: Create `UBNFParsers.java` (shim)
+
+`ubnf-vscode/src/main/java/org/unlaxer/dsl/bootstrap/generated/UBNFParsers.java`
+
+```java
+package org.unlaxer.dsl.bootstrap.generated;
+
+import org.unlaxer.parser.Parser;
+
+public class UBNFParsers {
+    public static Parser getRootParser() {
+        return org.unlaxer.dsl.bootstrap.UBNFParsers.getRootParser();
+    }
+}
+```
+
+`UBNFLanguageServer.java` generated by `LSPGenerator`
+calls `org.unlaxer.dsl.bootstrap.generated.UBNFParsers.getRootParser()`.
+This shim bridges that call to the handwritten bootstrap implementation.
+
+---
+
+### Step 3: Create `pom.xml`
+
+Compared with TinyCalc `pom.xml`, there are four main differences:
+
+| Setting | tinycalc-vscode | ubnf-vscode |
+|---|---|---|
+| `--grammar` | `grammar/tinycalc.ubnf` | `../grammar/ubnf.ubnf` |
+| `--generators` | `Parser,LSP,Launcher` | `LSP,Launcher` |
+| shade `mainClass` | `TinyCalcLspLauncher` | `org.unlaxer.dsl.bootstrap.generated.UBNFLspLauncher` |
+| fat jar name | `tinycalc-lsp-server` | `ubnf-lsp-server` |
+
+`build-helper-maven-plugin` is still required
+to add generated LSP/Launcher code from `target/generated-sources/ubnf/`
+to the compile source set.
+
+Per-phase processing in Maven:
+
+| Phase | Process | Output |
+|---|---|---|
+| `generate-sources` | `CodegenMain` reads `grammar/ubnf.ubnf` and generates LSP/Launcher | `target/generated-sources/ubnf/` |
+| `compile` | Compiles shim + generated code (`UBNFLanguageServer`, `UBNFLspLauncher`) | `target/classes/` |
+| `package` | Creates fat jar with `maven-shade-plugin` and copies to `server-dist/` | `target/ubnf-lsp-server.jar` |
+| `verify` | `npm install` -> `npx vsce package` (also compiles TypeScript) | `target/ubnf-lsp-0.1.0.vsix` |
+
+---
+
+### Step 4: Create VS Code extension config files
+
+**`package.json`**: language ID `ubnf`, extension `.ubnf`, settings key prefix `ubnfLsp.server.*`
+
+```json
+{
+  "name": "ubnf-lsp",
+  "displayName": "UBNF (LSP)",
+  "activationEvents": ["onLanguage:ubnf"],
+  "contributes": {
+    "languages": [{ "id": "ubnf", "extensions": [".ubnf"] }],
+    "grammars": [{
+      "language": "ubnf",
+      "scopeName": "source.ubnf",
+      "path": "./syntaxes/ubnf.tmLanguage.json"
+    }]
+  }
+}
+```
+
+**`src/extension.ts`**: only change `tinycalcLsp` -> `ubnfLsp` and jar path to `server-dist/ubnf-lsp-server.jar`.
+
+---
+
+### Step 5: Create syntax highlighting definition
+
+Define the following patterns in `syntaxes/ubnf.tmLanguage.json`.
+
+| Pattern | Scope |
+|---|---|
+| `//.*$` | `comment.line.double-slash.ubnf` |
+| `\bgrammar\b`, `\btoken\b` | `keyword.control.ubnf` |
+| `::=`, `\|`, `;` | `keyword.operator.ubnf` |
+| `@root`, `@mapping`, `@whitespace`, `@leftAssoc` | `storage.modifier.ubnf` |
+| `'[^']*'` | `string.quoted.single.ubnf` |
+| `[A-Z][A-Z_0-9]*` | `entity.name.type.ubnf` |
+
+---
+
+### Step 6: Build
+
+```bash
+# Install unlaxer-dsl core to local repository first (first time only)
+cd unlaxer-dsl
+mvn install -DskipTests
+
+# Build ubnf-vscode
+cd ubnf-vscode
+mvn verify
+```
+
+On success, `target/ubnf-lsp-0.1.0.vsix` is generated.
+
+```
+ DONE  Packaged: target/ubnf-lsp-0.1.0.vsix (7 files, 2.19 MB)
+```
+
+Check VSIX contents:
+
+```bash
+unzip -l target/ubnf-lsp-0.1.0.vsix
+# extension/server-dist/ubnf-lsp-server.jar  <- fat jar (~2.4 MB)
+# extension/out/extension.js                 <- compiled TypeScript
+# extension/syntaxes/ubnf.tmLanguage.json
+# extension/language-configuration.json
+# extension/package.json
+```
+
+---
+
+### Step 7: Install into VS Code
+
+```bash
+code --install-extension target/ubnf-lsp-0.1.0.vsix
+```
+
+After reloading VS Code (`Ctrl+Shift+P` -> `Developer: Reload Window`),
+opening a `.ubnf` file enables the following features:
+
+| Feature | Details |
+|---|---|
+| Syntax highlighting | Colors comments, keywords, operators, annotations, strings, and type names |
+| Parse diagnostics | Shows syntax errors with red squiggles |
+| Hover | Shows parse status at cursor (`Valid UBNF` / `Parse error at offset N`) |
+| Completion | Suggests keywords such as `grammar`, `token`, etc. |
+
+---
+
+### Comparison with TinyCalc
+
+| Item | tinycalc-vscode | ubnf-vscode |
+|---|---|---|
+| Grammar file | `grammar/tinycalc.ubnf` | `../grammar/ubnf.ubnf` |
+| `--generators` | `Parser,LSP,Launcher,DAP,DAPLauncher` | `LSP,Launcher` (Parser via shim, no DAP) |
+| shim | Not required | `generated/UBNFParsers.java` required |
+| DAP support | Yes (`TinyCalcDebugAdapter` + `TinyCalcDapLauncher`) | No |
+| Language ID | `tinycalc` | `ubnf` |
+| Extension | `.tcalc` | `.ubnf` |
+| fat jar | `tinycalc-lsp-server.jar` (LSP + DAP) | `ubnf-lsp-server.jar` (LSP only) |
+
+---
+
 ## Project Structure
 
 ```
@@ -840,16 +1151,21 @@ unlaxer-dsl/
 │   └── tinycalc.ubnf          TinyCalc sample grammar
 ├── src/
 │   ├── main/java/org/unlaxer/dsl/
+│   │   ├── CodegenMain.java       CLI tool (bulk generates Java sources from ubnf)
 │   │   ├── bootstrap/
 │   │   │   ├── UBNFAST.java       UBNF AST (sealed interface + record)
 │   │   │   ├── UBNFParsers.java   Bootstrap parser (handwritten)
 │   │   │   └── UBNFMapper.java    Parse tree -> AST mapper
 │   │   └── codegen/
-│   │       ├── CodeGenerator.java      Common interface
-│   │       ├── ASTGenerator.java       XxxAST.java generator
-│   │       ├── ParserGenerator.java    XxxParsers.java generator
-│   │       ├── MapperGenerator.java    XxxMapper.java generator
-│   │       └── EvaluatorGenerator.java XxxEvaluator.java generator
+│   │       ├── CodeGenerator.java         Common interface
+│   │       ├── ASTGenerator.java          XxxAST.java generator
+│   │       ├── ParserGenerator.java       XxxParsers.java generator
+│   │       ├── MapperGenerator.java       XxxMapper.java generator
+│   │       ├── EvaluatorGenerator.java    XxxEvaluator.java generator
+│   │       ├── LSPGenerator.java          XxxLanguageServer.java generator
+│   │       ├── LSPLauncherGenerator.java  XxxLspLauncher.java generator
+│   │       ├── DAPGenerator.java          XxxDebugAdapter.java generator
+│   │       └── DAPLauncherGenerator.java  XxxDapLauncher.java generator
 │   └── test/java/org/unlaxer/dsl/
 │       ├── UBNFParsersTest.java
 │       ├── UBNFMapperTest.java
@@ -857,9 +1173,108 @@ unlaxer-dsl/
 │           ├── ASTGeneratorTest.java
 │           ├── ParserGeneratorTest.java
 │           ├── MapperGeneratorTest.java
-│           └── EvaluatorGeneratorTest.java
-└── pom.xml
+│           ├── EvaluatorGeneratorTest.java
+│           ├── LSPGeneratorTest.java
+│           ├── LSPLauncherGeneratorTest.java
+│           ├── LSPCompileVerificationTest.java
+│           ├── DAPGeneratorTest.java
+│           ├── DAPCompileVerificationTest.java
+│           ├── CompileVerificationTest.java    Compile verification for generated Java sources
+│           ├── SelfHostingTest.java            Structure and compile verification for generated UBNFParsers
+│           └── SelfHostingRoundTripTest.java   Round-trip parse of ubnf.ubnf using generated parser
+├── tinycalc-vscode/           VS Code extension sample (TinyCalc, LSP + DAP)
+│   ├── pom.xml                Maven build config (codegen -> compile -> jar -> VSIX)
+│   ├── grammar/
+│   │   └── tinycalc.ubnf      Source grammar for extension (input to CodegenMain)
+│   ├── src/
+│   │   └── extension.ts       VS Code client (LSP + DAP factory registration)
+│   ├── syntaxes/
+│   │   └── tinycalc.tmLanguage.json  TextMate grammar (syntax highlighting)
+│   ├── language-configuration.json
+│   ├── package.json
+│   └── target/                <- build outputs (gitignored)
+│       ├── generated-sources/ <- generated Java sources (Parser, LSP, Launcher, DAP, DAPLauncher)
+│       ├── tinycalc-lsp-server.jar  <- fat jar (includes both LSP and DAP)
+│       └── tinycalc-lsp-0.1.0.vsix <- VS Code extension package
+├── ubnf-vscode/               VS Code extension (editor for UBNF grammar itself)
+│   ├── pom.xml                Maven build config (generates only LSP, Launcher)
+│   ├── src/
+│   │   ├── extension.ts       VS Code client (TypeScript)
+│   │   └── main/java/org/unlaxer/dsl/bootstrap/generated/
+│   │       └── UBNFParsers.java   Handwritten shim (delegates to bootstrap.UBNFParsers)
+│   ├── syntaxes/
+│   │   └── ubnf.tmLanguage.json  TextMate grammar (syntax highlighting)
+│   ├── language-configuration.json
+│   ├── package.json
+│   └── target/                <- build outputs (gitignored)
+│       ├── generated-sources/ <- generated Java sources (LSP, Launcher only)
+│       ├── ubnf-lsp-server.jar    <- fat jar
+│       └── ubnf-lsp-0.1.0.vsix   <- VS Code extension package
+ └── pom.xml
 ```
+
+---
+
+## Self-Hosting
+
+`unlaxer-dsl` has achieved **self-hosting**.
+When `grammar/ubnf.ubnf` (the UBNF grammar itself written in UBNF) is processed by `ParserGenerator`,
+it generates `org.unlaxer.dsl.bootstrap.generated.UBNFParsers`.
+`SelfHostingRoundTripTest` verifies that this generated parser can fully parse `ubnf.ubnf` itself.
+
+### Round-trip Verification Flow
+
+```
+grammar/ubnf.ubnf
+    │
+    ▼  Handwritten bootstrap (UBNFParsers + UBNFAST + UBNFMapper)
+GrammarDecl (AST)
+    │
+    ▼  ParserGenerator.generate()
+generated/UBNFParsers.java (source string)
+    │
+    ▼  javax.tools.JavaCompiler (--enable-preview --release 21)
+generated/UBNFParsers.class (in-memory compile -> tmpDir)
+    │
+    ▼  URLClassLoader + reflective getRootParser() call
+Parser (root parser of generated parser)
+    │
+    ▼  parser.parse(ParseContext(grammar/ubnf.ubnf))
+Parsed (success + full input consumed) <- verified in SelfHostingRoundTripTest
+```
+
+### Bug Found and Fixed
+
+During self-hosting implementation, a bug was found and fixed in `UBNFMapper.toTokenDecl()`.
+
+**Bug**: the trailing `IdentifierParser` in `token CLASS_NAME = IdentifierParser`
+uses handwritten `UBNFParsers.IdentifierParser extends UBNFLazyChain`,
+so trailing SPACE (including CPPComment) was included in token source.
+As a result, `source.toString().trim()` returned `"IdentifierParser\n\n// comment"`,
+and `ParserGenerator` generated invalid code:
+`Parser.get(IdentifierParser\n\n// comment.class)`.
+
+**Fix**: added `firstWord()` helper to `toTokenDecl()`,
+so everything after the first whitespace is removed and only a pure class name is extracted.
+
+```java
+// Before
+String parserClass = identifiers.get(1).source.toString().trim();
+
+// After
+String parserClass = firstWord(identifiers.get(1).source.toString());
+// firstWord(): returns only the part before first whitespace
+```
+
+### Current Scope of Self-Hosting
+
+| Component | Auto-generated | Description |
+|---|---|---|
+| `UBNFParsers` (parser) | Yes | Generated by `ParserGenerator`, verified with round-trip test |
+| `UBNFAST` (AST) | No | `ASTGenerator` does not yet generate nested sealed interfaces |
+| `UBNFMapper` (mapper) | No | `MapperGenerator` outputs stubs only (handwritten implementation still required) |
+
+Full auto-generation for the two components other than `UBNFParsers` remains future work.
 
 ---
 
@@ -872,9 +1287,16 @@ unlaxer-dsl/
 | Phase 2 | AST definitions + bootstrap mapper (`UBNFAST.java`, `UBNFMapper.java`) | Done |
 | Phase 3 | ASTGenerator / EvaluatorGenerator / MapperGenerator implementation | Done |
 | Phase 4 | ParserGenerator implementation | Done |
-| Phase 5 | Compile verification for generated code (using `unlaxer-runtime-compiler`) | Not started |
-| Phase 6 | Self-hosting (generate itself from `grammar/ubnf.ubnf`) | Not started |
-| Phase 7 | Auto-generate LSP / DAP support | Not started |
+| Phase 5 | TinyCalc integration test (`TinyCalcIntegrationTest`) | Done |
+| Phase 6 | Self-hosting test (`SelfHostingTest`) | Done |
+| Phase 7 | Compile verification test (`CompileVerificationTest`) | Done |
+| Phase 8 | LSP server code generation (`LSPGenerator`, `LSPLauncherGenerator`, `CodegenMain`) | Done |
+| Phase 9 | One-command VSIX build (`tinycalc-vscode/pom.xml`) | Done |
+| Phase 9.5 | VS Code extension for UBNF itself (`ubnf-vscode/`, with shim pattern) | Done |
+| Phase 10 | DAP code generation (`DAPGenerator`, `DAPLauncherGenerator`) | Done |
+| Phase 11 | Self-hosting (`parse ubnf.ubnf itself using UBNFParsers generated from grammar/ubnf.ubnf`) | Done |
+| Phase 12 | DAP token-level stepping (`F10` next, Variables panel, stackTrace line highlight) | Done |
+| Phase 13 | DAP breakpoint support (line matching, continue to next breakpoint) | Done |
 
 ---
 
