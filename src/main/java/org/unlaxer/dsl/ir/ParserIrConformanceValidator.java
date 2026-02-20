@@ -11,6 +11,8 @@ import java.util.LinkedHashMap;
  * Lightweight runtime contract checks for parser IR adapters.
  */
 public final class ParserIrConformanceValidator {
+    private static final Set<String> SCOPE_EVENTS = Set.of("enterScope", "leaveScope", "define", "use");
+
     private ParserIrConformanceValidator() {}
 
     public static void validate(ParserIrDocument document) {
@@ -51,6 +53,7 @@ public final class ParserIrConformanceValidator {
         }
         validateParentChildLinks(nodesById);
         validateAnnotationTargets(payload, nodesById.keySet());
+        validateScopeEvents(payload);
     }
 
     private static void validateParentChildLinks(Map<String, Map<String, Object>> nodesById) {
@@ -104,6 +107,77 @@ public final class ParserIrConformanceValidator {
             if (!nodeIds.contains(targetId)) {
                 throw new IllegalArgumentException("unknown annotation targetId: " + targetId);
             }
+        }
+    }
+
+    private static void validateScopeEvents(Map<String, Object> payload) {
+        if (!payload.containsKey("scopeEvents")) {
+            return;
+        }
+        List<Object> scopeEvents = readArray(payload, "scopeEvents");
+        Set<String> knownScopeIds = new HashSet<>();
+        for (Object item : scopeEvents) {
+            if (!(item instanceof Map<?, ?> rawEvent)) {
+                throw new IllegalArgumentException("scopeEvent must be object");
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> event = (Map<String, Object>) rawEvent;
+            String eventName = readString(event, "event");
+            if (!SCOPE_EVENTS.contains(eventName)) {
+                throw new IllegalArgumentException("unsupported scope event: " + eventName);
+            }
+            String scopeId = readString(event, "scopeId");
+            readObject(event, "span");
+            knownScopeIds.add(scopeId);
+
+            if ("define".equals(eventName) || "use".equals(eventName)) {
+                if (!event.containsKey("symbol")) {
+                    throw new IllegalArgumentException(eventName + " requires symbol");
+                }
+            }
+            if ("define".equals(eventName) && !event.containsKey("kind")) {
+                throw new IllegalArgumentException("define requires kind");
+            }
+            if ("use".equals(eventName) && event.containsKey("kind")) {
+                throw new IllegalArgumentException("use must not include kind");
+            }
+            if ("enterScope".equals(eventName) || "leaveScope".equals(eventName)) {
+                if (event.containsKey("symbol") || event.containsKey("kind") || event.containsKey("targetScopeId")) {
+                    throw new IllegalArgumentException("enter/leave must not include symbol/kind/targetScopeId");
+                }
+            }
+        }
+
+        Set<String> openScopes = new HashSet<>();
+        for (Object item : scopeEvents) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> event = (Map<String, Object>) item;
+            String eventName = readString(event, "event");
+            String scopeId = readString(event, "scopeId");
+            if ("enterScope".equals(eventName)) {
+                if (!openScopes.add(scopeId)) {
+                    throw new IllegalArgumentException("duplicate enterScope for scopeId: " + scopeId);
+                }
+                continue;
+            }
+            if ("define".equals(eventName) || "use".equals(eventName)) {
+                if (!openScopes.contains(scopeId)) {
+                    throw new IllegalArgumentException("scope order violated for scopeId: " + scopeId + " event=" + eventName);
+                }
+                if ("use".equals(eventName) && event.containsKey("targetScopeId")) {
+                    String targetScopeId = readString(event, "targetScopeId");
+                    if (!knownScopeIds.contains(targetScopeId)) {
+                        throw new IllegalArgumentException("unknown targetScopeId: " + targetScopeId);
+                    }
+                }
+                continue;
+            }
+            if ("leaveScope".equals(eventName) && !openScopes.remove(scopeId)) {
+                throw new IllegalArgumentException("scope balance violated for scopeId: " + scopeId);
+            }
+        }
+        if (!openScopes.isEmpty()) {
+            throw new IllegalArgumentException("scope balance violated: unclosed scopes " + openScopes);
         }
     }
 
