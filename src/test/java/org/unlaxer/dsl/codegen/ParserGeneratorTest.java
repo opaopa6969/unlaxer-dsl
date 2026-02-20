@@ -308,6 +308,18 @@ public class ParserGeneratorTest {
             source.contains("getBackrefName(String ruleName)"));
         assertTrue("should generate scope tree mode lookup",
             source.contains("getScopeTreeMode(String ruleName)"));
+        assertTrue("should generate scope mode enum",
+            source.contains("enum ScopeMode { LEXICAL, DYNAMIC }"));
+        assertTrue("should generate scope mode enum lookup",
+            source.contains("getScopeTreeModeEnum(String ruleName)"));
+        assertTrue("should map lexical scope mode into enum",
+            source.contains("case \"lexical\" -> java.util.Optional.of(ScopeMode.LEXICAL)"));
+        assertTrue("should map dynamic scope mode into enum",
+            source.contains("case \"dynamic\" -> java.util.Optional.of(ScopeMode.DYNAMIC)"));
+        assertTrue("should generate lexical scope helper",
+            source.contains("isLexicalScopeTreeRule(String ruleName)"));
+        assertTrue("should generate dynamic scope helper",
+            source.contains("isDynamicScopeTreeRule(String ruleName)"));
         assertTrue("should include Start interleave profile",
             source.contains("case \"Start\" -> java.util.Optional.of(\"commentsAndSpaces\")"));
         assertTrue("should include Ref backref name",

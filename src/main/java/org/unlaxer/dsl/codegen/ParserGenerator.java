@@ -922,6 +922,7 @@ public class ParserGenerator implements CodeGenerator {
                 .append("    }\n\n");
         }
         if (hasScopeTree) {
+            sb.append("    public enum ScopeMode { LEXICAL, DYNAMIC }\n\n");
             sb.append("    public static java.util.Optional<String> getScopeTreeMode(String ruleName) {\n")
                 .append("        return switch (ruleName) {\n");
             for (RuleDecl rule : grammar.rules()) {
@@ -933,6 +934,29 @@ public class ParserGenerator implements CodeGenerator {
             }
             sb.append("            default -> java.util.Optional.empty();\n")
                 .append("        };\n")
+                .append("    }\n\n");
+
+            sb.append("    public static java.util.Optional<ScopeMode> getScopeTreeModeEnum(String ruleName) {\n")
+                .append("        return getScopeTreeMode(ruleName)\n")
+                .append("            .map(String::trim)\n")
+                .append("            .map(String::toLowerCase)\n")
+                .append("            .flatMap(mode -> switch (mode) {\n")
+                .append("                case \"lexical\" -> java.util.Optional.of(ScopeMode.LEXICAL);\n")
+                .append("                case \"dynamic\" -> java.util.Optional.of(ScopeMode.DYNAMIC);\n")
+                .append("                default -> java.util.Optional.empty();\n")
+                .append("            });\n")
+                .append("    }\n\n");
+
+            sb.append("    public static boolean isLexicalScopeTreeRule(String ruleName) {\n")
+                .append("        return getScopeTreeModeEnum(ruleName)\n")
+                .append("            .map(mode -> mode == ScopeMode.LEXICAL)\n")
+                .append("            .orElse(false);\n")
+                .append("    }\n\n");
+
+            sb.append("    public static boolean isDynamicScopeTreeRule(String ruleName) {\n")
+                .append("        return getScopeTreeModeEnum(ruleName)\n")
+                .append("            .map(mode -> mode == ScopeMode.DYNAMIC)\n")
+                .append("            .orElse(false);\n")
                 .append("    }\n\n");
         }
         return sb.toString();
