@@ -99,6 +99,17 @@ public class ParserIrSchemaSampleConsistencyTest {
     }
 
     @Test
+    public void testInvalidDiagnosticRelatedSpanRangeIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-related-span-range.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected diagnostic related span range failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("diagnostic related span out of range"));
+        }
+    }
+
+    @Test
     public void testInvalidParentIdReferenceIsRejected() throws Exception {
         Map<String, Object> sample = loadSample("invalid-parent-id.json");
         try {
@@ -338,7 +349,15 @@ public class ParserIrSchemaSampleConsistencyTest {
                     }
                     @SuppressWarnings("unchecked")
                     Map<String, Object> relatedObj = (Map<String, Object>) relRaw;
-                    JsonTestUtil.getObject(relatedObj, "span");
+                    Map<String, Object> relSpan = JsonTestUtil.getObject(relatedObj, "span");
+                    long relStart = JsonTestUtil.getLong(relSpan, "start");
+                    long relEnd = JsonTestUtil.getLong(relSpan, "end");
+                    if (relStart < minStart || relEnd > maxEnd) {
+                        throw new IllegalArgumentException(
+                            "diagnostic related span out of range: ["
+                                + relStart + "," + relEnd + "] not in [" + minStart + "," + maxEnd + "]"
+                        );
+                    }
                     JsonTestUtil.getString(relatedObj, "message");
                 }
             }
