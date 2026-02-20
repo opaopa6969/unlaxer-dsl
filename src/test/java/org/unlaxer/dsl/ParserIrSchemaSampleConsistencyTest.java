@@ -163,6 +163,17 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
     }
 
+    @Test
+    public void testInvalidAnnotationTargetIdIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-annotation-target-id.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected annotation target failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("unknown annotation targetId"));
+        }
+    }
+
     private static void validateTopLevelContract(Map<String, Object> schema, Map<String, Object> sample) {
         List<Object> required = JsonTestUtil.getArray(schema, "required");
         for (Object k : required) {
@@ -220,6 +231,9 @@ public class ParserIrSchemaSampleConsistencyTest {
             validateScopeEventOrder(sample);
             validateScopeBalance(sample);
             validateScopeTargetReferences(sample);
+        }
+        if (sample.containsKey("annotations")) {
+            validateAnnotationTargets(sample);
         }
     }
 
@@ -382,6 +396,27 @@ public class ParserIrSchemaSampleConsistencyTest {
             if (!knownScopeIds.contains(targetScopeId)) {
                 throw new IllegalArgumentException("unknown targetScopeId: " + targetScopeId);
             }
+        }
+    }
+
+    private static void validateAnnotationTargets(Map<String, Object> sample) {
+        List<Object> nodes = JsonTestUtil.getArray(sample, "nodes");
+        Set<String> nodeIds = new HashSet<>();
+        for (Object item : nodes) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> node = (Map<String, Object>) item;
+            nodeIds.add(JsonTestUtil.getString(node, "id"));
+        }
+        List<Object> annotations = JsonTestUtil.getArray(sample, "annotations");
+        for (Object item : annotations) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> annotation = (Map<String, Object>) item;
+            String targetId = JsonTestUtil.getString(annotation, "targetId");
+            if (!nodeIds.contains(targetId)) {
+                throw new IllegalArgumentException("unknown annotation targetId: " + targetId);
+            }
+            JsonTestUtil.getString(annotation, "name");
+            JsonTestUtil.getObject(annotation, "payload");
         }
     }
 
