@@ -152,6 +152,17 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
     }
 
+    @Test
+    public void testDuplicateScopeEnterIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-duplicate-scope-enter.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected duplicate scope enter failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("duplicate enterScope"));
+        }
+    }
+
     private static void validateTopLevelContract(Map<String, Object> schema, Map<String, Object> sample) {
         List<Object> required = JsonTestUtil.getArray(schema, "required");
         for (Object k : required) {
@@ -312,6 +323,9 @@ public class ParserIrSchemaSampleConsistencyTest {
             String eventName = JsonTestUtil.getString(event, "event");
             String scopeId = JsonTestUtil.getString(event, "scopeId");
             if ("enterScope".equals(eventName)) {
+                if (openScopes.contains(scopeId)) {
+                    throw new IllegalArgumentException("duplicate enterScope for scopeId: " + scopeId);
+                }
                 openScopes.add(scopeId);
                 continue;
             }
