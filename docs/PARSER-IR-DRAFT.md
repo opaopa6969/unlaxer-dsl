@@ -12,11 +12,14 @@ Draft sample payloads: `src/test/resources/schema/parser-ir/`
 - `valid-minimal.json`: smallest valid payload.
 - `valid-rich.json`: optional fields including `scopeEvents` and `diagnostics.related`.
 - `invalid-*.json`: negative fixtures for required keys / span order / code format / invalid scope event / scope order violation / duplicate scope enter / unknown targetScopeId / unknown annotation targetId / broken related diagnostics / unknown parentId / unbalanced scopes / diagnostic span out-of-range.
-- `invalid-*.json`: negative fixtures for required keys / span order / code format / invalid scope event / scope order violation / duplicate scope enter / unknown targetScopeId / unknown annotation targetId / broken related diagnostics / related span out-of-range / duplicate node id / unknown parentId / unknown child id / duplicate child id / child self reference / parent/children mismatch / unbalanced scopes / diagnostic span out-of-range.
+- `invalid-*.json`: negative fixtures for required keys / span order / code format / invalid scope event / use missing symbol / enter with forbidden fields / scope order violation / duplicate scope enter / unknown targetScopeId / unknown annotation targetId / broken related diagnostics / related span out-of-range / duplicate node id / unknown parentId / unknown child id / duplicate child id / child self reference / parent/children mismatch / unbalanced scopes / diagnostic span out-of-range.
 - Annotation naming convention (draft): `^[a-z][a-zA-Z0-9-]*$`.
 - Annotation uniqueness policy (draft): `(targetId, name)` pairs must be unique in one IR document.
 - Annotation payload policy (draft): `payload` must be an object with at least one property.
 - Diagnostic uniqueness policy (draft): `(code, span.start, span.end, message)` tuples must be unique.
+- Scope event field policy (draft):
+  - `use` and `define` require `symbol`.
+  - `enterScope` and `leaveScope` must not include `symbol`, `kind`, or `targetScopeId`.
 
 ## 1. Design Goals
 

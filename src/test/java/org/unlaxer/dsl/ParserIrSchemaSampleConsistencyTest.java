@@ -111,6 +111,28 @@ public class ParserIrSchemaSampleConsistencyTest {
     }
 
     @Test
+    public void testUseEventMissingSymbolIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-use-missing-symbol.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected use symbol failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("use requires symbol"));
+        }
+    }
+
+    @Test
+    public void testEnterScopeWithSymbolIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-enter-with-symbol.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected enterScope extra field failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("enter/leave must not include symbol/kind/targetScopeId"));
+        }
+    }
+
+    @Test
     public void testInvalidDiagnosticRelatedIsRejected() throws Exception {
         Map<String, Object> sample = loadSample("invalid-related.json");
         try {
@@ -500,6 +522,16 @@ public class ParserIrSchemaSampleConsistencyTest {
             }
             JsonTestUtil.getString(event, "scopeId");
             JsonTestUtil.getObject(event, "span");
+            if ("use".equals(eventName) || "define".equals(eventName)) {
+                if (!event.containsKey("symbol")) {
+                    throw new IllegalArgumentException(eventName + " requires symbol");
+                }
+            }
+            if ("enterScope".equals(eventName) || "leaveScope".equals(eventName)) {
+                if (event.containsKey("symbol") || event.containsKey("kind") || event.containsKey("targetScopeId")) {
+                    throw new IllegalArgumentException("enter/leave must not include symbol/kind/targetScopeId");
+                }
+            }
         }
     }
 
