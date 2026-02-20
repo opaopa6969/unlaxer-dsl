@@ -132,6 +132,28 @@ public class ParserIrSchemaSampleConsistencyTest {
     }
 
     @Test
+    public void testInvalidChildIdReferenceIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-child-id.json");
+        try {
+            validateParentReferences(sample);
+            fail("expected childId reference failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("unknown child id"));
+        }
+    }
+
+    @Test
+    public void testChildSelfReferenceIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-child-self-reference.json");
+        try {
+            validateParentReferences(sample);
+            fail("expected child self reference failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("child self reference"));
+        }
+    }
+
+    @Test
     public void testInvalidScopeBalanceIsRejected() throws Exception {
         Map<String, Object> sample = loadSample("invalid-scope-balance.json");
         try {
@@ -307,12 +329,29 @@ public class ParserIrSchemaSampleConsistencyTest {
         for (Object item : nodes) {
             @SuppressWarnings("unchecked")
             Map<String, Object> n = (Map<String, Object>) item;
-            if (!n.containsKey("parentId")) {
-                continue;
+            String id = JsonTestUtil.getString(n, "id");
+            if (n.containsKey("parentId")) {
+                String parentId = JsonTestUtil.getString(n, "parentId");
+                if (!ids.contains(parentId)) {
+                    throw new IllegalArgumentException("unknown parentId: " + parentId);
+                }
+                if (id.equals(parentId)) {
+                    throw new IllegalArgumentException("parent self reference: " + id);
+                }
             }
-            String parentId = JsonTestUtil.getString(n, "parentId");
-            if (!ids.contains(parentId)) {
-                throw new IllegalArgumentException("unknown parentId: " + parentId);
+            if (n.containsKey("children")) {
+                List<Object> children = JsonTestUtil.getArray(n, "children");
+                for (Object childObj : children) {
+                    if (!(childObj instanceof String childId) || childId.isBlank()) {
+                        throw new IllegalArgumentException("invalid child id type");
+                    }
+                    if (!ids.contains(childId)) {
+                        throw new IllegalArgumentException("unknown child id: " + childId);
+                    }
+                    if (id.equals(childId)) {
+                        throw new IllegalArgumentException("child self reference: " + id);
+                    }
+                }
             }
         }
     }
