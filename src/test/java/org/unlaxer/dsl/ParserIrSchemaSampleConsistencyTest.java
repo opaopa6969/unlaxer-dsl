@@ -121,6 +121,17 @@ public class ParserIrSchemaSampleConsistencyTest {
     }
 
     @Test
+    public void testDuplicateNodeIdIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-duplicate-node-id.json");
+        try {
+            validateParentReferences(sample);
+            fail("expected duplicate node id failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("duplicate node id"));
+        }
+    }
+
+    @Test
     public void testInvalidScopeBalanceIsRejected() throws Exception {
         Map<String, Object> sample = loadSample("invalid-scope-balance.json");
         try {
@@ -288,7 +299,10 @@ public class ParserIrSchemaSampleConsistencyTest {
         for (Object item : nodes) {
             @SuppressWarnings("unchecked")
             Map<String, Object> n = (Map<String, Object>) item;
-            ids.add(JsonTestUtil.getString(n, "id"));
+            String id = JsonTestUtil.getString(n, "id");
+            if (!ids.add(id)) {
+                throw new IllegalArgumentException("duplicate node id: " + id);
+            }
         }
         for (Object item : nodes) {
             @SuppressWarnings("unchecked")
