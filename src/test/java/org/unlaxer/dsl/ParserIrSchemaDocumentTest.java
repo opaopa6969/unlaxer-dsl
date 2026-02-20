@@ -65,4 +65,61 @@ public class ParserIrSchemaDocumentTest {
         Map<String, Object> payload = JsonTestUtil.getObject(props, "payload");
         assertEquals(1L, JsonTestUtil.getLong(payload, "minProperties"));
     }
+
+    @Test
+    public void testParserIrSchemaDefinesNonBlankSourcePattern() throws Exception {
+        String json = Files.readString(Path.of("docs/schema/parser-ir-v1.draft.json"));
+        Map<String, Object> schema = JsonTestUtil.parseObject(json);
+        Map<String, Object> properties = JsonTestUtil.getObject(schema, "properties");
+        Map<String, Object> source = JsonTestUtil.getObject(properties, "source");
+        assertEquals(".*\\S.*", JsonTestUtil.getString(source, "pattern"));
+    }
+
+    @Test
+    public void testParserIrSchemaDefineEventRequiresKind() throws Exception {
+        String json = Files.readString(Path.of("docs/schema/parser-ir-v1.draft.json"));
+        Map<String, Object> schema = JsonTestUtil.parseObject(json);
+        Map<String, Object> defs = JsonTestUtil.getObject(schema, "$defs");
+        Map<String, Object> scopeEvent = JsonTestUtil.getObject(defs, "scopeEvent");
+        List<Object> allOf = JsonTestUtil.getArray(scopeEvent, "allOf");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> defineRule = (Map<String, Object>) allOf.get(0);
+        Map<String, Object> thenObj = JsonTestUtil.getObject(defineRule, "then");
+        List<Object> required = JsonTestUtil.getArray(thenObj, "required");
+        assertTrue(required.contains("symbol"));
+        assertTrue(required.contains("kind"));
+    }
+
+    @Test
+    public void testParserIrSchemaUseEventForbidsKind() throws Exception {
+        String json = Files.readString(Path.of("docs/schema/parser-ir-v1.draft.json"));
+        Map<String, Object> schema = JsonTestUtil.parseObject(json);
+        Map<String, Object> defs = JsonTestUtil.getObject(schema, "$defs");
+        Map<String, Object> scopeEvent = JsonTestUtil.getObject(defs, "scopeEvent");
+        List<Object> allOf = JsonTestUtil.getArray(scopeEvent, "allOf");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> useRule = (Map<String, Object>) allOf.get(1);
+        Map<String, Object> thenObj = JsonTestUtil.getObject(useRule, "then");
+        Map<String, Object> notObj = JsonTestUtil.getObject(thenObj, "not");
+        List<Object> required = JsonTestUtil.getArray(notObj, "required");
+        assertTrue(required.contains("kind"));
+    }
+
+    @Test
+    public void testParserIrSchemaEnterLeaveForbidSymbolKindAndTargetScopeId() throws Exception {
+        String json = Files.readString(Path.of("docs/schema/parser-ir-v1.draft.json"));
+        Map<String, Object> schema = JsonTestUtil.parseObject(json);
+        Map<String, Object> defs = JsonTestUtil.getObject(schema, "$defs");
+        Map<String, Object> scopeEvent = JsonTestUtil.getObject(defs, "scopeEvent");
+        List<Object> allOf = JsonTestUtil.getArray(scopeEvent, "allOf");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> enterLeaveRule = (Map<String, Object>) allOf.get(2);
+        Map<String, Object> thenObj = JsonTestUtil.getObject(enterLeaveRule, "then");
+        Map<String, Object> notObj = JsonTestUtil.getObject(thenObj, "not");
+        List<Object> anyOf = JsonTestUtil.getArray(notObj, "anyOf");
+        assertEquals(3, anyOf.size());
+    }
 }
