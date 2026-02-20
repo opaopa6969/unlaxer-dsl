@@ -133,4 +133,40 @@ public class ParserIrScopeEventsTest {
         Map<String, Object> first = (Map<String, Object>) events.get(0);
         assertEquals("lexical", first.get("scopeMode"));
     }
+
+    @Test
+    public void testToScopeModeByNodeIdFromScopeIdAcceptsEnumValues() {
+        Map<String, String> converted = ParserIrScopeEvents.toScopeModeByNodeIdFromScopeId(
+            Map.of("scope:Tiny::Start", TestScopeMode.DYNAMIC)
+        );
+        assertEquals("dynamic", converted.get("Tiny::Start"));
+    }
+
+    @Test
+    public void testEmitSyntheticEnterLeaveEventsForScopeIdsAnyModeAcceptsScopeIdMap() {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("id", "Tiny::Start");
+        node.put("kind", "RuleDecl");
+        node.put("span", Map.of("start", 2L, "end", 3L));
+
+        List<Object> events = ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForScopeIdsAnyMode(
+            Map.of("scope:Tiny::Start", "dynamic"),
+            List.of(node)
+        );
+        assertEquals(2, events.size());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> first = (Map<String, Object>) events.get(0);
+        assertEquals("scope:Tiny::Start", first.get("scopeId"));
+        assertEquals("dynamic", first.get("scopeMode"));
+    }
+
+    @Test
+    public void testToScopeModeByNodeIdFromScopeIdRejectsInvalidScopeId() {
+        try {
+            ParserIrScopeEvents.toScopeModeByNodeIdFromScopeId(Map.of("Tiny::Start", "lexical"));
+            fail("expected invalid scope id failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("scopeId must match scope:{nodeId}"));
+        }
+    }
 }

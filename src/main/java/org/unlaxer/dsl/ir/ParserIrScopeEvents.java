@@ -100,6 +100,20 @@ public final class ParserIrScopeEvents {
     }
 
     /**
+     * Emits synthetic balanced scope events from scope-id keyed metadata values represented
+     * as either strings or enums. Scope ids must follow {@code scope:{nodeId}} format.
+     */
+    public static List<Object> emitSyntheticEnterLeaveEventsForScopeIdsAnyMode(
+        Map<String, ?> scopeModeByScopeId,
+        List<Object> nodes
+    ) {
+        return emitSyntheticEnterLeaveEvents(
+            toScopeModeByNodeIdFromScopeId(scopeModeByScopeId),
+            nodes
+        );
+    }
+
+    /**
      * Converts mixed scope mode values (string/enum) into normalized rule->mode map.
      */
     public static Map<String, String> toScopeModeByRuleName(Map<String, ?> scopeModeByRuleName) {
@@ -114,6 +128,30 @@ public final class ParserIrScopeEvents {
             }
             String normalizedMode = normalizeScopeMode(entry.getValue());
             out.put(ruleName.trim(), normalizedMode);
+        }
+        return Map.copyOf(out);
+    }
+
+    /**
+     * Converts mixed scope mode values keyed by {@code scope:{nodeId}} into normalized nodeId->mode map.
+     */
+    public static Map<String, String> toScopeModeByNodeIdFromScopeId(Map<String, ?> scopeModeByScopeId) {
+        if (scopeModeByScopeId == null || scopeModeByScopeId.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> out = new LinkedHashMap<>();
+        for (Map.Entry<String, ?> entry : scopeModeByScopeId.entrySet()) {
+            String scopeId = entry.getKey();
+            if (scopeId == null || scopeId.isBlank()) {
+                continue;
+            }
+            String normalizedScopeId = scopeId.trim();
+            if (!normalizedScopeId.startsWith("scope:") || normalizedScopeId.length() <= "scope:".length()) {
+                throw new IllegalArgumentException("scopeId must match scope:{nodeId}: " + scopeId);
+            }
+            String nodeId = normalizedScopeId.substring("scope:".length());
+            String normalizedMode = normalizeScopeMode(entry.getValue());
+            out.put(nodeId, normalizedMode);
         }
         return Map.copyOf(out);
     }
