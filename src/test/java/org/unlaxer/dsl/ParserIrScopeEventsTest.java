@@ -12,6 +12,10 @@ import org.junit.Test;
 import org.unlaxer.dsl.ir.ParserIrScopeEvents;
 
 public class ParserIrScopeEventsTest {
+    private enum TestScopeMode {
+        LEXICAL,
+        DYNAMIC
+    }
 
     @Test
     public void testEmitSyntheticEnterLeaveEventsUsesNodeSpanAndMode() {
@@ -101,5 +105,32 @@ public class ParserIrScopeEventsTest {
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("grammarName must not be blank"));
         }
+    }
+
+    @Test
+    public void testToScopeModeByRuleNameAcceptsEnumValues() {
+        Map<String, String> converted = ParserIrScopeEvents.toScopeModeByRuleName(
+            Map.of("Start", TestScopeMode.LEXICAL, "Inner", TestScopeMode.DYNAMIC)
+        );
+        assertEquals("lexical", converted.get("Start"));
+        assertEquals("dynamic", converted.get("Inner"));
+    }
+
+    @Test
+    public void testEmitSyntheticEnterLeaveEventsForRulesAnyModeAcceptsEnumValues() {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("id", "Tiny::Start");
+        node.put("kind", "RuleDecl");
+        node.put("span", Map.of("start", 0L, "end", 1L));
+
+        List<Object> events = ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRulesAnyMode(
+            "Tiny",
+            Map.of("Start", TestScopeMode.LEXICAL),
+            List.of(node)
+        );
+        assertEquals(2, events.size());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> first = (Map<String, Object>) events.get(0);
+        assertEquals("lexical", first.get("scopeMode"));
     }
 }

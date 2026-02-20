@@ -90,6 +90,8 @@ Current behavior:
   `getScopeTreeModeByRule()`, `getScopeTreeSpec(ruleName)`, and `getScopeTreeSpecs()`.
 - `ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRules(grammarName, scopeModeByRuleName, nodes)`
   converts rule-level scope metadata into parser-IR `scopeEvents`.
+- `ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRulesAnyMode(grammarName, scopeModeByRuleName, nodes)`
+  also accepts generated enum maps (`Map<String, ScopeMode>`) directly.
 
 ## Token Resolution
 

@@ -83,6 +83,41 @@ public final class ParserIrScopeEvents {
         return emitSyntheticEnterLeaveEvents(scopeModeByNodeId, nodes);
     }
 
+    /**
+     * Emits synthetic balanced scope events from rule metadata values represented
+     * as either strings or enums (for generated ScopeMode maps).
+     */
+    public static List<Object> emitSyntheticEnterLeaveEventsForRulesAnyMode(
+        String grammarName,
+        Map<String, ?> scopeModeByRuleName,
+        List<Object> nodes
+    ) {
+        return emitSyntheticEnterLeaveEventsForRules(
+            grammarName,
+            toScopeModeByRuleName(scopeModeByRuleName),
+            nodes
+        );
+    }
+
+    /**
+     * Converts mixed scope mode values (string/enum) into normalized rule->mode map.
+     */
+    public static Map<String, String> toScopeModeByRuleName(Map<String, ?> scopeModeByRuleName) {
+        if (scopeModeByRuleName == null || scopeModeByRuleName.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> out = new LinkedHashMap<>();
+        for (Map.Entry<String, ?> entry : scopeModeByRuleName.entrySet()) {
+            String ruleName = entry.getKey();
+            if (ruleName == null || ruleName.isBlank()) {
+                continue;
+            }
+            String normalizedMode = normalizeScopeMode(entry.getValue());
+            out.put(ruleName.trim(), normalizedMode);
+        }
+        return Map.copyOf(out);
+    }
+
     private static Map<String, Object> extractSpan(Map<String, Object> node) {
         Object spanObj = node.get("span");
         if (!(spanObj instanceof Map<?, ?> rawSpan)) {
@@ -125,5 +160,22 @@ public final class ParserIrScopeEvents {
         scopeEvent.put("scopeMode", scopeMode);
         scopeEvent.put("span", span);
         return scopeEvent;
+    }
+
+    private static String normalizeScopeMode(Object value) {
+        if (value == null) {
+            throw new IllegalArgumentException("scope mode value must not be null");
+        }
+        String text;
+        if (value instanceof Enum<?> e) {
+            text = e.name();
+        } else {
+            text = String.valueOf(value);
+        }
+        String normalized = text.trim().toLowerCase(Locale.ROOT);
+        if (!SUPPORTED_SCOPE_MODES.contains(normalized)) {
+            throw new IllegalArgumentException("unsupported scope mode: " + text);
+        }
+        return normalized;
     }
 }

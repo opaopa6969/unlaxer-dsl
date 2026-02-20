@@ -1101,14 +1101,9 @@ For non-UBNF parsers, emit parser-IR scope events from rule-level metadata:
 // generated metadata API (from ParserGenerator)
 Map<String, TinyCalcParsers.ScopeMode> modeByRule = TinyCalcParsers.getScopeTreeModeByRule();
 
-Map<String, String> modeByRuleName = new LinkedHashMap<>();
-for (var e : modeByRule.entrySet()) {
-    modeByRuleName.put(e.getKey(), e.getValue().name().toLowerCase(Locale.ROOT));
-}
-
-List<Object> scopeEvents = ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRules(
+List<Object> scopeEvents = ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRulesAnyMode(
     "TinyCalc",
-    modeByRuleName,
+    modeByRule,
     nodes
 );
 ```
