@@ -387,6 +387,83 @@ public class GrammarValidatorTest {
         }
     }
 
+    @Test
+    public void testDuplicateInterleaveFails() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @interleave(profile=javaStyle)\n"
+                + "  @interleave(profile=commentsAndSpaces)\n"
+                + "  Start ::= 'ok' ;\n"
+                + "}"
+        );
+
+        try {
+            GrammarValidator.validateOrThrow(grammar);
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("duplicate @interleave"));
+            assertTrue(e.getMessage().contains("E-ANNOTATION-DUPLICATE-INTERLEAVE"));
+        }
+    }
+
+    @Test
+    public void testUnsupportedInterleaveProfileFails() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @interleave(profile=custom)\n"
+                + "  Start ::= 'ok' ;\n"
+                + "}"
+        );
+
+        try {
+            GrammarValidator.validateOrThrow(grammar);
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("unsupported @interleave profile"));
+            assertTrue(e.getMessage().contains("E-ANNOTATION-INTERLEAVE-PROFILE"));
+        }
+    }
+
+    @Test
+    public void testUnsupportedScopeTreeModeFails() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @scopeTree(mode=custom)\n"
+                + "  Start ::= 'ok' ;\n"
+                + "}"
+        );
+
+        try {
+            GrammarValidator.validateOrThrow(grammar);
+            fail("expected validation error");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("unsupported @scopeTree mode"));
+            assertTrue(e.getMessage().contains("E-ANNOTATION-SCOPETREE-MODE"));
+        }
+    }
+
+    @Test
+    public void testAdvancedAnnotationIssueCategory() {
+        GrammarDecl grammar = parseGrammar(
+            "grammar G {\n"
+                + "  @package: org.example\n"
+                + "  @root\n"
+                + "  @interleave(profile=custom)\n"
+                + "  Start ::= 'ok' ;\n"
+                + "}"
+        );
+
+        var issues = GrammarValidator.validate(grammar);
+        assertTrue(!issues.isEmpty());
+        assertEquals("ANNOTATION", issues.get(0).category());
+    }
+
     private GrammarDecl parseGrammar(String source) {
         return UBNFMapper.parse(source).grammars().get(0);
     }

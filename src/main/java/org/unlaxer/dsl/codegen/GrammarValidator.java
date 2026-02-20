@@ -3,9 +3,11 @@ package org.unlaxer.dsl.codegen;
 import org.unlaxer.dsl.bootstrap.UBNFAST.AnnotatedElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.Annotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.AtomicElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.BackrefAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.ChoiceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GroupElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.InterleaveAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.LeftAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.MappingAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.OptionalElement;
@@ -16,6 +18,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.RootAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleRefElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.ScopeTreeAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.SequenceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.StringSettingValue;
 import org.unlaxer.dsl.bootstrap.UBNFAST.WhitespaceAnnotation;
@@ -62,6 +65,9 @@ public final class GrammarValidator {
             if (code.startsWith("E-PRECEDENCE-")) {
                 return "PRECEDENCE";
             }
+            if (code.startsWith("E-ANNOTATION-")) {
+                return "ANNOTATION";
+            }
             return "GENERAL";
         }
 
@@ -81,6 +87,9 @@ public final class GrammarValidator {
             boolean hasLeftAssoc = false;
             boolean hasRightAssoc = false;
             List<PrecedenceAnnotation> precedenceAnnotations = new ArrayList<>();
+            List<InterleaveAnnotation> interleaveAnnotations = new ArrayList<>();
+            List<BackrefAnnotation> backrefAnnotations = new ArrayList<>();
+            List<ScopeTreeAnnotation> scopeTreeAnnotations = new ArrayList<>();
 
             for (Annotation annotation : rule.annotations()) {
                 if (annotation instanceof MappingAnnotation m) {
@@ -91,6 +100,12 @@ public final class GrammarValidator {
                     hasRightAssoc = true;
                 } else if (annotation instanceof PrecedenceAnnotation p) {
                     precedenceAnnotations.add(p);
+                } else if (annotation instanceof InterleaveAnnotation i) {
+                    interleaveAnnotations.add(i);
+                } else if (annotation instanceof BackrefAnnotation b) {
+                    backrefAnnotations.add(b);
+                } else if (annotation instanceof ScopeTreeAnnotation s) {
+                    scopeTreeAnnotations.add(s);
                 } else if (annotation instanceof WhitespaceAnnotation w) {
                     validateRuleWhitespace(rule, w, errors);
                 }
@@ -103,6 +118,7 @@ public final class GrammarValidator {
                 validateAssoc(rule, mapping, hasLeftAssoc, hasRightAssoc, errors);
             }
             validatePrecedence(rule, hasLeftAssoc, hasRightAssoc, precedenceAnnotations, errors);
+            validateAdvancedAnnotations(rule, interleaveAnnotations, backrefAnnotations, scopeTreeAnnotations, errors);
         }
         validatePrecedenceTopology(grammar, errors);
         validateAssociativityConsistency(grammar, errors);
@@ -294,6 +310,53 @@ public final class GrammarValidator {
                 "rule " + rule.name() + " uses @precedence but has no @leftAssoc/@rightAssoc",
                 "Add one associativity annotation alongside @precedence.",
                 "E-PRECEDENCE-NO-ASSOC");
+        }
+    }
+
+    private static void validateAdvancedAnnotations(
+        RuleDecl rule,
+        List<InterleaveAnnotation> interleaveAnnotations,
+        List<BackrefAnnotation> backrefAnnotations,
+        List<ScopeTreeAnnotation> scopeTreeAnnotations,
+        List<ValidationIssue> errors
+    ) {
+        if (interleaveAnnotations.size() > 1) {
+            addRuleError(errors, rule.name(),
+                "rule " + rule.name() + " has duplicate @interleave annotations",
+                "Keep a single @interleave(profile=...) annotation.",
+                "E-ANNOTATION-DUPLICATE-INTERLEAVE");
+        }
+        if (!interleaveAnnotations.isEmpty()) {
+            String profile = interleaveAnnotations.get(0).profile().trim();
+            if (!"javaStyle".equals(profile) && !"commentsAndSpaces".equals(profile)) {
+                addRuleError(errors, rule.name(),
+                    "rule " + rule.name() + " uses unsupported @interleave profile: " + profile,
+                    "Use @interleave(profile=javaStyle) or @interleave(profile=commentsAndSpaces).",
+                    "E-ANNOTATION-INTERLEAVE-PROFILE");
+            }
+        }
+
+        if (backrefAnnotations.size() > 1) {
+            addRuleError(errors, rule.name(),
+                "rule " + rule.name() + " has duplicate @backref annotations",
+                "Keep a single @backref(name=...) annotation.",
+                "E-ANNOTATION-DUPLICATE-BACKREF");
+        }
+
+        if (scopeTreeAnnotations.size() > 1) {
+            addRuleError(errors, rule.name(),
+                "rule " + rule.name() + " has duplicate @scopeTree annotations",
+                "Keep a single @scopeTree(mode=...) annotation.",
+                "E-ANNOTATION-DUPLICATE-SCOPETREE");
+        }
+        if (!scopeTreeAnnotations.isEmpty()) {
+            String mode = scopeTreeAnnotations.get(0).mode().trim();
+            if (!"lexical".equals(mode) && !"dynamic".equals(mode)) {
+                addRuleError(errors, rule.name(),
+                    "rule " + rule.name() + " uses unsupported @scopeTree mode: " + mode,
+                    "Use @scopeTree(mode=lexical) or @scopeTree(mode=dynamic).",
+                    "E-ANNOTATION-SCOPETREE-MODE");
+            }
         }
     }
 

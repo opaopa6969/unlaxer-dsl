@@ -70,18 +70,21 @@ Current behavior:
 - Current status: accepted as first-class rule annotation metadata.
 - Intended role: declare interleave policy for parser-IR adapters and downstream tooling.
 - Parser behavior is unchanged in this phase (metadata-only).
+- Validator contract (current): at most one per rule, and `profile` must be `javaStyle` or `commentsAndSpaces`.
 
 ### `@backref(name=...)`
 
 - Current status: accepted as first-class rule annotation metadata.
 - Intended role: declare backreference intent for semantic constraints and diagnostics.
 - Parser behavior is unchanged in this phase (metadata-only).
+- Validator contract (current): at most one per rule.
 
 ### `@scopeTree(mode=...)`
 
 - Current status: accepted as first-class rule annotation metadata.
 - Intended role: declare scope-tree-aware processing intent for symbol/tooling phases.
 - Parser behavior is unchanged in this phase (metadata-only).
+- Validator contract (current): at most one per rule, and `mode` must be `lexical` or `dynamic`.
 
 ## Token Resolution
 
