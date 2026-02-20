@@ -310,6 +310,8 @@ public class ParserGeneratorTest {
             source.contains("getScopeTreeMode(String ruleName)"));
         assertTrue("should generate scope mode enum",
             source.contains("enum ScopeMode { LEXICAL, DYNAMIC }"));
+        assertTrue("should generate scope tree spec record",
+            source.contains("record ScopeTreeSpec(String ruleName, String scopeId, ScopeMode mode)"));
         assertTrue("should generate scope mode enum lookup",
             source.contains("getScopeTreeModeEnum(String ruleName)"));
         assertTrue("should map lexical scope mode into enum",
@@ -326,6 +328,12 @@ public class ParserGeneratorTest {
             source.contains("getScopeTreeRules(ScopeMode mode)"));
         assertTrue("should generate scope mode map helper",
             source.contains("getScopeTreeModeByRule()"));
+        assertTrue("should generate scope id helper",
+            source.contains("getScopeIdForRule(String ruleName)"));
+        assertTrue("should generate scope tree spec lookup",
+            source.contains("getScopeTreeSpec(String ruleName)"));
+        assertTrue("should generate scope tree spec list",
+            source.contains("getScopeTreeSpecs()"));
         assertTrue("should generate scope-tree existence helper",
             source.contains("hasScopeTree(String ruleName)"));
         assertTrue("should generate scope-tree mode default helper",
@@ -336,6 +344,10 @@ public class ParserGeneratorTest {
             source.contains("case DYNAMIC -> java.util.List.of()"));
         assertTrue("should map lexical rules in scope mode map helper",
             source.contains("map.put(rule, ScopeMode.LEXICAL);"));
+        assertTrue("should emit stable scope id format",
+            source.contains("return \"scope:Advanced::\" + ruleName;"));
+        assertTrue("should build scope tree spec from mode lookup",
+            source.contains("new ScopeTreeSpec(ruleName, getScopeIdForRule(ruleName), mode)"));
         assertTrue("should return immutable scope mode map",
             source.contains("return java.util.Map.copyOf(map);"));
         assertTrue("should check scope-tree existence via map",

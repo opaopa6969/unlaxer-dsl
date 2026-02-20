@@ -923,6 +923,7 @@ public class ParserGenerator implements CodeGenerator {
         }
         if (hasScopeTree) {
             sb.append("    public enum ScopeMode { LEXICAL, DYNAMIC }\n\n");
+            sb.append("    public record ScopeTreeSpec(String ruleName, String scopeId, ScopeMode mode) {}\n\n");
             sb.append("    public static java.util.Optional<String> getScopeTreeMode(String ruleName) {\n")
                 .append("        return switch (ruleName) {\n");
             for (RuleDecl rule : grammar.rules()) {
@@ -1001,6 +1002,22 @@ public class ParserGenerator implements CodeGenerator {
                 .append("            map.put(rule, ScopeMode.DYNAMIC);\n")
                 .append("        }\n")
                 .append("        return java.util.Map.copyOf(map);\n")
+                .append("    }\n\n");
+
+            sb.append("    public static String getScopeIdForRule(String ruleName) {\n")
+                .append("        return \"scope:").append(escapeJava(grammar.name())).append("::\" + ruleName;\n")
+                .append("    }\n\n");
+
+            sb.append("    public static java.util.Optional<ScopeTreeSpec> getScopeTreeSpec(String ruleName) {\n")
+                .append("        return getScopeTreeModeEnum(ruleName)\n")
+                .append("            .map(mode -> new ScopeTreeSpec(ruleName, getScopeIdForRule(ruleName), mode));\n")
+                .append("    }\n\n");
+
+            sb.append("    public static java.util.List<ScopeTreeSpec> getScopeTreeSpecs() {\n")
+                .append("        return getScopeTreeRules().stream()\n")
+                .append("            .map(rule -> getScopeTreeSpec(rule).orElse(null))\n")
+                .append("            .filter(java.util.Objects::nonNull)\n")
+                .append("            .toList();\n")
                 .append("    }\n\n");
 
             sb.append("    public static boolean hasScopeTree(String ruleName) {\n")
