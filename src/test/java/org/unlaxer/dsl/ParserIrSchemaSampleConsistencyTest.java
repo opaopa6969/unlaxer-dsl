@@ -130,6 +130,17 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
     }
 
+    @Test
+    public void testInvalidScopeEventOrderIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-scope-order.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected scope order failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("scope order violated"));
+        }
+    }
+
     private static void validateTopLevelContract(Map<String, Object> schema, Map<String, Object> sample) {
         List<Object> required = JsonTestUtil.getArray(schema, "required");
         for (Object k : required) {
@@ -184,6 +195,7 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
         if (sample.containsKey("scopeEvents")) {
             validateScopeEventsContract(sample);
+            validateScopeEventOrder(sample);
             validateScopeBalance(sample);
         }
     }
@@ -299,6 +311,29 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
         if (!openScopes.isEmpty()) {
             throw new IllegalArgumentException("scope balance violated: unclosed scopes " + openScopes);
+        }
+    }
+
+    private static void validateScopeEventOrder(Map<String, Object> sample) {
+        List<Object> scopeEvents = JsonTestUtil.getArray(sample, "scopeEvents");
+        Set<String> openScopes = new HashSet<>();
+        for (Object item : scopeEvents) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> event = (Map<String, Object>) item;
+            String eventName = JsonTestUtil.getString(event, "event");
+            String scopeId = JsonTestUtil.getString(event, "scopeId");
+            if ("enterScope".equals(eventName)) {
+                openScopes.add(scopeId);
+                continue;
+            }
+            if ("define".equals(eventName) || "use".equals(eventName)) {
+                if (!openScopes.contains(scopeId)) {
+                    throw new IllegalArgumentException("scope order violated for scopeId: " + scopeId + " event=" + eventName);
+                }
+            }
+            if ("leaveScope".equals(eventName)) {
+                openScopes.remove(scopeId);
+            }
         }
     }
 
