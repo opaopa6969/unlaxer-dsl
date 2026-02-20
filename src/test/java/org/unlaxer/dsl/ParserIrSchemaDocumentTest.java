@@ -39,4 +39,15 @@ public class ParserIrSchemaDocumentTest {
         assertTrue(defs.containsKey("annotation"));
         assertTrue(defs.containsKey("diagnostic"));
     }
+
+    @Test
+    public void testParserIrSchemaDefinesAnnotationNamePattern() throws Exception {
+        String json = Files.readString(Path.of("docs/schema/parser-ir-v1.draft.json"));
+        Map<String, Object> schema = JsonTestUtil.parseObject(json);
+        Map<String, Object> defs = JsonTestUtil.getObject(schema, "$defs");
+        Map<String, Object> annotation = JsonTestUtil.getObject(defs, "annotation");
+        Map<String, Object> props = JsonTestUtil.getObject(annotation, "properties");
+        Map<String, Object> name = JsonTestUtil.getObject(props, "name");
+        assertEquals("^[a-z][a-zA-Z0-9-]*$", JsonTestUtil.getString(name, "pattern"));
+    }
 }

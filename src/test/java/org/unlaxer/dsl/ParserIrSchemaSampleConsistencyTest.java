@@ -16,6 +16,7 @@ import org.junit.Test;
 public class ParserIrSchemaSampleConsistencyTest {
 
     private static final Pattern DIAGNOSTIC_CODE_PATTERN = Pattern.compile("^E-[A-Z0-9-]+$|^W-[A-Z0-9-]+$|^I-[A-Z0-9-]+$");
+    private static final Pattern ANNOTATION_NAME_PATTERN = Pattern.compile("^[a-z][a-zA-Z0-9-]*$");
     private static final Set<String> DIAGNOSTIC_SEVERITIES = Set.of("ERROR", "WARNING", "INFO");
     private static final Set<String> SCOPE_EVENTS = Set.of("enterScope", "leaveScope", "define", "use");
 
@@ -171,6 +172,17 @@ public class ParserIrSchemaSampleConsistencyTest {
             fail("expected annotation target failure");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("unknown annotation targetId"));
+        }
+    }
+
+    @Test
+    public void testInvalidAnnotationNameIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-annotation-name.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected annotation name failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("annotation name pattern"));
         }
     }
 
@@ -415,7 +427,10 @@ public class ParserIrSchemaSampleConsistencyTest {
             if (!nodeIds.contains(targetId)) {
                 throw new IllegalArgumentException("unknown annotation targetId: " + targetId);
             }
-            JsonTestUtil.getString(annotation, "name");
+            String name = JsonTestUtil.getString(annotation, "name");
+            if (!ANNOTATION_NAME_PATTERN.matcher(name).matches()) {
+                throw new IllegalArgumentException("annotation name pattern mismatch: " + name);
+            }
             JsonTestUtil.getObject(annotation, "payload");
         }
     }

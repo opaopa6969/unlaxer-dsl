@@ -95,7 +95,7 @@
       "additionalProperties": false,
       "properties": {
         "targetId": { "type": "string", "minLength": 1 },
-        "name": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9-]*$" },
         "payload": {
           "type": "object",
           "additionalProperties": true
