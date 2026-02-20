@@ -344,6 +344,10 @@ public class ParserGeneratorTest {
             source.contains("getScopeTreeModeByScopeId()"));
         assertTrue("should generate string scope mode map helper by scope id",
             source.contains("getScopeTreeModeNameByScopeId()"));
+        assertTrue("should generate synthetic scope event builder by rule metadata",
+            source.contains("buildSyntheticScopeEventsForNodes(java.util.List<Object> nodes)"));
+        assertTrue("should generate synthetic scope event builder by scope-id metadata",
+            source.contains("buildSyntheticScopeEventsForNodesByScopeId(java.util.List<Object> nodes)"));
         assertTrue("should generate scope-tree existence helper",
             source.contains("hasScopeTree(String ruleName)"));
         assertTrue("should generate scope-tree mode default helper",
@@ -366,6 +370,10 @@ public class ParserGeneratorTest {
             source.contains("map.put(spec.scopeId(), spec.mode());"));
         assertTrue("should normalize scope mode enum to lower-case names",
             source.contains("e.getValue().name().toLowerCase(java.util.Locale.ROOT)"));
+        assertTrue("should bridge generated metadata to parser ir scope event helper",
+            source.contains("ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRulesAnyMode("));
+        assertTrue("should bridge scope-id metadata to parser ir scope event helper",
+            source.contains("ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForScopeIdsAnyMode("));
         assertTrue("should return immutable scope mode map",
             source.contains("return java.util.Map.copyOf(map);"));
         assertTrue("should check scope-tree existence via map",

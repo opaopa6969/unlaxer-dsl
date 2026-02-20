@@ -1060,6 +1060,21 @@ public class ParserGenerator implements CodeGenerator {
                 .append("        return java.util.Map.copyOf(map);\n")
                 .append("    }\n\n");
 
+            sb.append("    public static java.util.List<Object> buildSyntheticScopeEventsForNodes(java.util.List<Object> nodes) {\n")
+                .append("        return org.unlaxer.dsl.ir.ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRulesAnyMode(\n")
+                .append("            \"").append(escapeJava(grammar.name())).append("\",\n")
+                .append("            getScopeTreeModeByRule(),\n")
+                .append("            nodes\n")
+                .append("        );\n")
+                .append("    }\n\n");
+
+            sb.append("    public static java.util.List<Object> buildSyntheticScopeEventsForNodesByScopeId(java.util.List<Object> nodes) {\n")
+                .append("        return org.unlaxer.dsl.ir.ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForScopeIdsAnyMode(\n")
+                .append("            getScopeTreeModeNameByScopeId(),\n")
+                .append("            nodes\n")
+                .append("        );\n")
+                .append("    }\n\n");
+
             sb.append("    public static boolean hasScopeTree(String ruleName) {\n")
                 .append("        return getScopeTreeModeByRule().containsKey(ruleName);\n")
                 .append("    }\n\n");
