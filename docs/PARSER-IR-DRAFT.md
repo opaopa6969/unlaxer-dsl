@@ -14,6 +14,7 @@ Draft sample payloads: `src/test/resources/schema/parser-ir/`
 - `invalid-*.json`: negative fixtures for required keys / span order / code format / invalid scope event / scope order violation / duplicate scope enter / unknown targetScopeId / unknown annotation targetId / broken related diagnostics / unknown parentId / unbalanced scopes / diagnostic span out-of-range.
 - Annotation naming convention (draft): `^[a-z][a-zA-Z0-9-]*$`.
 - Annotation uniqueness policy (draft): `(targetId, name)` pairs must be unique in one IR document.
+- Annotation payload policy (draft): `payload` must be an object with at least one property.
 
 ## 1. Design Goals
 

@@ -98,6 +98,7 @@
         "name": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9-]*$" },
         "payload": {
           "type": "object",
+          "minProperties": 1,
           "additionalProperties": true
         }
       }

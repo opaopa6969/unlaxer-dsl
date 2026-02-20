@@ -197,6 +197,17 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
     }
 
+    @Test
+    public void testEmptyAnnotationPayloadIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-annotation-empty-payload.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected empty payload failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("annotation payload must not be empty"));
+        }
+    }
+
     private static void validateTopLevelContract(Map<String, Object> schema, Map<String, Object> sample) {
         List<Object> required = JsonTestUtil.getArray(schema, "required");
         for (Object k : required) {
@@ -443,7 +454,10 @@ public class ParserIrSchemaSampleConsistencyTest {
             if (!ANNOTATION_NAME_PATTERN.matcher(name).matches()) {
                 throw new IllegalArgumentException("annotation name pattern mismatch: " + name);
             }
-            JsonTestUtil.getObject(annotation, "payload");
+            Map<String, Object> payload = JsonTestUtil.getObject(annotation, "payload");
+            if (payload.isEmpty()) {
+                throw new IllegalArgumentException("annotation payload must not be empty");
+            }
             String key = targetId + "\u0000" + name;
             if (!seen.add(key)) {
                 throw new IllegalArgumentException("duplicate annotation for targetId=" + targetId + " name=" + name);
