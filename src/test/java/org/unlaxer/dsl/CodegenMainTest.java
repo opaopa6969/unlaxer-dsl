@@ -799,6 +799,39 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testExportParserIrNdjsonFailureEmitsCliErrorEvent() throws Exception {
+        String source = """
+            grammar A {
+              @package: org.example.a
+              @root
+              @mapping(NodeA, params=[v])
+              Start ::= 'a' @v ;
+            }
+            grammar B {
+              @package: org.example.b
+              @root
+              @mapping(NodeB, params=[v])
+              Start ::= 'b' @v ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-export-parser-ir-ndjson-fail", ".ubnf");
+        Path exportFile = Files.createTempFile("codegen-main-export-parser-ir-ndjson-fail-out", ".json");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--export-parser-ir", exportFile.toString(),
+            "--report-format", "ndjson"
+        );
+
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        Map<String, Object> event = JsonTestUtil.parseObject(lastJsonLine(result.out()));
+        assertEquals("cli-error", JsonTestUtil.getString(event, "event"));
+        assertEquals("E-PARSER-IR-EXPORT", JsonTestUtil.getString(event, "code"));
+        assertTrue(result.err().isBlank());
+    }
+
+    @Test
     public void testValidateParserIrReturnsOkForValidFixture() throws Exception {
         String payload = Files.readString(Path.of("src/test/resources/schema/parser-ir/valid-minimal.json"));
         Path parserIrFile = Files.createTempFile("codegen-main-parser-ir-valid", ".json");

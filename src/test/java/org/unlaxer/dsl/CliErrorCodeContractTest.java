@@ -107,6 +107,36 @@ public class CliErrorCodeContractTest {
         assertTrue(result.err().isBlank());
     }
 
+    @Test
+    public void testParserIrExportErrorCodeMatchesPatternInNdjson() throws Exception {
+        String source = """
+            grammar A {
+              @package: org.example.a
+              @root
+              @mapping(NodeA, params=[v])
+              Start ::= 'a' @v ;
+            }
+            grammar B {
+              @package: org.example.b
+              @root
+              @mapping(NodeB, params=[v])
+              Start ::= 'b' @v ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("cli-error-contract-parser-ir-export", ".ubnf");
+        Path exportFile = Files.createTempFile("cli-error-contract-parser-ir-export-out", ".json");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--export-parser-ir", exportFile.toString(),
+            "--report-format", "ndjson"
+        );
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        assertCliErrorCodePattern(result.out());
+        assertTrue(result.err().isBlank());
+    }
+
     private static void assertCliErrorCodePattern(String stdout) {
         Map<String, Object> event = JsonTestUtil.parseObject(lastJsonLine(stdout));
         assertEquals("cli-error", JsonTestUtil.getString(event, "event"));
