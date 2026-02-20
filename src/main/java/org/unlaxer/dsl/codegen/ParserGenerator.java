@@ -991,6 +991,17 @@ public class ParserGenerator implements CodeGenerator {
                 .append(";\n")
                 .append("        };\n")
                 .append("    }\n\n");
+
+            sb.append("    public static java.util.Map<String, ScopeMode> getScopeTreeModeByRule() {\n")
+                .append("        java.util.LinkedHashMap<String, ScopeMode> map = new java.util.LinkedHashMap<>();\n")
+                .append("        for (String rule : getScopeTreeRules(ScopeMode.LEXICAL)) {\n")
+                .append("            map.put(rule, ScopeMode.LEXICAL);\n")
+                .append("        }\n")
+                .append("        for (String rule : getScopeTreeRules(ScopeMode.DYNAMIC)) {\n")
+                .append("            map.put(rule, ScopeMode.DYNAMIC);\n")
+                .append("        }\n")
+                .append("        return java.util.Map.copyOf(map);\n")
+                .append("    }\n\n");
         }
         return sb.toString();
     }
