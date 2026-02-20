@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "irVersion": { "const": "1.0" },
-    "source": { "type": "string", "minLength": 1 },
+    "source": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
     "nodes": {
       "type": "array",
       "minItems": 1,
@@ -79,6 +79,35 @@
       "type": "object",
       "required": ["event", "scopeId", "span"],
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "event": { "const": "define" } } },
+          "then": { "required": ["symbol", "kind"] }
+        },
+        {
+          "if": { "properties": { "event": { "const": "use" } } },
+          "then": {
+            "required": ["symbol"],
+            "not": { "required": ["kind"] }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event": { "enum": ["enterScope", "leaveScope"] }
+            }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["symbol"] },
+                { "required": ["kind"] },
+                { "required": ["targetScopeId"] }
+              ]
+            }
+          }
+        }
+      ],
       "properties": {
         "event": {
           "enum": ["enterScope", "leaveScope", "define", "use"]

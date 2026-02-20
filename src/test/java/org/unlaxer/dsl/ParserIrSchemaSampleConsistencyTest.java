@@ -67,6 +67,18 @@ public class ParserIrSchemaSampleConsistencyTest {
     }
 
     @Test
+    public void testInvalidSourceBlankIsRejected() throws Exception {
+        Map<String, Object> schema = loadSchema();
+        Map<String, Object> sample = loadSample("invalid-source-blank.json");
+        try {
+            validateTopLevelContract(schema, sample);
+            fail("expected source blank failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("source must not be blank"));
+        }
+    }
+
+    @Test
     public void testInvalidSampleSpanOrderIsRejected() throws Exception {
         Map<String, Object> sample = loadSample("invalid-span-order.json");
         try {
@@ -122,6 +134,28 @@ public class ParserIrSchemaSampleConsistencyTest {
     }
 
     @Test
+    public void testDefineEventMissingKindIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-define-missing-kind.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected define kind failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("define requires kind"));
+        }
+    }
+
+    @Test
+    public void testUseEventWithKindIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-use-with-kind.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected use kind failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("use must not include kind"));
+        }
+    }
+
+    @Test
     public void testEnterScopeWithSymbolIsRejected() throws Exception {
         Map<String, Object> sample = loadSample("invalid-enter-with-symbol.json");
         try {
@@ -151,6 +185,17 @@ public class ParserIrSchemaSampleConsistencyTest {
             fail("expected diagnostic related span range failure");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("diagnostic related span out of range"));
+        }
+    }
+
+    @Test
+    public void testDuplicateDiagnosticRelatedIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-duplicate-related-diagnostic.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected duplicate diagnostic related failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("duplicate diagnostic related"));
         }
     }
 
@@ -217,6 +262,17 @@ public class ParserIrSchemaSampleConsistencyTest {
             fail("expected duplicate child id failure");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("duplicate child id"));
+        }
+    }
+
+    @Test
+    public void testParentMissingChildLinkIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-parent-missing-child-link.json");
+        try {
+            validateParentReferences(sample);
+            fail("expected missing parent child-link failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("missing parent children link"));
         }
     }
 
@@ -331,6 +387,10 @@ public class ParserIrSchemaSampleConsistencyTest {
         if (!"1.0".equals(irVersion)) {
             throw new IllegalArgumentException("unsupported irVersion: " + irVersion);
         }
+        String source = JsonTestUtil.getString(sample, "source");
+        if (source.trim().isEmpty()) {
+            throw new IllegalArgumentException("source must not be blank");
+        }
         List<Object> nodes = JsonTestUtil.getArray(sample, "nodes");
         if (nodes.isEmpty()) {
             throw new IllegalArgumentException("nodes must not be empty");
@@ -411,6 +471,14 @@ public class ParserIrSchemaSampleConsistencyTest {
                 if (id.equals(parentId)) {
                     throw new IllegalArgumentException("parent self reference: " + id);
                 }
+                Map<String, Object> parent = byId.get(parentId);
+                if (parent == null || !parent.containsKey("children")) {
+                    throw new IllegalArgumentException("missing parent children link: parent=" + parentId + " child=" + id);
+                }
+                List<Object> parentChildren = JsonTestUtil.getArray(parent, "children");
+                if (!parentChildren.contains(id)) {
+                    throw new IllegalArgumentException("missing parent children link: parent=" + parentId + " child=" + id);
+                }
             }
             if (n.containsKey("children")) {
                 List<Object> children = JsonTestUtil.getArray(n, "children");
@@ -487,6 +555,7 @@ public class ParserIrSchemaSampleConsistencyTest {
             }
             if (diagnostic.containsKey("related")) {
                 List<Object> related = JsonTestUtil.getArray(diagnostic, "related");
+                Set<String> uniqueRelated = new HashSet<>();
                 for (Object relItem : related) {
                     if (!(relItem instanceof Map<?, ?> relRaw)) {
                         throw new IllegalArgumentException("diagnostic related must be object");
@@ -502,7 +571,11 @@ public class ParserIrSchemaSampleConsistencyTest {
                                 + relStart + "," + relEnd + "] not in [" + minStart + "," + maxEnd + "]"
                         );
                     }
-                    JsonTestUtil.getString(relatedObj, "message");
+                    String relMessage = JsonTestUtil.getString(relatedObj, "message");
+                    String relatedKey = relStart + "\u0000" + relEnd + "\u0000" + relMessage;
+                    if (!uniqueRelated.add(relatedKey)) {
+                        throw new IllegalArgumentException("duplicate diagnostic related: " + relatedKey);
+                    }
                 }
             }
         }
@@ -526,6 +599,12 @@ public class ParserIrSchemaSampleConsistencyTest {
                 if (!event.containsKey("symbol")) {
                     throw new IllegalArgumentException(eventName + " requires symbol");
                 }
+            }
+            if ("define".equals(eventName) && !event.containsKey("kind")) {
+                throw new IllegalArgumentException("define requires kind");
+            }
+            if ("use".equals(eventName) && event.containsKey("kind")) {
+                throw new IllegalArgumentException("use must not include kind");
             }
             if ("enterScope".equals(eventName) || "leaveScope".equals(eventName)) {
                 if (event.containsKey("symbol") || event.containsKey("kind") || event.containsKey("targetScopeId")) {
