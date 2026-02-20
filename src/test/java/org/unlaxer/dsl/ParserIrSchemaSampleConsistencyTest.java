@@ -119,6 +119,17 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
     }
 
+    @Test
+    public void testInvalidDiagnosticSpanRangeIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-diagnostic-span-range.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected diagnostic span range failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("diagnostic span out of range"));
+        }
+    }
+
     private static void validateTopLevelContract(Map<String, Object> schema, Map<String, Object> sample) {
         List<Object> required = JsonTestUtil.getArray(schema, "required");
         for (Object k : required) {
@@ -199,6 +210,19 @@ public class ParserIrSchemaSampleConsistencyTest {
     }
 
     private static void validateDiagnosticsContract(Map<String, Object> sample) {
+        long minStart = Long.MAX_VALUE;
+        long maxEnd = Long.MIN_VALUE;
+        List<Object> nodes = JsonTestUtil.getArray(sample, "nodes");
+        for (Object item : nodes) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> n = (Map<String, Object>) item;
+            Map<String, Object> nodeSpan = JsonTestUtil.getObject(n, "span");
+            long start = JsonTestUtil.getLong(nodeSpan, "start");
+            long end = JsonTestUtil.getLong(nodeSpan, "end");
+            minStart = Math.min(minStart, start);
+            maxEnd = Math.max(maxEnd, end);
+        }
+
         List<Object> diagnostics = JsonTestUtil.getArray(sample, "diagnostics");
         for (Object item : diagnostics) {
             if (!(item instanceof Map<?, ?> raw)) {
@@ -214,7 +238,14 @@ public class ParserIrSchemaSampleConsistencyTest {
             if (!DIAGNOSTIC_SEVERITIES.contains(severity)) {
                 throw new IllegalArgumentException("unsupported diagnostic severity: " + severity);
             }
-            JsonTestUtil.getObject(diagnostic, "span");
+            Map<String, Object> span = JsonTestUtil.getObject(diagnostic, "span");
+            long start = JsonTestUtil.getLong(span, "start");
+            long end = JsonTestUtil.getLong(span, "end");
+            if (start < minStart || end > maxEnd) {
+                throw new IllegalArgumentException(
+                    "diagnostic span out of range: [" + start + "," + end + "] not in [" + minStart + "," + maxEnd + "]"
+                );
+            }
             JsonTestUtil.getString(diagnostic, "message");
             if (diagnostic.containsKey("related")) {
                 List<Object> related = JsonTestUtil.getArray(diagnostic, "related");
