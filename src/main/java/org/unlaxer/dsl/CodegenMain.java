@@ -7,7 +7,6 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.util.List;
 
-import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.UBNFFile;
 import org.unlaxer.dsl.bootstrap.UBNFMapper;
 import org.unlaxer.dsl.ir.GrammarToParserIrExporter;
@@ -135,21 +134,22 @@ public class CodegenMain {
         try {
             String source = Files.readString(Path.of(config.grammarFile()));
             UBNFFile ubnf = UBNFMapper.parse(source);
-            if (ubnf.grammars().size() != 1) {
-                throw new IllegalArgumentException("parser ir export currently supports exactly one grammar block");
+            if (ubnf.grammars().isEmpty()) {
+                throw new IllegalArgumentException("no grammar blocks found for parser ir export");
             }
-            GrammarDecl grammar = ubnf.grammars().get(0);
-            var document = GrammarToParserIrExporter.export(grammar, config.grammarFile());
+            var document = GrammarToParserIrExporter.exportAll(ubnf.grammars(), config.grammarFile());
             ParserIrConformanceValidator.validate(document);
             String json = ParserIrJsonWriter.toJson(document.payload());
             Files.writeString(Path.of(config.exportParserIrFile()), json);
+            int grammarCount = ubnf.grammars().size();
             int nodeCount = getArraySize(document.payload(), "nodes");
             int annotationCount = getArraySize(document.payload(), "annotations");
             if (ndjsonRequested) {
                 out.println(
                     "{\"event\":\"parser-ir-export\",\"ok\":true,\"source\":\""
                         + escapeJson(config.grammarFile()) + "\",\"output\":\""
-                        + escapeJson(config.exportParserIrFile()) + "\",\"nodeCount\":"
+                        + escapeJson(config.exportParserIrFile()) + "\",\"grammarCount\":"
+                        + grammarCount + ",\"nodeCount\":"
                         + nodeCount + ",\"annotationCount\":" + annotationCount + "}"
                 );
             } else {

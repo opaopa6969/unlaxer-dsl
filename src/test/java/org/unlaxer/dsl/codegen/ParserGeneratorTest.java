@@ -88,6 +88,19 @@ public class ParserGeneratorTest {
         "  Factor ::= NUMBER ;\n" +
         "}";
 
+    private static final String ADVANCED_ANNOTATION_GRAMMAR =
+        "grammar Advanced {\n" +
+        "  @package: org.example.advanced\n" +
+        "  @whitespace: javaStyle\n" +
+        "  @root\n" +
+        "  @mapping(StartNode, params=[v])\n" +
+        "  @interleave(profile=commentsAndSpaces)\n" +
+        "  @scopeTree(mode=lexical)\n" +
+        "  Start ::= 'ok' @v ;\n" +
+        "  @backref(name=ident)\n" +
+        "  Ref ::= Start ;\n" +
+        "}";
+
     // =========================================================================
     // パッケージ名・クラス名
     // =========================================================================
@@ -275,6 +288,21 @@ public class ParserGeneratorTest {
         assertTrue("Expr spec should exist", exprIdx >= 0);
         assertTrue("Term spec should exist", termIdx >= 0);
         assertTrue("lower precedence spec should appear first", exprIdx < termIdx);
+    }
+
+    @Test
+    public void testGeneratesAdvancedAnnotationMetadataApi() {
+        String source = generate(ADVANCED_ANNOTATION_GRAMMAR);
+        assertTrue("should generate interleave profile lookup",
+            source.contains("getInterleaveProfile(String ruleName)"));
+        assertTrue("should generate backref name lookup",
+            source.contains("getBackrefName(String ruleName)"));
+        assertTrue("should generate scope tree mode lookup",
+            source.contains("getScopeTreeMode(String ruleName)"));
+        assertTrue("should include Start interleave profile",
+            source.contains("case \"Start\" -> java.util.Optional.of(\"commentsAndSpaces\")"));
+        assertTrue("should include Ref backref name",
+            source.contains("case \"Ref\" -> java.util.Optional.of(\"ident\")"));
     }
 
     @Test

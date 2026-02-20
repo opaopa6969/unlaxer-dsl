@@ -737,7 +737,7 @@ public class CodegenMainTest {
     }
 
     @Test
-    public void testExportParserIrRejectsMultipleGrammarBlocks() throws Exception {
+    public void testExportParserIrSupportsMultipleGrammarBlocks() throws Exception {
         String source = """
             grammar A {
               @package: org.example.a
@@ -761,8 +761,10 @@ public class CodegenMainTest {
             "--export-parser-ir", exportFile.toString()
         );
 
-        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
-        assertTrue(result.err().contains("E-PARSER-IR-EXPORT"));
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        String payload = Files.readString(exportFile);
+        Map<String, Object> obj = JsonTestUtil.parseObject(payload);
+        assertEquals(2, JsonTestUtil.getArray(obj, "nodes").size());
     }
 
     @Test
@@ -793,6 +795,7 @@ public class CodegenMainTest {
         assertTrue(JsonTestUtil.getBoolean(event, "ok"));
         assertEquals(grammarFile.toString(), JsonTestUtil.getString(event, "source"));
         assertEquals(exportFile.toString(), JsonTestUtil.getString(event, "output"));
+        assertEquals(1L, JsonTestUtil.getLong(event, "grammarCount"));
         assertTrue(JsonTestUtil.getLong(event, "nodeCount") > 0);
         assertTrue(JsonTestUtil.getLong(event, "annotationCount") > 0);
         assertTrue(result.err().isBlank());
@@ -800,20 +803,7 @@ public class CodegenMainTest {
 
     @Test
     public void testExportParserIrNdjsonFailureEmitsCliErrorEvent() throws Exception {
-        String source = """
-            grammar A {
-              @package: org.example.a
-              @root
-              @mapping(NodeA, params=[v])
-              Start ::= 'a' @v ;
-            }
-            grammar B {
-              @package: org.example.b
-              @root
-              @mapping(NodeB, params=[v])
-              Start ::= 'b' @v ;
-            }
-            """;
+        String source = "grammar Broken {";
         Path grammarFile = Files.createTempFile("codegen-main-export-parser-ir-ndjson-fail", ".ubnf");
         Path exportFile = Files.createTempFile("codegen-main-export-parser-ir-ndjson-fail-out", ".json");
         Files.writeString(grammarFile, source);

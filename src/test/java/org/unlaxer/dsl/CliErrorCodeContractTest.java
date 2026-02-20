@@ -109,20 +109,7 @@ public class CliErrorCodeContractTest {
 
     @Test
     public void testParserIrExportErrorCodeMatchesPatternInNdjson() throws Exception {
-        String source = """
-            grammar A {
-              @package: org.example.a
-              @root
-              @mapping(NodeA, params=[v])
-              Start ::= 'a' @v ;
-            }
-            grammar B {
-              @package: org.example.b
-              @root
-              @mapping(NodeB, params=[v])
-              Start ::= 'b' @v ;
-            }
-            """;
+        String source = "grammar Broken {";
         Path grammarFile = Files.createTempFile("cli-error-contract-parser-ir-export", ".ubnf");
         Path exportFile = Files.createTempFile("cli-error-contract-parser-ir-export-out", ".json");
         Files.writeString(grammarFile, source);

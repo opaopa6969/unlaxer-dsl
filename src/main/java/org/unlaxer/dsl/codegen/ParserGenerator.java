@@ -2,10 +2,12 @@ package org.unlaxer.dsl.codegen;
 
 import org.unlaxer.dsl.bootstrap.UBNFAST.AnnotatedElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.AtomicElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.BackrefAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.BlockSettingValue;
 import org.unlaxer.dsl.bootstrap.UBNFAST.ChoiceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GroupElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.InterleaveAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.LeftAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.OptionalElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.PrecedenceAnnotation;
@@ -15,6 +17,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.RootAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleRefElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.ScopeTreeAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.SequenceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.StringSettingValue;
 import org.unlaxer.dsl.bootstrap.UBNFAST.TerminalElement;
@@ -144,6 +147,7 @@ public class ParserGenerator implements CodeGenerator {
         sb.append("public class ").append(className).append(" {\n\n");
         sb.append(generatePrecedenceConstants(grammar));
         sb.append(generateOperatorMetadata(grammar));
+        sb.append(generateAdvancedAnnotationMetadata(grammar));
 
         // チェーンクラス
         sb.append(generatePlainChainClass(ctx));
@@ -865,6 +869,104 @@ public class ParserGenerator implements CodeGenerator {
         sb.append("    }\n\n");
 
         return sb.toString();
+    }
+
+    private String generateAdvancedAnnotationMetadata(GrammarDecl grammar) {
+        boolean hasInterleave = grammar.rules().stream().anyMatch(this::hasInterleaveAnnotation);
+        boolean hasBackref = grammar.rules().stream().anyMatch(this::hasBackrefAnnotation);
+        boolean hasScopeTree = grammar.rules().stream().anyMatch(this::hasScopeTreeAnnotation);
+        if (!hasInterleave && !hasBackref && !hasScopeTree) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        if (hasInterleave) {
+            sb.append("    public static java.util.Optional<String> getInterleaveProfile(String ruleName) {\n")
+                .append("        return switch (ruleName) {\n");
+            for (RuleDecl rule : grammar.rules()) {
+                String value = findInterleaveProfile(rule);
+                if (value != null) {
+                    sb.append("            case \"").append(rule.name()).append("\" -> java.util.Optional.of(\"")
+                        .append(escapeJava(value)).append("\");\n");
+                }
+            }
+            sb.append("            default -> java.util.Optional.empty();\n")
+                .append("        };\n")
+                .append("    }\n\n");
+        }
+        if (hasBackref) {
+            sb.append("    public static java.util.Optional<String> getBackrefName(String ruleName) {\n")
+                .append("        return switch (ruleName) {\n");
+            for (RuleDecl rule : grammar.rules()) {
+                String value = findBackrefName(rule);
+                if (value != null) {
+                    sb.append("            case \"").append(rule.name()).append("\" -> java.util.Optional.of(\"")
+                        .append(escapeJava(value)).append("\");\n");
+                }
+            }
+            sb.append("            default -> java.util.Optional.empty();\n")
+                .append("        };\n")
+                .append("    }\n\n");
+        }
+        if (hasScopeTree) {
+            sb.append("    public static java.util.Optional<String> getScopeTreeMode(String ruleName) {\n")
+                .append("        return switch (ruleName) {\n");
+            for (RuleDecl rule : grammar.rules()) {
+                String value = findScopeTreeMode(rule);
+                if (value != null) {
+                    sb.append("            case \"").append(rule.name()).append("\" -> java.util.Optional.of(\"")
+                        .append(escapeJava(value)).append("\");\n");
+                }
+            }
+            sb.append("            default -> java.util.Optional.empty();\n")
+                .append("        };\n")
+                .append("    }\n\n");
+        }
+        return sb.toString();
+    }
+
+    private boolean hasInterleaveAnnotation(RuleDecl rule) {
+        return rule.annotations().stream().anyMatch(a -> a instanceof InterleaveAnnotation);
+    }
+
+    private boolean hasBackrefAnnotation(RuleDecl rule) {
+        return rule.annotations().stream().anyMatch(a -> a instanceof BackrefAnnotation);
+    }
+
+    private boolean hasScopeTreeAnnotation(RuleDecl rule) {
+        return rule.annotations().stream().anyMatch(a -> a instanceof ScopeTreeAnnotation);
+    }
+
+    private String findInterleaveProfile(RuleDecl rule) {
+        return rule.annotations().stream()
+            .filter(a -> a instanceof InterleaveAnnotation)
+            .map(a -> (InterleaveAnnotation) a)
+            .map(InterleaveAnnotation::profile)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private String findBackrefName(RuleDecl rule) {
+        return rule.annotations().stream()
+            .filter(a -> a instanceof BackrefAnnotation)
+            .map(a -> (BackrefAnnotation) a)
+            .map(BackrefAnnotation::name)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private String findScopeTreeMode(RuleDecl rule) {
+        return rule.annotations().stream()
+            .filter(a -> a instanceof ScopeTreeAnnotation)
+            .map(a -> (ScopeTreeAnnotation) a)
+            .map(ScopeTreeAnnotation::mode)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private String escapeJava(String s) {
+        return s
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"");
     }
 
     private boolean hasAssocAnnotation(RuleDecl rule) {

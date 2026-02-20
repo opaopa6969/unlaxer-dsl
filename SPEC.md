@@ -113,7 +113,7 @@ Current behavior:
 - `--export-parser-ir <path>` exports Parser IR JSON from a `.ubnf` grammar without code generation.
 - `--report-format json` emits machine-readable validation output (especially useful with `--validate-only`).
 - `--report-format ndjson` emits newline-delimited JSON events (`file` events plus summary report event).
-- `--export-parser-ir` with `--report-format ndjson` emits `parser-ir-export` event with `source`, `output`, `nodeCount`, and `annotationCount`.
+- `--export-parser-ir` with `--report-format ndjson` emits `parser-ir-export` event with `source`, `output`, `grammarCount`, `nodeCount`, and `annotationCount`.
 - In `ndjson`, CLI failures (usage/argument errors and runtime failures such as unknown generator) are emitted as `cli-error` events.
 - `cli-error` events expose stable fields: `code`, `message`, nullable `detail`, and `availableGenerators`.
 - `cli-error.code` follows `E-[A-Z0-9-]+`.

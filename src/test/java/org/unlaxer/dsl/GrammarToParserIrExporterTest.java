@@ -59,6 +59,31 @@ public class GrammarToParserIrExporterTest {
         ParserIrConformanceValidator.validate(document);
     }
 
+    @Test
+    public void testExportAllSupportsMultipleGrammars() {
+        GrammarDecl a = parseGrammar("""
+            grammar A {
+              @package: org.example.a
+              @root
+              @mapping(NodeA, params=[v])
+              Start ::= 'a' @v ;
+            }
+            """);
+        GrammarDecl b = parseGrammar("""
+            grammar B {
+              @package: org.example.b
+              @root
+              @mapping(NodeB, params=[v])
+              Start ::= 'b' @v ;
+            }
+            """);
+
+        ParserIrDocument document = GrammarToParserIrExporter.exportAll(List.of(a, b), "in-memory://multi.ubnf");
+        ParserIrConformanceValidator.validate(document);
+        List<Object> nodes = JsonTestUtil.getArray(document.payload(), "nodes");
+        assertEquals(2, nodes.size());
+    }
+
     private static boolean hasAnnotation(List<Object> annotations, String name, String payloadKey, Object payloadValue) {
         for (Object item : annotations) {
             @SuppressWarnings("unchecked")

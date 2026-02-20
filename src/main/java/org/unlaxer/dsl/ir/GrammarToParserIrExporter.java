@@ -25,9 +25,9 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.WhitespaceAnnotation;
 public final class GrammarToParserIrExporter {
     private GrammarToParserIrExporter() {}
 
-    public static ParserIrDocument export(GrammarDecl grammar, String sourceId) {
-        if (grammar == null) {
-            throw new IllegalArgumentException("grammar must not be null");
+    public static ParserIrDocument exportAll(List<GrammarDecl> grammars, String sourceId) {
+        if (grammars == null || grammars.isEmpty()) {
+            throw new IllegalArgumentException("grammars must not be empty");
         }
         if (sourceId == null || sourceId.isBlank()) {
             throw new IllegalArgumentException("sourceId must not be blank");
@@ -35,10 +35,16 @@ public final class GrammarToParserIrExporter {
 
         List<Object> nodes = new ArrayList<>();
         List<Object> annotations = new ArrayList<>();
-        for (RuleDecl rule : grammar.rules()) {
-            nodes.add(buildRuleNode(rule));
-            for (Annotation annotation : rule.annotations()) {
-                annotations.add(buildAnnotation(rule.name(), annotation));
+        for (GrammarDecl grammar : grammars) {
+            if (grammar == null) {
+                continue;
+            }
+            for (RuleDecl rule : grammar.rules()) {
+                String nodeId = buildNodeId(grammar.name(), rule.name());
+                nodes.add(buildRuleNode(nodeId));
+                for (Annotation annotation : rule.annotations()) {
+                    annotations.add(buildAnnotation(nodeId, annotation));
+                }
             }
         }
 
@@ -50,17 +56,27 @@ public final class GrammarToParserIrExporter {
         if (!annotations.isEmpty()) {
             payload.put("annotations", annotations);
         }
-
         return new ParserIrDocument(payload);
     }
 
-    private static Map<String, Object> buildRuleNode(RuleDecl rule) {
+    public static ParserIrDocument export(GrammarDecl grammar, String sourceId) {
+        if (grammar == null) {
+            throw new IllegalArgumentException("grammar must not be null");
+        }
+        return exportAll(List.of(grammar), sourceId);
+    }
+
+    private static String buildNodeId(String grammarName, String ruleName) {
+        return grammarName + "::" + ruleName;
+    }
+
+    private static Map<String, Object> buildRuleNode(String nodeId) {
         Map<String, Object> span = new LinkedHashMap<>();
         span.put("start", 0);
         span.put("end", 0);
 
         Map<String, Object> node = new LinkedHashMap<>();
-        node.put("id", rule.name());
+        node.put("id", nodeId);
         node.put("kind", "RuleDecl");
         node.put("span", span);
         return node;
