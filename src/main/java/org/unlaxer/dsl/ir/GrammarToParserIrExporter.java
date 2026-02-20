@@ -134,15 +134,16 @@ public final class GrammarToParserIrExporter {
     }
 
     private static void collectScopeEvents(List<Object> out, String nodeId, Annotation annotation) {
-        if (!(annotation instanceof ScopeTreeAnnotation)) {
+        if (!(annotation instanceof ScopeTreeAnnotation scopeTree)) {
             return;
         }
         String scopeId = "scope:" + nodeId;
-        out.add(buildScopeEvent("enterScope", scopeId));
-        out.add(buildScopeEvent("leaveScope", scopeId));
+        String mode = scopeTree.mode().trim();
+        out.add(buildScopeEvent("enterScope", scopeId, mode));
+        out.add(buildScopeEvent("leaveScope", scopeId, mode));
     }
 
-    private static Map<String, Object> buildScopeEvent(String event, String scopeId) {
+    private static Map<String, Object> buildScopeEvent(String event, String scopeId, String scopeMode) {
         Map<String, Object> span = new LinkedHashMap<>();
         span.put("start", 0);
         span.put("end", 0);
@@ -150,6 +151,7 @@ public final class GrammarToParserIrExporter {
         Map<String, Object> scopeEvent = new LinkedHashMap<>();
         scopeEvent.put("event", event);
         scopeEvent.put("scopeId", scopeId);
+        scopeEvent.put("scopeMode", scopeMode);
         scopeEvent.put("span", span);
         return scopeEvent;
     }

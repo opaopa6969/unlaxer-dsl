@@ -103,8 +103,8 @@ public class ParserIrSchemaDocumentTest {
         Map<String, Object> useRule = (Map<String, Object>) allOf.get(1);
         Map<String, Object> thenObj = JsonTestUtil.getObject(useRule, "then");
         Map<String, Object> notObj = JsonTestUtil.getObject(thenObj, "not");
-        List<Object> required = JsonTestUtil.getArray(notObj, "required");
-        assertTrue(required.contains("kind"));
+        List<Object> anyOf = JsonTestUtil.getArray(notObj, "anyOf");
+        assertEquals(2, anyOf.size());
     }
 
     @Test
@@ -121,5 +121,18 @@ public class ParserIrSchemaDocumentTest {
         Map<String, Object> notObj = JsonTestUtil.getObject(thenObj, "not");
         List<Object> anyOf = JsonTestUtil.getArray(notObj, "anyOf");
         assertEquals(3, anyOf.size());
+    }
+
+    @Test
+    public void testParserIrSchemaDefinesScopeModeEnum() throws Exception {
+        String json = Files.readString(Path.of("docs/schema/parser-ir-v1.draft.json"));
+        Map<String, Object> schema = JsonTestUtil.parseObject(json);
+        Map<String, Object> defs = JsonTestUtil.getObject(schema, "$defs");
+        Map<String, Object> scopeEvent = JsonTestUtil.getObject(defs, "scopeEvent");
+        Map<String, Object> props = JsonTestUtil.getObject(scopeEvent, "properties");
+        Map<String, Object> scopeMode = JsonTestUtil.getObject(props, "scopeMode");
+        List<Object> values = JsonTestUtil.getArray(scopeMode, "enum");
+        assertTrue(values.contains("lexical"));
+        assertTrue(values.contains("dynamic"));
     }
 }

@@ -22,6 +22,7 @@ public class ParserIrSchemaSampleConsistencyTest {
     private static final Pattern ANNOTATION_NAME_PATTERN = Pattern.compile("^[a-z][a-zA-Z0-9-]*$");
     private static final Set<String> DIAGNOSTIC_SEVERITIES = Set.of("ERROR", "WARNING", "INFO");
     private static final Set<String> SCOPE_EVENTS = Set.of("enterScope", "leaveScope", "define", "use");
+    private static final Set<String> SCOPE_MODES = Set.of("lexical", "dynamic");
 
     @Test
     public void testValidSampleSatisfiesDraftSchemaContract() throws Exception {
@@ -122,6 +123,39 @@ public class ParserIrSchemaSampleConsistencyTest {
             fail("expected scope event failure");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("unsupported scope event"));
+        }
+    }
+
+    @Test
+    public void testInvalidScopeModeIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-scope-mode.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected scope mode failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("unsupported scopeMode"));
+        }
+    }
+
+    @Test
+    public void testUseWithScopeModeIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-use-with-scope-mode.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected use scope mode failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("use must not include scopeMode"));
+        }
+    }
+
+    @Test
+    public void testScopeModeMismatchIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-scope-mode-mismatch.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected scope mode mismatch failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("scopeMode mismatch"));
         }
     }
 
@@ -642,6 +676,15 @@ public class ParserIrSchemaSampleConsistencyTest {
             if ("use".equals(eventName) && event.containsKey("kind")) {
                 throw new IllegalArgumentException("use must not include kind");
             }
+            if (event.containsKey("scopeMode")) {
+                String scopeMode = JsonTestUtil.getString(event, "scopeMode").trim();
+                if (!SCOPE_MODES.contains(scopeMode)) {
+                    throw new IllegalArgumentException("unsupported scopeMode: " + scopeMode);
+                }
+                if ("define".equals(eventName) || "use".equals(eventName)) {
+                    throw new IllegalArgumentException(eventName + " must not include scopeMode");
+                }
+            }
             if ("enterScope".equals(eventName) || "leaveScope".equals(eventName)) {
                 if (event.containsKey("symbol") || event.containsKey("kind") || event.containsKey("targetScopeId")) {
                     throw new IllegalArgumentException("enter/leave must not include symbol/kind/targetScopeId");
@@ -702,6 +745,7 @@ public class ParserIrSchemaSampleConsistencyTest {
         List<Object> scopeEvents = JsonTestUtil.getArray(sample, "scopeEvents");
         Set<String> openScopes = new HashSet<>();
         Deque<String> scopeStack = new ArrayDeque<>();
+        Map<String, String> scopeModeByScopeId = new java.util.HashMap<>();
         for (Object item : scopeEvents) {
             @SuppressWarnings("unchecked")
             Map<String, Object> event = (Map<String, Object>) item;
@@ -710,6 +754,9 @@ public class ParserIrSchemaSampleConsistencyTest {
             if ("enterScope".equals(eventName)) {
                 if (!openScopes.add(scopeId)) {
                     throw new IllegalArgumentException("duplicate enterScope for scopeId: " + scopeId);
+                }
+                if (event.containsKey("scopeMode")) {
+                    scopeModeByScopeId.put(scopeId, JsonTestUtil.getString(event, "scopeMode").trim());
                 }
                 scopeStack.push(scopeId);
                 continue;
@@ -724,6 +771,14 @@ public class ParserIrSchemaSampleConsistencyTest {
             if (!scopeId.equals(expected)) {
                 throw new IllegalArgumentException(
                     "scope nesting violated: expected leaveScope for scopeId: " + expected + " but got: " + scopeId);
+            }
+            if (event.containsKey("scopeMode")) {
+                String leavingMode = JsonTestUtil.getString(event, "scopeMode").trim();
+                String enteredMode = scopeModeByScopeId.get(scopeId);
+                if (enteredMode != null && !enteredMode.equals(leavingMode)) {
+                    throw new IllegalArgumentException(
+                        "scopeMode mismatch for scopeId: " + scopeId + " enter=" + enteredMode + " leave=" + leavingMode);
+                }
             }
             scopeStack.pop();
             openScopes.remove(scopeId);

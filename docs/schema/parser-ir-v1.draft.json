@@ -82,13 +82,21 @@
       "allOf": [
         {
           "if": { "properties": { "event": { "const": "define" } } },
-          "then": { "required": ["symbol", "kind"] }
+          "then": {
+            "required": ["symbol", "kind"],
+            "not": { "required": ["scopeMode"] }
+          }
         },
         {
           "if": { "properties": { "event": { "const": "use" } } },
           "then": {
             "required": ["symbol"],
-            "not": { "required": ["kind"] }
+            "not": {
+              "anyOf": [
+                { "required": ["kind"] },
+                { "required": ["scopeMode"] }
+              ]
+            }
           }
         },
         {
@@ -113,6 +121,7 @@
           "enum": ["enterScope", "leaveScope", "define", "use"]
         },
         "scopeId": { "type": "string", "minLength": 1 },
+        "scopeMode": { "enum": ["lexical", "dynamic"] },
         "span": { "$ref": "#/$defs/span" },
         "symbol": { "type": "string", "minLength": 1 },
         "kind": { "type": "string", "minLength": 1 },

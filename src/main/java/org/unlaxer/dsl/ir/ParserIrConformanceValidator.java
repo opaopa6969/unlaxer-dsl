@@ -8,12 +8,14 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.HashMap;
 
 /**
  * Lightweight runtime contract checks for parser IR adapters.
  */
 public final class ParserIrConformanceValidator {
     private static final Set<String> SCOPE_EVENTS = Set.of("enterScope", "leaveScope", "define", "use");
+    private static final Set<String> SCOPE_MODES = Set.of("lexical", "dynamic");
 
     private ParserIrConformanceValidator() {}
 
@@ -154,6 +156,15 @@ public final class ParserIrConformanceValidator {
             if ("use".equals(eventName) && event.containsKey("kind")) {
                 throw new IllegalArgumentException("use must not include kind");
             }
+            if (event.containsKey("scopeMode")) {
+                String scopeMode = readString(event, "scopeMode").trim();
+                if (!SCOPE_MODES.contains(scopeMode)) {
+                    throw new IllegalArgumentException("unsupported scopeMode: " + scopeMode);
+                }
+                if ("define".equals(eventName) || "use".equals(eventName)) {
+                    throw new IllegalArgumentException(eventName + " must not include scopeMode");
+                }
+            }
             if ("enterScope".equals(eventName) || "leaveScope".equals(eventName)) {
                 if (event.containsKey("symbol") || event.containsKey("kind") || event.containsKey("targetScopeId")) {
                     throw new IllegalArgumentException("enter/leave must not include symbol/kind/targetScopeId");
@@ -163,6 +174,7 @@ public final class ParserIrConformanceValidator {
 
         Set<String> openScopes = new HashSet<>();
         Deque<String> scopeStack = new ArrayDeque<>();
+        Map<String, String> scopeModeByScopeId = new HashMap<>();
         for (Object item : scopeEvents) {
             @SuppressWarnings("unchecked")
             Map<String, Object> event = (Map<String, Object>) item;
@@ -171,6 +183,9 @@ public final class ParserIrConformanceValidator {
             if ("enterScope".equals(eventName)) {
                 if (!openScopes.add(scopeId)) {
                     throw new IllegalArgumentException("duplicate enterScope for scopeId: " + scopeId);
+                }
+                if (event.containsKey("scopeMode")) {
+                    scopeModeByScopeId.put(scopeId, readString(event, "scopeMode").trim());
                 }
                 scopeStack.push(scopeId);
                 continue;
@@ -195,6 +210,14 @@ public final class ParserIrConformanceValidator {
                 if (!scopeId.equals(expected)) {
                     throw new IllegalArgumentException(
                         "scope nesting violated: expected leaveScope for scopeId: " + expected + " but got: " + scopeId);
+                }
+                if (event.containsKey("scopeMode")) {
+                    String leavingMode = readString(event, "scopeMode").trim();
+                    String enteredMode = scopeModeByScopeId.get(scopeId);
+                    if (enteredMode != null && !enteredMode.equals(leavingMode)) {
+                        throw new IllegalArgumentException(
+                            "scopeMode mismatch for scopeId: " + scopeId + " enter=" + enteredMode + " leave=" + leavingMode);
+                    }
                 }
                 scopeStack.pop();
                 openScopes.remove(scopeId);

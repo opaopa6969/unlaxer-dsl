@@ -124,6 +124,42 @@ public class ParserIrSchemaValidatorTest {
     }
 
     @Test
+    public void testRejectsUnsupportedScopeModeFixture() throws Exception {
+        String payload = loadFixture("invalid-scope-mode.json");
+        try {
+            ParserIrSchemaValidator.validate(payload);
+            fail("expected parser ir validation error");
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-PARSER-IR-CONSTRAINT", expected.code());
+            assertTrue(expected.getMessage().contains("unsupported scopeMode"));
+        }
+    }
+
+    @Test
+    public void testRejectsUseWithScopeModeFixture() throws Exception {
+        String payload = loadFixture("invalid-use-with-scope-mode.json");
+        try {
+            ParserIrSchemaValidator.validate(payload);
+            fail("expected parser ir validation error");
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-PARSER-IR-CONSTRAINT", expected.code());
+            assertTrue(expected.getMessage().contains("use must not include scopeMode"));
+        }
+    }
+
+    @Test
+    public void testRejectsScopeModeMismatchFixture() throws Exception {
+        String payload = loadFixture("invalid-scope-mode-mismatch.json");
+        try {
+            ParserIrSchemaValidator.validate(payload);
+            fail("expected parser ir validation error");
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-PARSER-IR-CONSTRAINT", expected.code());
+            assertTrue(expected.getMessage().contains("scopeMode mismatch"));
+        }
+    }
+
+    @Test
     public void testRejectsUnknownTargetScopeIdFixture() throws Exception {
         String payload = loadFixture("invalid-target-scope-id.json");
         try {

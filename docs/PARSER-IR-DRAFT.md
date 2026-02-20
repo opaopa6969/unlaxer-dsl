@@ -20,6 +20,7 @@ Draft sample payloads: `src/test/resources/schema/parser-ir/`
 - Scope event field policy (draft):
   - `use` and `define` require `symbol`.
   - `define` requires `kind`; `use` must not include `kind`.
+  - `scopeMode` is allowed only on `enterScope` / `leaveScope`.
   - `enterScope` and `leaveScope` must not include `symbol`, `kind`, or `targetScopeId`.
   - `leaveScope` order must be nested (LIFO) within each event stream.
 
@@ -110,6 +111,7 @@ Scope event:
   - `scopeId`
   - `span`
 - optional:
+  - `scopeMode` (`lexical` | `dynamic`)
   - `symbol`
   - `kind`
   - `targetScopeId`
@@ -169,7 +171,8 @@ Current minimal runtime entry points:
 Current exporter behavior notes:
 - `GrammarToParserIrExporter` emits rule-level nodes and annotations.
 - For rules with `@scopeTree(...)`, exporter currently emits synthetic balanced scope events:
-  `enterScope` -> `leaveScope` with `scopeId = "scope:{GrammarName}::{RuleName}"`.
+  `enterScope` -> `leaveScope` with `scopeId = "scope:{GrammarName}::{RuleName}"`,
+  plus `scopeMode` copied from `@scopeTree(mode=...)`.
 
 Suggested SPI shape:
 - `ParserIrAdapter#parseToIr(ParseRequest request): ParserIrDocument`

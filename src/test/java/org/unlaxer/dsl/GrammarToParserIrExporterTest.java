@@ -42,6 +42,9 @@ public class GrammarToParserIrExporterTest {
         assertTrue(hasAnnotation(annotations, "precedence", "level", 10L));
         assertTrue(document.payload().containsKey("scopeEvents"));
         assertEquals(2, JsonTestUtil.getArray(document.payload(), "scopeEvents").size());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> firstScopeEvent = (Map<String, Object>) JsonTestUtil.getArray(document.payload(), "scopeEvents").get(0);
+        assertEquals("lexical", firstScopeEvent.get("scopeMode"));
     }
 
     @Test
@@ -59,6 +62,9 @@ public class GrammarToParserIrExporterTest {
 
         ParserIrDocument document = GrammarToParserIrExporter.export(grammar, "in-memory://g.ubnf");
         ParserIrConformanceValidator.validate(document);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> firstScopeEvent = (Map<String, Object>) JsonTestUtil.getArray(document.payload(), "scopeEvents").get(0);
+        assertEquals("dynamic", firstScopeEvent.get("scopeMode"));
     }
 
     @Test
