@@ -22,6 +22,7 @@ public class CodegenCliParserTest {
         assertEquals("text", options.reportFormat());
         assertEquals(1, options.reportVersion());
         assertTrue(options.validateOnly());
+        assertEquals(null, options.validateParserIrFile());
         assertFalse(options.dryRun());
         assertFalse(options.cleanOutput());
         assertFalse(options.strict());
@@ -303,5 +304,29 @@ public class CodegenCliParserTest {
         var options = CodegenCliParser.parse(new String[] {"--version"});
         assertTrue(options.version());
         assertFalse(options.help());
+    }
+
+    @Test
+    public void testParseValidateParserIrOnly() throws Exception {
+        var options = CodegenCliParser.parse(new String[] {
+            "--validate-parser-ir", "build/parser-ir.json"
+        });
+        assertEquals("build/parser-ir.json", options.validateParserIrFile());
+        assertEquals(null, options.grammarFile());
+        assertEquals(null, options.outputDir());
+    }
+
+    @Test
+    public void testRejectValidateParserIrWithGrammar() {
+        try {
+            CodegenCliParser.parse(new String[] {
+                "--validate-parser-ir", "build/parser-ir.json",
+                "--grammar", "a.ubnf"
+            });
+            fail("expected parser usage error");
+        } catch (CodegenCliParser.UsageException e) {
+            assertFalse(e.showUsage());
+            assertTrue(e.getMessage().contains("--validate-parser-ir must not be combined"));
+        }
     }
 }

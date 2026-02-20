@@ -1049,6 +1049,13 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
   --validate-only
 ```
 
+Parser IR 検証モード:
+
+```bash
+java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
+  --validate-parser-ir path/to/parser-ir.json
+```
+
 機械可読レポート出力:
 
 ```bash
@@ -1077,6 +1084,7 @@ Parser IR の draft schema は `docs/schema/parser-ir-v1.draft.json` を参照�
 | `--grammar <file>` | `.ubnf` ファイルのパス | （必須） |
 | `--output <dir>` | 出力ルートディレクトリ（package 構造で書き出す） | `--validate-only` 以外では必須 |
 | `--generators <list>` | カンマ区切りの生成器名 | `Parser,LSP,Launcher` |
+| `--validate-parser-ir <file>` | Parser IR JSON の検証のみ実行（文法解析/生成をスキップ） | （なし） |
 | `--dry-run` | 生成ファイルを書き込まずに出力先だけ確認する | `false` |
 | `--clean-output` | 生成予定ファイルを事前に削除してから生成する | `false` |
 | `--overwrite never\|if-different\|always` | 既存ファイル上書きポリシー | `always` |

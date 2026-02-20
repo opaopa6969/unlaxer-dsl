@@ -561,6 +561,7 @@ public class CodegenMainTest {
         assertTrue(result.out().contains("--fail-on"));
         assertTrue(result.out().contains("--output-manifest"));
         assertTrue(result.out().contains("--manifest-format"));
+        assertTrue(result.out().contains("--validate-parser-ir"));
         assertTrue(result.out().contains("text|json|ndjson"));
         assertTrue(result.out().contains("--warnings-as-json"));
     }
@@ -689,6 +690,7 @@ public class CodegenMainTest {
         RunResult result = runCodegen("--validate-only");
         assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
         assertTrue(result.err().contains("Usage: CodegenMain"));
+        assertTrue(result.err().contains("--validate-parser-ir"));
         assertTrue(result.err().contains("--report-version 1"));
         assertTrue(result.err().contains("--strict"));
         assertTrue(result.err().contains("--dry-run"));
@@ -699,6 +701,35 @@ public class CodegenMainTest {
         assertTrue(result.err().contains("--manifest-format"));
         assertTrue(result.err().contains("--report-schema-check"));
         assertTrue(result.err().contains("--warnings-as-json"));
+    }
+
+    @Test
+    public void testValidateParserIrReturnsOkForValidFixture() throws Exception {
+        String payload = Files.readString(Path.of("src/test/resources/schema/parser-ir/valid-minimal.json"));
+        Path parserIrFile = Files.createTempFile("codegen-main-parser-ir-valid", ".json");
+        Files.writeString(parserIrFile, payload);
+
+        RunResult result = runCodegen(
+            "--validate-parser-ir", parserIrFile.toString()
+        );
+
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.out().contains("Parser IR validation succeeded"));
+        assertTrue(result.err().isBlank());
+    }
+
+    @Test
+    public void testValidateParserIrReturnsValidationErrorForInvalidFixture() throws Exception {
+        String payload = Files.readString(Path.of("src/test/resources/schema/parser-ir/invalid-source-blank.json"));
+        Path parserIrFile = Files.createTempFile("codegen-main-parser-ir-invalid", ".json");
+        Files.writeString(parserIrFile, payload);
+
+        RunResult result = runCodegen(
+            "--validate-parser-ir", parserIrFile.toString()
+        );
+
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        assertTrue(result.err().contains("E-PARSER-IR-CONSTRAINT"));
     }
 
     @Test

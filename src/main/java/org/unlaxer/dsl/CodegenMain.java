@@ -2,6 +2,8 @@ package org.unlaxer.dsl;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.util.List;
 
@@ -39,6 +41,9 @@ public class CodegenMain {
             if (config.version()) {
                 out.println(TOOL_VERSION);
                 return EXIT_OK;
+            }
+            if (config.validateParserIrFile() != null) {
+                return runParserIrValidation(config, out, err, ndjsonRequested);
             }
             return CodegenRunner.execute(config, out, err, clock, TOOL_VERSION, ArgsHashUtil.fromOptions(config));
         } catch (CodegenCliParser.UsageException e) {
@@ -86,6 +91,31 @@ public class CodegenMain {
         out.println(NdjsonErrorEventWriter.cliErrorEvent(code, message, detail, List.of()));
     }
 
+    private static int runParserIrValidation(
+        CodegenCliParser.CliOptions config,
+        PrintStream out,
+        PrintStream err,
+        boolean ndjsonRequested
+    ) throws IOException {
+        try {
+            String payload = Files.readString(Path.of(config.validateParserIrFile()));
+            ParserIrSchemaValidator.validate(payload);
+            if (ndjsonRequested) {
+                out.println("{\"event\":\"parser-ir-validate\",\"ok\":true}");
+            } else {
+                out.println("Parser IR validation succeeded");
+            }
+            return EXIT_OK;
+        } catch (ReportSchemaValidationException e) {
+            if (ndjsonRequested) {
+                emitNdjsonCliError(out, e.code(), normalizeMessage("Parser IR validation error", e.getMessage()), null);
+                return EXIT_VALIDATION_ERROR;
+            }
+            err.println(e.code() + ": " + e.getMessage());
+            return EXIT_VALIDATION_ERROR;
+        }
+    }
+
     private static boolean isNdjsonRequested(String[] args) {
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
@@ -113,6 +143,7 @@ public class CodegenMain {
         err.println(
             "Usage: CodegenMain [--help] [--version] --grammar <file.ubnf> --output <dir>"
                 + " [--generators AST,Parser,Mapper,Evaluator,LSP,Launcher,DAP,DAPLauncher]"
+                + " [--validate-parser-ir <parser-ir.json>]"
                 + " [--validate-only]"
                 + " [--dry-run]"
                 + " [--clean-output]"

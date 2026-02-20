@@ -849,6 +849,13 @@ java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
   --validate-only
 ```
 
+Parser IR validation mode:
+
+```bash
+java -cp unlaxer-dsl.jar org.unlaxer.dsl.CodegenMain \
+  --validate-parser-ir path/to/parser-ir.json
+```
+
 Machine-readable report:
 
 ```bash
@@ -877,6 +884,7 @@ Validation failure reports also include `severityCounts` and `categoryCounts` su
 | `--grammar <file>` | Path to `.ubnf` file | (required) |
 | `--output <dir>` | Output root directory (written with package structure) | required unless `--validate-only` |
 | `--generators <list>` | Comma-separated generator names | `Parser,LSP,Launcher` |
+| `--validate-parser-ir <file>` | Validate Parser IR JSON only (skip grammar parsing/generation) | (none) |
 | `--dry-run` | Preview generated file paths without writing files | `false` |
 | `--clean-output` | Delete planned target files before generation | `false` |
 | `--overwrite never\|if-different\|always` | Overwrite policy for existing files | `always` |

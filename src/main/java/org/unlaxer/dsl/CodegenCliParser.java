@@ -26,6 +26,7 @@ final class CodegenCliParser {
         String reportFormat = "text";
         String reportFile = null;
         String outputManifest = null;
+        String validateParserIrFile = null;
         String manifestFormat = "json";
         int reportVersion = DEFAULT_REPORT_VERSION;
         boolean reportSchemaCheck = false;
@@ -90,6 +91,12 @@ final class CodegenCliParser {
                         throw new UsageException("Missing value for --output-manifest", true);
                     }
                     outputManifest = args[++i];
+                }
+                case "--validate-parser-ir" -> {
+                    if (i + 1 >= args.length) {
+                        throw new UsageException("Missing value for --validate-parser-ir", true);
+                    }
+                    validateParserIrFile = args[++i];
                 }
                 case "--report-version" -> {
                     if (i + 1 >= args.length) {
@@ -188,6 +195,38 @@ final class CodegenCliParser {
                 reportFormat,
                 reportFile,
                 outputManifest,
+                validateParserIrFile,
+                manifestFormat,
+                reportVersion,
+                reportSchemaCheck,
+                warningsAsJson,
+                overwrite,
+                failOn,
+                failOnWarningsThreshold
+            );
+        }
+
+        if (validateParserIrFile != null) {
+            if (grammarFile != null || outputDir != null || validateOnly) {
+                throw new UsageException(
+                    "--validate-parser-ir must not be combined with --grammar/--output/--validate-only",
+                    false
+                );
+            }
+            return new CliOptions(
+                grammarFile,
+                outputDir,
+                generators,
+                validateOnly,
+                dryRun,
+                cleanOutput,
+                strict,
+                help,
+                version,
+                reportFormat,
+                reportFile,
+                outputManifest,
+                validateParserIrFile,
                 manifestFormat,
                 reportVersion,
                 reportSchemaCheck,
@@ -215,6 +254,7 @@ final class CodegenCliParser {
             reportFormat,
             reportFile,
             outputManifest,
+            validateParserIrFile,
             manifestFormat,
             reportVersion,
             reportSchemaCheck,
@@ -238,6 +278,7 @@ final class CodegenCliParser {
         String reportFormat,
         String reportFile,
         String outputManifest,
+        String validateParserIrFile,
         String manifestFormat,
         int reportVersion,
         boolean reportSchemaCheck,

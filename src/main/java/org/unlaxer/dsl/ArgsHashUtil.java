@@ -23,6 +23,7 @@ final class ArgsHashUtil {
             updateHash(md, "cleanOutput", Boolean.toString(config.cleanOutput()));
             updateHash(md, "strict", Boolean.toString(config.strict()));
             updateHash(md, "reportFormat", config.reportFormat());
+            updateHash(md, "validateParserIrFile", config.validateParserIrFile());
             updateHash(md, "manifestFormat", config.manifestFormat());
             updateHash(md, "reportVersion", Integer.toString(config.reportVersion()));
             updateHash(md, "reportSchemaCheck", Boolean.toString(config.reportSchemaCheck()));

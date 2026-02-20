@@ -62,6 +62,7 @@ public class CodegenRunnerTest {
             "json",
             null,
             null,
+            null,
             "json",
             1,
             false,
