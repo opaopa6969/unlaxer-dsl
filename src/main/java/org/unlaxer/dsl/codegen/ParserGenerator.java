@@ -1020,6 +1020,30 @@ public class ParserGenerator implements CodeGenerator {
                 .append("            .toList();\n")
                 .append("    }\n\n");
 
+            sb.append("    public static java.util.Map<String, ScopeTreeSpec> getScopeTreeSpecByRule() {\n")
+                .append("        java.util.LinkedHashMap<String, ScopeTreeSpec> map = new java.util.LinkedHashMap<>();\n")
+                .append("        for (ScopeTreeSpec spec : getScopeTreeSpecs()) {\n")
+                .append("            map.put(spec.ruleName(), spec);\n")
+                .append("        }\n")
+                .append("        return java.util.Map.copyOf(map);\n")
+                .append("    }\n\n");
+
+            sb.append("    public static java.util.Map<String, ScopeTreeSpec> getScopeTreeSpecByScopeId() {\n")
+                .append("        java.util.LinkedHashMap<String, ScopeTreeSpec> map = new java.util.LinkedHashMap<>();\n")
+                .append("        for (ScopeTreeSpec spec : getScopeTreeSpecs()) {\n")
+                .append("            map.put(spec.scopeId(), spec);\n")
+                .append("        }\n")
+                .append("        return java.util.Map.copyOf(map);\n")
+                .append("    }\n\n");
+
+            sb.append("    public static java.util.Map<String, ScopeMode> getScopeTreeModeByScopeId() {\n")
+                .append("        java.util.LinkedHashMap<String, ScopeMode> map = new java.util.LinkedHashMap<>();\n")
+                .append("        for (ScopeTreeSpec spec : getScopeTreeSpecs()) {\n")
+                .append("            map.put(spec.scopeId(), spec.mode());\n")
+                .append("        }\n")
+                .append("        return java.util.Map.copyOf(map);\n")
+                .append("    }\n\n");
+
             sb.append("    public static boolean hasScopeTree(String ruleName) {\n")
                 .append("        return getScopeTreeModeByRule().containsKey(ruleName);\n")
                 .append("    }\n\n");
