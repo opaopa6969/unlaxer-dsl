@@ -181,6 +181,8 @@ Suggested SPI shape:
   - adapter id
   - supported IR versions
   - supported feature flags (interleave/backreference/scope-events)
+- Minimal executable sample:
+  - `src/test/java/org/unlaxer/dsl/ParserIrAdapterContractTest.java` (`ScopeTreeSampleAdapter`)
 
 ## 6. Proposed Work Items
 

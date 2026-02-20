@@ -6,6 +6,8 @@ import static org.junit.Assert.fail;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -16,6 +18,7 @@ import org.unlaxer.dsl.ir.ParserIrAdapterMetadata;
 import org.unlaxer.dsl.ir.ParserIrConformanceValidator;
 import org.unlaxer.dsl.ir.ParserIrDocument;
 import org.unlaxer.dsl.ir.ParserIrFeature;
+import org.unlaxer.dsl.ir.ParserIrScopeEvents;
 
 public class ParserIrAdapterContractTest {
 
@@ -45,6 +48,22 @@ public class ParserIrAdapterContractTest {
         }
     }
 
+    @Test
+    public void testScopeTreeSampleAdapterBuildsConformantScopeEvents() {
+        ParserIrAdapter adapter = new ScopeTreeSampleAdapter();
+        ParseRequest request = new ParseRequest("sample://scope-tree", "ok", Map.of("scopeMode", "dynamic"));
+
+        ParserIrDocument document = adapter.parseToIr(request);
+        ParserIrConformanceValidator.validate(document);
+
+        List<Object> scopeEvents = JsonTestUtil.getArray(document.payload(), "scopeEvents");
+        assertEquals(2, scopeEvents.size());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> first = (Map<String, Object>) scopeEvents.get(0);
+        assertEquals("enterScope", first.get("event"));
+        assertEquals("dynamic", first.get("scopeMode"));
+    }
+
     private static final class FixtureBackedAdapter implements ParserIrAdapter {
         private final String fixtureName;
 
@@ -72,6 +91,38 @@ public class ParserIrAdapterContractTest {
             } catch (Exception e) {
                 throw new IllegalStateException("failed to load fixture: " + fixtureName, e);
             }
+        }
+    }
+
+    private static final class ScopeTreeSampleAdapter implements ParserIrAdapter {
+        @Override
+        public ParserIrAdapterMetadata metadata() {
+            return new ParserIrAdapterMetadata(
+                "scope-tree-sample-adapter",
+                Set.of("1.0"),
+                Set.of(ParserIrFeature.SCOPE_TREE, ParserIrFeature.SCOPE_EVENTS)
+            );
+        }
+
+        @Override
+        public ParserIrDocument parseToIr(ParseRequest request) {
+            Map<String, Object> node = new LinkedHashMap<>();
+            node.put("id", "Sample::Start");
+            node.put("kind", "RuleDecl");
+            node.put("span", Map.of("start", 0L, "end", (long) request.content().length()));
+            List<Object> nodes = List.of(node);
+
+            String mode = String.valueOf(request.options().getOrDefault("scopeMode", "lexical"));
+            Map<String, String> scopeModeByNodeId = Map.of("Sample::Start", mode);
+            List<Object> scopeEvents = ParserIrScopeEvents.emitSyntheticEnterLeaveEvents(scopeModeByNodeId, nodes);
+
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("irVersion", "1.0");
+            payload.put("source", request.sourceId());
+            payload.put("nodes", nodes);
+            payload.put("scopeEvents", scopeEvents);
+            payload.put("diagnostics", List.of());
+            return new ParserIrDocument(payload);
         }
     }
 }
