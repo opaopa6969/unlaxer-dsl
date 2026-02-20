@@ -228,21 +228,25 @@ public class ParserGenerator implements CodeGenerator {
         boolean anyRuleRequestsDelimited = grammar.rules().stream()
             .map(this::getRuleWhitespaceStyle)
             .anyMatch(style -> style != null && !"none".equals(style));
+        boolean anyRuleInterleaveComments = grammar.rules().stream()
+            .map(this::getRuleInterleaveProfile)
+            .anyMatch(profile -> "commentsandspaces".equals(profile));
 
-        ctx.hasDelimitedChain = hasGlobalWhitespace || hasGlobalComment || anyRuleRequestsDelimited;
+        ctx.hasDelimitedChain = hasGlobalWhitespace || hasGlobalComment || anyRuleRequestsDelimited || anyRuleInterleaveComments;
 
-        if (ctx.hasDelimitedChain && (hasGlobalWhitespace || anyRuleRequestsDelimited)) {
+        if (ctx.hasDelimitedChain && (hasGlobalWhitespace || anyRuleRequestsDelimited || anyRuleInterleaveComments)) {
             ctx.delimitorClasses.add("SpaceParser.class");
         }
-        if (hasGlobalComment) {
+        if (hasGlobalComment || anyRuleInterleaveComments) {
             ctx.needsCPPComment = true;
             ctx.delimitorClasses.add("CPPComment.class");
         }
 
         for (RuleDecl rule : grammar.rules()) {
             String style = getRuleWhitespaceStyle(rule); // null => inherit global
+            String interleaveProfile = getRuleInterleaveProfile(rule);
             boolean useDelimited = style == null
-                ? (hasGlobalWhitespace || hasGlobalComment)
+                ? (hasGlobalWhitespace || hasGlobalComment || "commentsandspaces".equals(interleaveProfile))
                 : !"none".equals(style);
             ctx.useDelimitedChainByRule.put(rule.name(), useDelimited);
         }
@@ -256,6 +260,16 @@ public class ParserGenerator implements CodeGenerator {
             .map(a -> (WhitespaceAnnotation) a)
             .reduce((first, second) -> second)
             .map(w -> w.style().orElse("javaStyle").trim().toLowerCase())
+            .orElse(null);
+    }
+
+    private String getRuleInterleaveProfile(RuleDecl rule) {
+        return rule.annotations().stream()
+            .filter(a -> a instanceof InterleaveAnnotation)
+            .map(a -> (InterleaveAnnotation) a)
+            .map(InterleaveAnnotation::profile)
+            .reduce((first, second) -> second)
+            .map(v -> v.trim().toLowerCase())
             .orElse(null);
     }
     // =========================================================================

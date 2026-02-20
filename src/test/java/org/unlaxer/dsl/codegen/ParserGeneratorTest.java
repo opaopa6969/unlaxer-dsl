@@ -101,6 +101,15 @@ public class ParserGeneratorTest {
         "  Ref ::= Start ;\n" +
         "}";
 
+    private static final String INTERLEAVE_COMMENTS_GRAMMAR =
+        "grammar InterleaveOnly {\n" +
+        "  @package: org.example.interleave\n" +
+        "  @whitespace: javaStyle\n" +
+        "  @root\n" +
+        "  @interleave(profile=commentsAndSpaces)\n" +
+        "  Start ::= 'ok' ;\n" +
+        "}";
+
     // =========================================================================
     // パッケージ名・クラス名
     // =========================================================================
@@ -303,6 +312,15 @@ public class ParserGeneratorTest {
             source.contains("case \"Start\" -> java.util.Optional.of(\"commentsAndSpaces\")"));
         assertTrue("should include Ref backref name",
             source.contains("case \"Ref\" -> java.util.Optional.of(\"ident\")"));
+    }
+
+    @Test
+    public void testInterleaveCommentsProfileEnablesCppCommentDelimiter() {
+        String source = generate(INTERLEAVE_COMMENTS_GRAMMAR);
+        assertTrue("should import CPPComment when commentsAndSpaces interleave is used",
+            source.contains("import org.unlaxer.parser.clang.CPPComment;"));
+        assertTrue("should include CPPComment in generated delimitor",
+            source.contains("CPPComment.class"));
     }
 
     @Test
