@@ -1004,6 +1004,14 @@ public class ParserGenerator implements CodeGenerator {
                 .append("        return java.util.Map.copyOf(map);\n")
                 .append("    }\n\n");
 
+            sb.append("    public static java.util.Map<String, String> getScopeTreeModeNameByRule() {\n")
+                .append("        java.util.LinkedHashMap<String, String> map = new java.util.LinkedHashMap<>();\n")
+                .append("        for (java.util.Map.Entry<String, ScopeMode> e : getScopeTreeModeByRule().entrySet()) {\n")
+                .append("            map.put(e.getKey(), e.getValue().name().toLowerCase(java.util.Locale.ROOT));\n")
+                .append("        }\n")
+                .append("        return java.util.Map.copyOf(map);\n")
+                .append("    }\n\n");
+
             sb.append("    public static String getScopeIdForRule(String ruleName) {\n")
                 .append("        return \"scope:").append(escapeJava(grammar.name())).append("::\" + ruleName;\n")
                 .append("    }\n\n");
@@ -1040,6 +1048,14 @@ public class ParserGenerator implements CodeGenerator {
                 .append("        java.util.LinkedHashMap<String, ScopeMode> map = new java.util.LinkedHashMap<>();\n")
                 .append("        for (ScopeTreeSpec spec : getScopeTreeSpecs()) {\n")
                 .append("            map.put(spec.scopeId(), spec.mode());\n")
+                .append("        }\n")
+                .append("        return java.util.Map.copyOf(map);\n")
+                .append("    }\n\n");
+
+            sb.append("    public static java.util.Map<String, String> getScopeTreeModeNameByScopeId() {\n")
+                .append("        java.util.LinkedHashMap<String, String> map = new java.util.LinkedHashMap<>();\n")
+                .append("        for (java.util.Map.Entry<String, ScopeMode> e : getScopeTreeModeByScopeId().entrySet()) {\n")
+                .append("            map.put(e.getKey(), e.getValue().name().toLowerCase(java.util.Locale.ROOT));\n")
                 .append("        }\n")
                 .append("        return java.util.Map.copyOf(map);\n")
                 .append("    }\n\n");

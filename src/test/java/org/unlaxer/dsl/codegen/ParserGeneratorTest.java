@@ -328,6 +328,8 @@ public class ParserGeneratorTest {
             source.contains("getScopeTreeRules(ScopeMode mode)"));
         assertTrue("should generate scope mode map helper",
             source.contains("getScopeTreeModeByRule()"));
+        assertTrue("should generate string scope mode map helper by rule",
+            source.contains("getScopeTreeModeNameByRule()"));
         assertTrue("should generate scope id helper",
             source.contains("getScopeIdForRule(String ruleName)"));
         assertTrue("should generate scope tree spec lookup",
@@ -340,6 +342,8 @@ public class ParserGeneratorTest {
             source.contains("getScopeTreeSpecByScopeId()"));
         assertTrue("should generate scope mode map by scope id",
             source.contains("getScopeTreeModeByScopeId()"));
+        assertTrue("should generate string scope mode map helper by scope id",
+            source.contains("getScopeTreeModeNameByScopeId()"));
         assertTrue("should generate scope-tree existence helper",
             source.contains("hasScopeTree(String ruleName)"));
         assertTrue("should generate scope-tree mode default helper",
@@ -360,6 +364,8 @@ public class ParserGeneratorTest {
             source.contains("map.put(spec.scopeId(), spec);"));
         assertTrue("should index scope modes by scope id",
             source.contains("map.put(spec.scopeId(), spec.mode());"));
+        assertTrue("should normalize scope mode enum to lower-case names",
+            source.contains("e.getValue().name().toLowerCase(java.util.Locale.ROOT)"));
         assertTrue("should return immutable scope mode map",
             source.contains("return java.util.Map.copyOf(map);"));
         assertTrue("should check scope-tree existence via map",
