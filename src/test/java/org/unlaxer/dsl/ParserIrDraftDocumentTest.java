@@ -20,5 +20,11 @@ public class ParserIrDraftDocumentTest {
         assertTrue(markdown.contains("### 4.3 Versioning Policy (Draft)"));
         assertTrue(markdown.contains("## 5. Non-UBNF Parser Integration"));
         assertTrue(markdown.contains("ParserIrAdapter"));
+        assertTrue(markdown.contains("blank source"));
+        assertTrue(markdown.contains("define missing kind"));
+        assertTrue(markdown.contains("use with forbidden kind"));
+        assertTrue(markdown.contains("duplicate related diagnostics"));
+        assertTrue(markdown.contains("parent missing child link"));
+        assertTrue(markdown.contains("`define` requires `kind`; `use` must not include `kind`."));
     }
 }

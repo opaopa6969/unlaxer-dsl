@@ -5,6 +5,7 @@ import static org.junit.Assert.fail;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -375,6 +376,27 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
     }
 
+    @Test
+    public void testEveryInvalidFixtureViolatesAtLeastOneContract() throws Exception {
+        Map<String, Object> schema = loadSchema();
+        List<Path> invalidFiles = new ArrayList<>();
+        try (var stream = Files.list(Path.of("src/test/resources/schema/parser-ir"))) {
+            stream
+                .filter(path -> path.getFileName().toString().startsWith("invalid-"))
+                .filter(path -> path.getFileName().toString().endsWith(".json"))
+                .sorted()
+                .forEach(invalidFiles::add);
+        }
+        assertTrue("expected invalid fixtures", !invalidFiles.isEmpty());
+
+        for (Path invalidFile : invalidFiles) {
+            String json = Files.readString(invalidFile);
+            Map<String, Object> sample = JsonTestUtil.parseObject(json);
+            boolean rejected = isRejectedByAnyContract(schema, sample);
+            assertTrue("fixture should be rejected: " + invalidFile.getFileName(), rejected);
+        }
+    }
+
     private static void validateTopLevelContract(Map<String, Object> schema, Map<String, Object> sample) {
         List<Object> required = JsonTestUtil.getArray(schema, "required");
         for (Object k : required) {
@@ -725,5 +747,18 @@ public class ParserIrSchemaSampleConsistencyTest {
     private static Map<String, Object> loadSample(String name) throws Exception {
         String json = Files.readString(Path.of("src/test/resources/schema/parser-ir").resolve(name));
         return JsonTestUtil.parseObject(json);
+    }
+
+    private static boolean isRejectedByAnyContract(Map<String, Object> schema, Map<String, Object> sample) {
+        try {
+            validateTopLevelContract(schema, sample);
+            validateNodeContract(schema, sample);
+            validateSpanOrder(sample);
+            validateParentReferences(sample);
+            validateOptionalContracts(sample);
+            return false;
+        } catch (RuntimeException expected) {
+            return true;
+        }
     }
 }
