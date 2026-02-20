@@ -11,11 +11,13 @@ import org.unlaxer.context.ParseContext;
 import org.unlaxer.dsl.bootstrap.UBNFAST.AnnotatedElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.Annotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.AtomicElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.BackrefAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.BlockSettingValue;
 import org.unlaxer.dsl.bootstrap.UBNFAST.ChoiceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GlobalSetting;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GroupElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.InterleaveAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.KeyValuePair;
 import org.unlaxer.dsl.bootstrap.UBNFAST.LeftAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.MappingAnnotation;
@@ -28,6 +30,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.RuleBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleRefElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleRefElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.ScopeTreeAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.SequenceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.SettingValue;
 import org.unlaxer.dsl.bootstrap.UBNFAST.SimpleAnnotation;
@@ -214,6 +217,12 @@ public class UBNFMapper {
                 result.add(toMappingAnnotation(child));
             } else if (child.parser.getClass() == UBNFParsers.WhitespaceAnnotationParser.class) {
                 result.add(toWhitespaceAnnotation(child));
+            } else if (child.parser.getClass() == UBNFParsers.InterleaveAnnotationParser.class) {
+                result.add(toInterleaveAnnotation(child));
+            } else if (child.parser.getClass() == UBNFParsers.BackrefAnnotationParser.class) {
+                result.add(toBackrefAnnotation(child));
+            } else if (child.parser.getClass() == UBNFParsers.ScopeTreeAnnotationParser.class) {
+                result.add(toScopeTreeAnnotation(child));
             } else if (child.parser.getClass() == UBNFParsers.LeftAssocAnnotationParser.class) {
                 result.add(new LeftAssocAnnotation());
             } else if (child.parser.getClass() == UBNFParsers.RightAssocAnnotationParser.class) {
@@ -251,6 +260,24 @@ public class UBNFMapper {
             ? Optional.empty()
             : Optional.of(identifiers.get(0).source.toString().trim());
         return new WhitespaceAnnotation(style);
+    }
+
+    static InterleaveAnnotation toInterleaveAnnotation(Token token) {
+        List<Token> identifiers = findDescendants(token, UBNFParsers.IdentifierParser.class);
+        String profile = identifiers.isEmpty() ? "" : identifiers.get(0).source.toString().trim();
+        return new InterleaveAnnotation(profile);
+    }
+
+    static BackrefAnnotation toBackrefAnnotation(Token token) {
+        List<Token> identifiers = findDescendants(token, UBNFParsers.IdentifierParser.class);
+        String name = identifiers.isEmpty() ? "" : identifiers.get(0).source.toString().trim();
+        return new BackrefAnnotation(name);
+    }
+
+    static ScopeTreeAnnotation toScopeTreeAnnotation(Token token) {
+        List<Token> identifiers = findDescendants(token, UBNFParsers.IdentifierParser.class);
+        String mode = identifiers.isEmpty() ? "" : identifiers.get(0).source.toString().trim();
+        return new ScopeTreeAnnotation(mode);
     }
 
     static SimpleAnnotation toSimpleAnnotation(Token token) {

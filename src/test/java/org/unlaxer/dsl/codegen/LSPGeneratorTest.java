@@ -135,6 +135,9 @@ public class LSPGeneratorTest {
 
     @Test
     public void testContainsAnnotationCompletionKeywords() {
+        assertTrue(result.source().contains("\"@interleave\""));
+        assertTrue(result.source().contains("\"@backref\""));
+        assertTrue(result.source().contains("\"@scopeTree\""));
         assertTrue(result.source().contains("\"@leftAssoc\""));
         assertTrue(result.source().contains("\"@rightAssoc\""));
         assertTrue(result.source().contains("\"@precedence\""));

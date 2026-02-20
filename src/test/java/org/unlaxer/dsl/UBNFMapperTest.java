@@ -10,9 +10,11 @@ import org.junit.Test;
 import org.unlaxer.dsl.bootstrap.UBNFAST;
 import org.unlaxer.dsl.bootstrap.UBNFAST.AnnotatedElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.AtomicElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.BackrefAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.ChoiceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GroupElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.InterleaveAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.LeftAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.MappingAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.PrecedenceAnnotation;
@@ -21,6 +23,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.RightAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RootAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleDecl;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleRefElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.ScopeTreeAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.SequenceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.StringSettingValue;
 import org.unlaxer.dsl.bootstrap.UBNFAST.TerminalElement;
@@ -123,6 +126,45 @@ public class UBNFMapperTest {
         RuleDecl rule = file.grammars().get(0).rules().get(0);
         assertEquals(1, rule.annotations().size());
         assertTrue(rule.annotations().get(0) instanceof RightAssocAnnotation);
+    }
+
+    @Test
+    public void testRuleDecl_annotations_interleave() {
+        UBNFFile file = UBNFMapper.parse(
+            "grammar G {\n"
+            + "  @interleave(profile=javaStyle)\n"
+            + "  Expr ::= Term ;\n"
+            + "}");
+        RuleDecl rule = file.grammars().get(0).rules().get(0);
+        assertEquals(1, rule.annotations().size());
+        assertTrue(rule.annotations().get(0) instanceof InterleaveAnnotation);
+        assertEquals("javaStyle", ((InterleaveAnnotation) rule.annotations().get(0)).profile());
+    }
+
+    @Test
+    public void testRuleDecl_annotations_backref() {
+        UBNFFile file = UBNFMapper.parse(
+            "grammar G {\n"
+            + "  @backref(name=ident)\n"
+            + "  Expr ::= Term ;\n"
+            + "}");
+        RuleDecl rule = file.grammars().get(0).rules().get(0);
+        assertEquals(1, rule.annotations().size());
+        assertTrue(rule.annotations().get(0) instanceof BackrefAnnotation);
+        assertEquals("ident", ((BackrefAnnotation) rule.annotations().get(0)).name());
+    }
+
+    @Test
+    public void testRuleDecl_annotations_scopeTree() {
+        UBNFFile file = UBNFMapper.parse(
+            "grammar G {\n"
+            + "  @scopeTree(mode=lexical)\n"
+            + "  Expr ::= Term ;\n"
+            + "}");
+        RuleDecl rule = file.grammars().get(0).rules().get(0);
+        assertEquals(1, rule.annotations().size());
+        assertTrue(rule.annotations().get(0) instanceof ScopeTreeAnnotation);
+        assertEquals("lexical", ((ScopeTreeAnnotation) rule.annotations().get(0)).mode());
     }
 
     @Test

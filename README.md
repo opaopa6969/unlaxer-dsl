@@ -309,6 +309,9 @@ Place annotations immediately before a rule declaration.
 | `@rightAssoc` | Declares a right-associative operator. Canonical form `Base { Op Self }` is required (otherwise validation fails), and is emitted as right-recursive parser generation |
 | `@precedence(level=10)` | Declares precedence metadata for operator rules. Current validator requires pairing with either `@leftAssoc` or `@rightAssoc` and disallows duplicate declarations on one rule |
 | `@whitespace` | Controls whitespace for this rule; it overrides global whitespace settings (optional) |
+| `@interleave(profile=...)` | Declares interleave policy metadata (for parser IR / downstream tooling contracts) |
+| `@backref(name=...)` | Declares backreference intent metadata (reserved for semantic constraints / diagnostics) |
+| `@scopeTree(mode=...)` | Declares scope-tree usage metadata (for symbol pipeline and tooling integration) |
 
 ---
 
@@ -1207,7 +1210,7 @@ Define the following patterns in `syntaxes/ubnf.tmLanguage.json`.
 | `//.*$` | `comment.line.double-slash.ubnf` |
 | `\bgrammar\b`, `\btoken\b` | `keyword.control.ubnf` |
 | `::=`, `\|`, `;` | `keyword.operator.ubnf` |
-| `@root`, `@mapping`, `@whitespace`, `@leftAssoc`, `@rightAssoc`, `@precedence` | `storage.modifier.ubnf` |
+| `@root`, `@mapping`, `@whitespace`, `@interleave`, `@backref`, `@scopeTree`, `@leftAssoc`, `@rightAssoc`, `@precedence` | `storage.modifier.ubnf` |
 | `'[^']*'` | `string.quoted.single.ubnf` |
 | `[A-Z][A-Z_0-9]*` | `entity.name.type.ubnf` |
 

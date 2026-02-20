@@ -65,6 +65,24 @@ Current behavior:
 - Global `@whitespace` in grammar settings controls delimiter insertion in generated parsers.
 - Rule-level `@whitespace` overrides global behavior for that rule. `@whitespace(none)` disables auto delimiters, while `@whitespace` or `@whitespace(javaStyle)` enables auto delimiters.
 
+### `@interleave(profile=...)`
+
+- Current status: accepted as first-class rule annotation metadata.
+- Intended role: declare interleave policy for parser-IR adapters and downstream tooling.
+- Parser behavior is unchanged in this phase (metadata-only).
+
+### `@backref(name=...)`
+
+- Current status: accepted as first-class rule annotation metadata.
+- Intended role: declare backreference intent for semantic constraints and diagnostics.
+- Parser behavior is unchanged in this phase (metadata-only).
+
+### `@scopeTree(mode=...)`
+
+- Current status: accepted as first-class rule annotation metadata.
+- Intended role: declare scope-tree-aware processing intent for symbol/tooling phases.
+- Parser behavior is unchanged in this phase (metadata-only).
+
 ## Token Resolution
 
 `token NAME = ParserClass` maps as follows:
@@ -169,7 +187,7 @@ Generate success:
 ### LSP
 
 - Diagnostics, hover, and keyword completion are supported.
-- Completion includes DSL core keywords and annotation keywords (`@root`, `@mapping`, `@whitespace`, `@leftAssoc`, `@rightAssoc`, `@precedence`) plus grammar terminals.
+- Completion includes DSL core keywords and annotation keywords (`@root`, `@mapping`, `@whitespace`, `@interleave`, `@backref`, `@scopeTree`, `@leftAssoc`, `@rightAssoc`, `@precedence`) plus grammar terminals.
 - Semantic tokens currently return an empty token list to avoid invalid token encoding.
 
 ### DAP

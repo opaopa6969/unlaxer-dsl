@@ -93,6 +93,9 @@ public sealed interface UBNFAST permits
         UBNFAST.RootAnnotation,
         UBNFAST.MappingAnnotation,
         UBNFAST.WhitespaceAnnotation,
+        UBNFAST.InterleaveAnnotation,
+        UBNFAST.BackrefAnnotation,
+        UBNFAST.ScopeTreeAnnotation,
         UBNFAST.LeftAssocAnnotation,
         UBNFAST.RightAssocAnnotation,
         UBNFAST.PrecedenceAnnotation,
@@ -109,6 +112,15 @@ public sealed interface UBNFAST permits
 
     /** @whitespace または @whitespace(style) */
     record WhitespaceAnnotation(Optional<String> style) implements Annotation {}
+
+    /** @interleave(profile=javaStyle) */
+    record InterleaveAnnotation(String profile) implements Annotation {}
+
+    /** @backref(name=identifier) */
+    record BackrefAnnotation(String name) implements Annotation {}
+
+    /** @scopeTree(mode=lexical) */
+    record ScopeTreeAnnotation(String mode) implements Annotation {}
 
     /** @leftAssoc */
     record LeftAssocAnnotation() implements Annotation {}

@@ -126,6 +126,24 @@ public class UBNFParsersTest {
     }
 
     @Test
+    public void testAnnotation_interleave() {
+        Parsed parsed = parse(Parser.get(UBNFParsers.AnnotationParser.class), "@interleave(profile=javaStyle)");
+        assertTrue(parsed.isSucceeded());
+    }
+
+    @Test
+    public void testAnnotation_backref() {
+        Parsed parsed = parse(Parser.get(UBNFParsers.AnnotationParser.class), "@backref(name=ident)");
+        assertTrue(parsed.isSucceeded());
+    }
+
+    @Test
+    public void testAnnotation_scopeTree() {
+        Parsed parsed = parse(Parser.get(UBNFParsers.AnnotationParser.class), "@scopeTree(mode=lexical)");
+        assertTrue(parsed.isSucceeded());
+    }
+
+    @Test
     public void testAnnotation_mapping_noParams() {
         Parsed parsed = parse(Parser.get(UBNFParsers.MappingAnnotationParser.class),
             "@mapping(TinyCalcProgram)");

@@ -264,11 +264,17 @@ public class LSPGenerator implements CodeGenerator {
         kw.add("@root");
         kw.add("@mapping");
         kw.add("@whitespace");
+        kw.add("@interleave");
+        kw.add("@backref");
+        kw.add("@scopeTree");
         kw.add("@leftAssoc");
         kw.add("@rightAssoc");
         kw.add("@precedence");
         kw.add("params");
         kw.add("level");
+        kw.add("profile");
+        kw.add("name");
+        kw.add("mode");
         for (RuleDecl rule : grammar.rules()) {
             collectFromBody(rule.body(), kw);
         }

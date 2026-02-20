@@ -18,6 +18,7 @@ grammar UBNF {
   token IDENTIFIER   = IdentifierParser
   token STRING       = SingleQuotedParser
   token CLASS_NAME   = IdentifierParser
+  token UNSIGNED_INTEGER = NumberParser
 
   // ===== エントリーポイント =====
   @root
@@ -68,7 +69,12 @@ grammar UBNF {
       RootAnnotation
     | MappingAnnotation
     | WhitespaceAnnotation
+    | InterleaveAnnotation
+    | BackrefAnnotation
+    | ScopeTreeAnnotation
     | LeftAssocAnnotation
+    | RightAssocAnnotation
+    | PrecedenceAnnotation
     | SimpleAnnotation ;
 
   @mapping(RootAnnotation)
@@ -84,8 +90,23 @@ grammar UBNF {
   @mapping(WhitespaceAnnotation, params=[style])
   WhitespaceAnnotation ::= '@whitespace' [ '(' IDENTIFIER @style ')' ] ;
 
+  @mapping(InterleaveAnnotation, params=[profile])
+  InterleaveAnnotation ::= '@interleave' '(' 'profile' '=' IDENTIFIER @profile ')' ;
+
+  @mapping(BackrefAnnotation, params=[name])
+  BackrefAnnotation ::= '@backref' '(' 'name' '=' IDENTIFIER @name ')' ;
+
+  @mapping(ScopeTreeAnnotation, params=[mode])
+  ScopeTreeAnnotation ::= '@scopeTree' '(' 'mode' '=' IDENTIFIER @mode ')' ;
+
   @mapping(LeftAssocAnnotation)
   LeftAssocAnnotation ::= '@leftAssoc' ;
+
+  @mapping(RightAssocAnnotation)
+  RightAssocAnnotation ::= '@rightAssoc' ;
+
+  @mapping(PrecedenceAnnotation, params=[level])
+  PrecedenceAnnotation ::= '@precedence' '(' 'level' '=' UNSIGNED_INTEGER @level ')' ;
 
   @mapping(SimpleAnnotation, params=[name])
   SimpleAnnotation ::= '@' IDENTIFIER @name ;

@@ -325,6 +325,9 @@ Expression ::= Term @left { ( '+' @op | '-' @op ) Term @right } ;
 | `@rightAssoc` | 右結合演算子であることを宣言。標準形 `Base { Op Self }` が必須（非標準形は validation エラー）で、右再帰パーサーとして生成される |
 | `@precedence(level=10)` | 演算子ルールの優先順位メタデータ。現状 validator は `@leftAssoc` または `@rightAssoc` との併用を要求し、同一ルールでの重複指定を禁止 |
 | `@whitespace` | このルールの空白処理を個別に制御（global 設定より優先、オプション） |
+| `@interleave(profile=...)` | interleave 方針メタデータを宣言（parser IR / 後段ツール連携向け） |
+| `@backref(name=...)` | 後方参照の意図メタデータを宣言（意味制約・診断向け予約） |
+| `@scopeTree(mode=...)` | scope tree 利用メタデータを宣言（シンボル処理・ツール連携向け） |
 
 ---
 
@@ -1405,7 +1408,7 @@ Maven フェーズ別の処理内容：
 | `//.*$` | `comment.line.double-slash.ubnf` |
 | `\bgrammar\b`, `\btoken\b` | `keyword.control.ubnf` |
 | `::=`, `\|`, `;` | `keyword.operator.ubnf` |
-| `@root`, `@mapping`, `@whitespace`, `@leftAssoc`, `@rightAssoc`, `@precedence` | `storage.modifier.ubnf` |
+| `@root`, `@mapping`, `@whitespace`, `@interleave`, `@backref`, `@scopeTree`, `@leftAssoc`, `@rightAssoc`, `@precedence` | `storage.modifier.ubnf` |
 | `'[^']*'` | `string.quoted.single.ubnf` |
 | `[A-Z][A-Z_0-9]*` | `entity.name.type.ubnf` |
 

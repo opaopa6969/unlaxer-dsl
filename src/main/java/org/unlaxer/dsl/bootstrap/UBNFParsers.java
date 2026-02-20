@@ -467,6 +467,63 @@ public class UBNFParsers {
     }
 
     /**
+     * InterleaveAnnotation: '@interleave' '(' 'profile' '=' IDENTIFIER ')'
+     */
+    public static class InterleaveAnnotationParser extends UBNFLazyChain {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Parsers getLazyParsers() {
+            return new Parsers(
+                new WordParser("@interleave"),
+                Parser.get(LeftParenthesisParser.class),
+                new WordParser("profile"),
+                Parser.get(EqualParser.class),
+                Parser.get(IdentifierParser.class),
+                Parser.get(RightParenthesisParser.class)
+            );
+        }
+    }
+
+    /**
+     * BackrefAnnotation: '@backref' '(' 'name' '=' IDENTIFIER ')'
+     */
+    public static class BackrefAnnotationParser extends UBNFLazyChain {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Parsers getLazyParsers() {
+            return new Parsers(
+                new WordParser("@backref"),
+                Parser.get(LeftParenthesisParser.class),
+                new WordParser("name"),
+                Parser.get(EqualParser.class),
+                Parser.get(IdentifierParser.class),
+                Parser.get(RightParenthesisParser.class)
+            );
+        }
+    }
+
+    /**
+     * ScopeTreeAnnotation: '@scopeTree' '(' 'mode' '=' IDENTIFIER ')'
+     */
+    public static class ScopeTreeAnnotationParser extends UBNFLazyChain {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Parsers getLazyParsers() {
+            return new Parsers(
+                new WordParser("@scopeTree"),
+                Parser.get(LeftParenthesisParser.class),
+                new WordParser("mode"),
+                Parser.get(EqualParser.class),
+                Parser.get(IdentifierParser.class),
+                Parser.get(RightParenthesisParser.class)
+            );
+        }
+    }
+
+    /**
      * LeftAssocAnnotation: '@leftAssoc'
      */
     public static class LeftAssocAnnotationParser extends UBNFLazyChain {
@@ -531,6 +588,7 @@ public class UBNFParsers {
 
     /**
      * Annotation: RootAnnotation | MappingAnnotation | WhitespaceAnnotation
+     *           | InterleaveAnnotation | BackrefAnnotation | ScopeTreeAnnotation
      *           | LeftAssocAnnotation | RightAssocAnnotation
      *           | PrecedenceAnnotation | SimpleAnnotation
      */
@@ -543,6 +601,9 @@ public class UBNFParsers {
                 Parser.get(RootAnnotationParser.class),
                 Parser.get(MappingAnnotationParser.class),
                 Parser.get(WhitespaceAnnotationParser.class),
+                Parser.get(InterleaveAnnotationParser.class),
+                Parser.get(BackrefAnnotationParser.class),
+                Parser.get(ScopeTreeAnnotationParser.class),
                 Parser.get(LeftAssocAnnotationParser.class),
                 Parser.get(RightAssocAnnotationParser.class),
                 Parser.get(PrecedenceAnnotationParser.class),
