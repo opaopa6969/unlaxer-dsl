@@ -165,6 +165,7 @@ Current minimal runtime entry points:
 - `org.unlaxer.dsl.ir.ParserIrAdapterMetadata`
 - `org.unlaxer.dsl.ir.ParserIrDocument`
 - `org.unlaxer.dsl.ir.ParserIrConformanceValidator`
+- `org.unlaxer.dsl.ir.ParserIrScopeEvents`
 - `org.unlaxer.dsl.ir.GrammarToParserIrExporter`
 - `org.unlaxer.dsl.ParserIrSchemaValidator`
 

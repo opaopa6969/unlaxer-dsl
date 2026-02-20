@@ -35,7 +35,7 @@ public final class GrammarToParserIrExporter {
 
         List<Object> nodes = new ArrayList<>();
         List<Object> annotations = new ArrayList<>();
-        List<Object> scopeEvents = new ArrayList<>();
+        Map<String, String> scopeModeByNodeId = new LinkedHashMap<>();
         for (GrammarDecl grammar : grammars) {
             if (grammar == null) {
                 continue;
@@ -45,10 +45,11 @@ public final class GrammarToParserIrExporter {
                 nodes.add(buildRuleNode(nodeId));
                 for (Annotation annotation : rule.annotations()) {
                     annotations.add(buildAnnotation(nodeId, annotation));
-                    collectScopeEvents(scopeEvents, nodeId, annotation);
+                    collectScopeMode(scopeModeByNodeId, nodeId, annotation);
                 }
             }
         }
+        List<Object> scopeEvents = ParserIrScopeEvents.emitSyntheticEnterLeaveEvents(scopeModeByNodeId, nodes);
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("irVersion", "1.0");
@@ -133,26 +134,10 @@ public final class GrammarToParserIrExporter {
         return out;
     }
 
-    private static void collectScopeEvents(List<Object> out, String nodeId, Annotation annotation) {
+    private static void collectScopeMode(Map<String, String> out, String nodeId, Annotation annotation) {
         if (!(annotation instanceof ScopeTreeAnnotation scopeTree)) {
             return;
         }
-        String scopeId = "scope:" + nodeId;
-        String mode = scopeTree.mode().trim();
-        out.add(buildScopeEvent("enterScope", scopeId, mode));
-        out.add(buildScopeEvent("leaveScope", scopeId, mode));
-    }
-
-    private static Map<String, Object> buildScopeEvent(String event, String scopeId, String scopeMode) {
-        Map<String, Object> span = new LinkedHashMap<>();
-        span.put("start", 0);
-        span.put("end", 0);
-
-        Map<String, Object> scopeEvent = new LinkedHashMap<>();
-        scopeEvent.put("event", event);
-        scopeEvent.put("scopeId", scopeId);
-        scopeEvent.put("scopeMode", scopeMode);
-        scopeEvent.put("span", span);
-        return scopeEvent;
+        out.put(nodeId, scopeTree.mode().trim());
     }
 }

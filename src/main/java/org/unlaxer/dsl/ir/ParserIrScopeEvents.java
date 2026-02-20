@@ -1,0 +1,102 @@
+package org.unlaxer.dsl.ir;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Shared helpers for emitting parser-IR scope events from scope-tree metadata.
+ */
+public final class ParserIrScopeEvents {
+    private static final Set<String> SUPPORTED_SCOPE_MODES = Set.of("lexical", "dynamic");
+
+    private ParserIrScopeEvents() {}
+
+    /**
+     * Emits synthetic balanced scope events from node-id keyed scope modes.
+     */
+    public static List<Object> emitSyntheticEnterLeaveEvents(
+        Map<String, String> scopeModeByNodeId,
+        List<Object> nodes
+    ) {
+        if (scopeModeByNodeId == null || scopeModeByNodeId.isEmpty()) {
+            return List.of();
+        }
+        if (nodes == null || nodes.isEmpty()) {
+            return List.of();
+        }
+
+        List<Object> out = new ArrayList<>();
+        for (Object item : nodes) {
+            if (!(item instanceof Map<?, ?> rawNode)) {
+                continue;
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> node = (Map<String, Object>) rawNode;
+            Object nodeIdObj = node.get("id");
+            if (!(nodeIdObj instanceof String nodeId) || nodeId.isBlank()) {
+                continue;
+            }
+            String mode = scopeModeByNodeId.get(nodeId);
+            if (mode == null) {
+                continue;
+            }
+            String normalizedMode = mode.trim().toLowerCase(Locale.ROOT);
+            if (!SUPPORTED_SCOPE_MODES.contains(normalizedMode)) {
+                throw new IllegalArgumentException("unsupported scope mode: " + mode);
+            }
+            Map<String, Object> span = extractSpan(node);
+            String scopeId = "scope:" + nodeId;
+            out.add(buildScopeEvent("enterScope", scopeId, normalizedMode, span));
+            out.add(buildScopeEvent("leaveScope", scopeId, normalizedMode, span));
+        }
+        return List.copyOf(out);
+    }
+
+    private static Map<String, Object> extractSpan(Map<String, Object> node) {
+        Object spanObj = node.get("span");
+        if (!(spanObj instanceof Map<?, ?> rawSpan)) {
+            return defaultSpan();
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> span = (Map<String, Object>) rawSpan;
+        Object startObj = span.get("start");
+        Object endObj = span.get("end");
+        if (!(startObj instanceof Number startNum) || !(endObj instanceof Number endNum)) {
+            return defaultSpan();
+        }
+        long start = startNum.longValue();
+        long end = endNum.longValue();
+        if (start < 0 || end < 0 || start > end) {
+            return defaultSpan();
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("start", start);
+        out.put("end", end);
+        return out;
+    }
+
+    private static Map<String, Object> defaultSpan() {
+        Map<String, Object> span = new LinkedHashMap<>();
+        span.put("start", 0L);
+        span.put("end", 0L);
+        return span;
+    }
+
+    private static Map<String, Object> buildScopeEvent(
+        String event,
+        String scopeId,
+        String scopeMode,
+        Map<String, Object> span
+    ) {
+        Map<String, Object> scopeEvent = new LinkedHashMap<>();
+        scopeEvent.put("event", event);
+        scopeEvent.put("scopeId", scopeId);
+        scopeEvent.put("scopeMode", scopeMode);
+        scopeEvent.put("span", span);
+        return scopeEvent;
+    }
+}
