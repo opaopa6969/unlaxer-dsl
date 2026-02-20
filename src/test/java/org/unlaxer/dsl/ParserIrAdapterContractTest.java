@@ -57,11 +57,21 @@ public class ParserIrAdapterContractTest {
         ParserIrConformanceValidator.validate(document);
 
         List<Object> scopeEvents = JsonTestUtil.getArray(document.payload(), "scopeEvents");
-        assertEquals(2, scopeEvents.size());
+        assertEquals(4, scopeEvents.size());
         @SuppressWarnings("unchecked")
         Map<String, Object> first = (Map<String, Object>) scopeEvents.get(0);
         assertEquals("enterScope", first.get("event"));
         assertEquals("dynamic", first.get("scopeMode"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> define = (Map<String, Object>) scopeEvents.get(1);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> use = (Map<String, Object>) scopeEvents.get(2);
+        assertEquals("define", define.get("event"));
+        assertEquals("x", define.get("symbol"));
+        assertEquals("variable", define.get("kind"));
+        assertEquals("use", use.get("event"));
+        assertEquals("x", use.get("symbol"));
+        assertEquals("scope:Sample::Start", use.get("targetScopeId"));
 
         List<Object> annotations = JsonTestUtil.getArray(document.payload(), "annotations");
         assertEquals(1, annotations.size());
@@ -124,7 +134,29 @@ public class ParserIrAdapterContractTest {
 
             String mode = String.valueOf(request.options().getOrDefault("scopeMode", "lexical"));
             Map<String, String> scopeModeByNodeId = Map.of("Sample::Start", mode);
-            List<Object> scopeEvents = ParserIrScopeEvents.emitSyntheticEnterLeaveEvents(scopeModeByNodeId, nodes);
+            List<Object> baseScopeEvents = ParserIrScopeEvents.emitSyntheticEnterLeaveEvents(scopeModeByNodeId, nodes);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> enter = (Map<String, Object>) baseScopeEvents.get(0);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> leave = (Map<String, Object>) baseScopeEvents.get(1);
+            String scopeId = String.valueOf(enter.get("scopeId"));
+
+            Map<String, Object> symbolSpan = Map.of("start", 0L, "end", Math.min(1L, (long) request.content().length()));
+            Map<String, Object> define = new LinkedHashMap<>();
+            define.put("event", "define");
+            define.put("scopeId", scopeId);
+            define.put("span", symbolSpan);
+            define.put("symbol", "x");
+            define.put("kind", "variable");
+
+            Map<String, Object> use = new LinkedHashMap<>();
+            use.put("event", "use");
+            use.put("scopeId", scopeId);
+            use.put("span", symbolSpan);
+            use.put("symbol", "x");
+            use.put("targetScopeId", scopeId);
+
+            List<Object> scopeEvents = List.of(enter, define, use, leave);
             List<Object> annotations = List.of(Map.of(
                 "targetId", "Sample::Start",
                 "name", "scope-tree",
