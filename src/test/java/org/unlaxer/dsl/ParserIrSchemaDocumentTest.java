@@ -25,6 +25,10 @@ public class ParserIrSchemaDocumentTest {
         assertTrue(required.contains("source"));
         assertTrue(required.contains("nodes"));
         assertTrue(required.contains("diagnostics"));
+
+        Map<String, Object> properties = JsonTestUtil.getObject(schema, "properties");
+        Map<String, Object> nodes = JsonTestUtil.getObject(properties, "nodes");
+        assertEquals(1L, JsonTestUtil.getLong(nodes, "minItems"));
     }
 
     @Test

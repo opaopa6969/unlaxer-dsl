@@ -55,6 +55,18 @@ public class ParserIrSchemaSampleConsistencyTest {
     }
 
     @Test
+    public void testInvalidEmptyNodesIsRejected() throws Exception {
+        Map<String, Object> schema = loadSchema();
+        Map<String, Object> sample = loadSample("invalid-empty-nodes.json");
+        try {
+            validateTopLevelContract(schema, sample);
+            fail("expected empty nodes failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("nodes must not be empty"));
+        }
+    }
+
+    @Test
     public void testInvalidSampleSpanOrderIsRejected() throws Exception {
         Map<String, Object> sample = loadSample("invalid-span-order.json");
         try {
@@ -285,6 +297,10 @@ public class ParserIrSchemaSampleConsistencyTest {
         String irVersion = JsonTestUtil.getString(sample, "irVersion");
         if (!"1.0".equals(irVersion)) {
             throw new IllegalArgumentException("unsupported irVersion: " + irVersion);
+        }
+        List<Object> nodes = JsonTestUtil.getArray(sample, "nodes");
+        if (nodes.isEmpty()) {
+            throw new IllegalArgumentException("nodes must not be empty");
         }
     }
 

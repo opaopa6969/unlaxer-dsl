@@ -121,6 +121,7 @@ Diagnostic:
 ### 4.2 Invariants (Draft)
 
 - node spans must be non-negative and `start <= end`.
+- `nodes` must contain at least one node.
 - if `parentId` exists, parent node must exist.
 - scope enter/leave must be balanced per `scopeId`.
 - diagnostic spans must be within source span range.
