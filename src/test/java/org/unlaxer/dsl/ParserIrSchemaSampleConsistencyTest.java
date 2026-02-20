@@ -165,6 +165,17 @@ public class ParserIrSchemaSampleConsistencyTest {
     }
 
     @Test
+    public void testDuplicateChildIdInChildrenArrayIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-duplicate-child-id.json");
+        try {
+            validateParentReferences(sample);
+            fail("expected duplicate child id failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("duplicate child id"));
+        }
+    }
+
+    @Test
     public void testInvalidScopeBalanceIsRejected() throws Exception {
         Map<String, Object> sample = loadSample("invalid-scope-balance.json");
         try {
@@ -354,9 +365,13 @@ public class ParserIrSchemaSampleConsistencyTest {
             }
             if (n.containsKey("children")) {
                 List<Object> children = JsonTestUtil.getArray(n, "children");
+                Set<String> uniqueChildren = new HashSet<>();
                 for (Object childObj : children) {
                     if (!(childObj instanceof String childId) || childId.isBlank()) {
                         throw new IllegalArgumentException("invalid child id type");
+                    }
+                    if (!uniqueChildren.add(childId)) {
+                        throw new IllegalArgumentException("duplicate child id: " + childId);
                     }
                     if (!ids.contains(childId)) {
                         throw new IllegalArgumentException("unknown child id: " + childId);
