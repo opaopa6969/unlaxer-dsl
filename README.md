@@ -114,6 +114,13 @@ Run all local checks (scripts + golden sync + tests + spec freshness):
 ./scripts/check-all.sh
 ```
 
+Validate a parser IR JSON document:
+
+```bash
+mvn -q -DskipTests compile
+java --enable-preview -cp target/classes org.unlaxer.dsl.ParserIrSchemaMain --ir path/to/parser-ir.json
+```
+
 ---
 
 ## Quick Start

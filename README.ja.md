@@ -125,6 +125,13 @@ CLI オプション記述のドキュメント同期チェック：
 ./scripts/check-all.sh
 ```
 
+Parser IR JSON の妥当性チェック：
+
+```bash
+mvn -q -DskipTests compile
+java --enable-preview -cp target/classes org.unlaxer.dsl.ParserIrSchemaMain --ir path/to/parser-ir.json
+```
+
 ---
 
 ## クイックスタート
