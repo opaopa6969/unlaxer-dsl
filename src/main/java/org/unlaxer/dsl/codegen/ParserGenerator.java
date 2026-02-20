@@ -1002,6 +1002,14 @@ public class ParserGenerator implements CodeGenerator {
                 .append("        }\n")
                 .append("        return java.util.Map.copyOf(map);\n")
                 .append("    }\n\n");
+
+            sb.append("    public static boolean hasScopeTree(String ruleName) {\n")
+                .append("        return getScopeTreeModeByRule().containsKey(ruleName);\n")
+                .append("    }\n\n");
+
+            sb.append("    public static ScopeMode getScopeTreeModeOrDefault(String ruleName, ScopeMode fallback) {\n")
+                .append("        return getScopeTreeModeByRule().getOrDefault(ruleName, fallback);\n")
+                .append("    }\n\n");
         }
         return sb.toString();
     }

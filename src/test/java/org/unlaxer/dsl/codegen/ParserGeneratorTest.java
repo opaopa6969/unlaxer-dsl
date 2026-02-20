@@ -326,6 +326,10 @@ public class ParserGeneratorTest {
             source.contains("getScopeTreeRules(ScopeMode mode)"));
         assertTrue("should generate scope mode map helper",
             source.contains("getScopeTreeModeByRule()"));
+        assertTrue("should generate scope-tree existence helper",
+            source.contains("hasScopeTree(String ruleName)"));
+        assertTrue("should generate scope-tree mode default helper",
+            source.contains("getScopeTreeModeOrDefault(String ruleName, ScopeMode fallback)"));
         assertTrue("should emit lexical scope-tree rule list",
             source.contains("case LEXICAL -> java.util.List.of(\"Start\")"));
         assertTrue("should emit dynamic scope-tree empty list",
@@ -334,6 +338,10 @@ public class ParserGeneratorTest {
             source.contains("map.put(rule, ScopeMode.LEXICAL);"));
         assertTrue("should return immutable scope mode map",
             source.contains("return java.util.Map.copyOf(map);"));
+        assertTrue("should check scope-tree existence via map",
+            source.contains("getScopeTreeModeByRule().containsKey(ruleName)"));
+        assertTrue("should fallback scope mode via map",
+            source.contains("getScopeTreeModeByRule().getOrDefault(ruleName, fallback)"));
         assertTrue("should include Start interleave profile",
             source.contains("case \"Start\" -> java.util.Optional.of(\"commentsAndSpaces\")"));
         assertTrue("should include Ref backref name",
