@@ -141,6 +141,17 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
     }
 
+    @Test
+    public void testInvalidTargetScopeIdIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-target-scope-id.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected target scope failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("unknown targetScopeId"));
+        }
+    }
+
     private static void validateTopLevelContract(Map<String, Object> schema, Map<String, Object> sample) {
         List<Object> required = JsonTestUtil.getArray(schema, "required");
         for (Object k : required) {
@@ -197,6 +208,7 @@ public class ParserIrSchemaSampleConsistencyTest {
             validateScopeEventsContract(sample);
             validateScopeEventOrder(sample);
             validateScopeBalance(sample);
+            validateScopeTargetReferences(sample);
         }
     }
 
@@ -333,6 +345,28 @@ public class ParserIrSchemaSampleConsistencyTest {
             }
             if ("leaveScope".equals(eventName)) {
                 openScopes.remove(scopeId);
+            }
+        }
+    }
+
+    private static void validateScopeTargetReferences(Map<String, Object> sample) {
+        List<Object> scopeEvents = JsonTestUtil.getArray(sample, "scopeEvents");
+        Set<String> knownScopeIds = new HashSet<>();
+        for (Object item : scopeEvents) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> event = (Map<String, Object>) item;
+            knownScopeIds.add(JsonTestUtil.getString(event, "scopeId"));
+        }
+        for (Object item : scopeEvents) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> event = (Map<String, Object>) item;
+            String eventName = JsonTestUtil.getString(event, "event");
+            if (!"use".equals(eventName) || !event.containsKey("targetScopeId")) {
+                continue;
+            }
+            String targetScopeId = JsonTestUtil.getString(event, "targetScopeId");
+            if (!knownScopeIds.contains(targetScopeId)) {
+                throw new IllegalArgumentException("unknown targetScopeId: " + targetScopeId);
             }
         }
     }
