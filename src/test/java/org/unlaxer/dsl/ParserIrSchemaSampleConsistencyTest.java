@@ -72,6 +72,28 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
     }
 
+    @Test
+    public void testInvalidScopeEventIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-scope-event.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected scope event failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("unsupported scope event"));
+        }
+    }
+
+    @Test
+    public void testInvalidDiagnosticRelatedIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-related.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected diagnostic related failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("missing key"));
+        }
+    }
+
     private static void validateTopLevelContract(Map<String, Object> schema, Map<String, Object> sample) {
         List<Object> required = JsonTestUtil.getArray(schema, "required");
         for (Object k : required) {
