@@ -320,6 +320,14 @@ public class ParserGeneratorTest {
             source.contains("isLexicalScopeTreeRule(String ruleName)"));
         assertTrue("should generate dynamic scope helper",
             source.contains("isDynamicScopeTreeRule(String ruleName)"));
+        assertTrue("should generate all scope-tree rules helper",
+            source.contains("getScopeTreeRules()"));
+        assertTrue("should generate scope-tree rules by mode helper",
+            source.contains("getScopeTreeRules(ScopeMode mode)"));
+        assertTrue("should emit lexical scope-tree rule list",
+            source.contains("case LEXICAL -> java.util.List.of(\"Start\")"));
+        assertTrue("should emit dynamic scope-tree empty list",
+            source.contains("case DYNAMIC -> java.util.List.of()"));
         assertTrue("should include Start interleave profile",
             source.contains("case \"Start\" -> java.util.Optional.of(\"commentsAndSpaces\")"));
         assertTrue("should include Ref backref name",

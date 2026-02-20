@@ -958,8 +958,50 @@ public class ParserGenerator implements CodeGenerator {
                 .append("            .map(mode -> mode == ScopeMode.DYNAMIC)\n")
                 .append("            .orElse(false);\n")
                 .append("    }\n\n");
+
+            List<String> lexicalRules = new ArrayList<>();
+            List<String> dynamicRules = new ArrayList<>();
+            for (RuleDecl rule : grammar.rules()) {
+                String value = findScopeTreeMode(rule);
+                if (value == null) {
+                    continue;
+                }
+                String normalized = value.trim().toLowerCase();
+                if ("lexical".equals(normalized)) {
+                    lexicalRules.add(rule.name());
+                } else if ("dynamic".equals(normalized)) {
+                    dynamicRules.add(rule.name());
+                }
+            }
+
+            sb.append("    public static java.util.List<String> getScopeTreeRules() {\n")
+                .append("        java.util.ArrayList<String> out = new java.util.ArrayList<>();\n")
+                .append("        out.addAll(getScopeTreeRules(ScopeMode.LEXICAL));\n")
+                .append("        out.addAll(getScopeTreeRules(ScopeMode.DYNAMIC));\n")
+                .append("        return java.util.List.copyOf(out);\n")
+                .append("    }\n\n");
+
+            sb.append("    public static java.util.List<String> getScopeTreeRules(ScopeMode mode) {\n")
+                .append("        return switch (mode) {\n")
+                .append("            case LEXICAL -> ")
+                .append(renderStringListLiteral(lexicalRules))
+                .append(";\n")
+                .append("            case DYNAMIC -> ")
+                .append(renderStringListLiteral(dynamicRules))
+                .append(";\n")
+                .append("        };\n")
+                .append("    }\n\n");
         }
         return sb.toString();
+    }
+
+    private String renderStringListLiteral(List<String> values) {
+        if (values.isEmpty()) {
+            return "java.util.List.of()";
+        }
+        return "java.util.List.of(" + values.stream()
+            .map(v -> "\"" + escapeJava(v) + "\"")
+            .collect(Collectors.joining(", ")) + ")";
     }
 
     private boolean hasInterleaveAnnotation(RuleDecl rule) {
