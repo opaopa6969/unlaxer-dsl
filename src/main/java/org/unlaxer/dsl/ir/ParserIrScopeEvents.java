@@ -56,6 +56,33 @@ public final class ParserIrScopeEvents {
         return List.copyOf(out);
     }
 
+    /**
+     * Emits synthetic balanced scope events from grammar rule metadata.
+     * Rule names are normalized into node ids as {@code {grammarName}::{ruleName}}.
+     */
+    public static List<Object> emitSyntheticEnterLeaveEventsForRules(
+        String grammarName,
+        Map<String, String> scopeModeByRuleName,
+        List<Object> nodes
+    ) {
+        if (grammarName == null || grammarName.isBlank()) {
+            throw new IllegalArgumentException("grammarName must not be blank");
+        }
+        if (scopeModeByRuleName == null || scopeModeByRuleName.isEmpty()) {
+            return List.of();
+        }
+        Map<String, String> scopeModeByNodeId = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : scopeModeByRuleName.entrySet()) {
+            String ruleName = entry.getKey();
+            if (ruleName == null || ruleName.isBlank()) {
+                continue;
+            }
+            String nodeId = grammarName + "::" + ruleName.trim();
+            scopeModeByNodeId.put(nodeId, entry.getValue());
+        }
+        return emitSyntheticEnterLeaveEvents(scopeModeByNodeId, nodes);
+    }
+
     private static Map<String, Object> extractSpan(Map<String, Object> node) {
         Object spanObj = node.get("span");
         if (!(spanObj instanceof Map<?, ?> rawSpan)) {

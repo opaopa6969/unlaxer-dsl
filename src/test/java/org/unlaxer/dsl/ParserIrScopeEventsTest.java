@@ -72,4 +72,34 @@ public class ParserIrScopeEventsTest {
         assertEquals(0L, ((Number) span.get("start")).longValue());
         assertEquals(0L, ((Number) span.get("end")).longValue());
     }
+
+    @Test
+    public void testEmitSyntheticEnterLeaveEventsForRulesUsesGrammarRuleNodeIds() {
+        Map<String, String> scopeModeByRuleName = Map.of("Start", "lexical");
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("id", "Tiny::Start");
+        node.put("kind", "RuleDecl");
+        node.put("span", Map.of("start", 1L, "end", 2L));
+
+        List<Object> events = ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRules(
+            "Tiny",
+            scopeModeByRuleName,
+            List.of(node)
+        );
+        assertEquals(2, events.size());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> first = (Map<String, Object>) events.get(0);
+        assertEquals("scope:Tiny::Start", first.get("scopeId"));
+        assertEquals("lexical", first.get("scopeMode"));
+    }
+
+    @Test
+    public void testEmitSyntheticEnterLeaveEventsForRulesRejectsBlankGrammarName() {
+        try {
+            ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRules(" ", Map.of("Start", "lexical"), List.of());
+            fail("expected grammar name validation failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("grammarName must not be blank"));
+        }
+    }
 }
