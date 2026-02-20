@@ -10,6 +10,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.regex.Pattern;
 
 import org.junit.Test;
@@ -460,6 +462,7 @@ public class ParserIrSchemaSampleConsistencyTest {
         if (sample.containsKey("scopeEvents")) {
             validateScopeEventsContract(sample);
             validateScopeEventOrder(sample);
+            validateScopeNesting(sample);
             validateScopeBalance(sample);
             validateScopeTargetReferences(sample);
         }
@@ -645,10 +648,9 @@ public class ParserIrSchemaSampleConsistencyTest {
             String eventName = JsonTestUtil.getString(event, "event");
             String scopeId = JsonTestUtil.getString(event, "scopeId");
             if ("enterScope".equals(eventName)) {
-                if (openScopes.contains(scopeId)) {
+                if (!openScopes.add(scopeId)) {
                     throw new IllegalArgumentException("duplicate enterScope for scopeId: " + scopeId);
                 }
-                openScopes.add(scopeId);
                 continue;
             }
             if ("leaveScope".equals(eventName)) {
@@ -682,6 +684,38 @@ public class ParserIrSchemaSampleConsistencyTest {
             if ("leaveScope".equals(eventName)) {
                 openScopes.remove(scopeId);
             }
+        }
+    }
+
+    private static void validateScopeNesting(Map<String, Object> sample) {
+        List<Object> scopeEvents = JsonTestUtil.getArray(sample, "scopeEvents");
+        Set<String> openScopes = new HashSet<>();
+        Deque<String> scopeStack = new ArrayDeque<>();
+        for (Object item : scopeEvents) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> event = (Map<String, Object>) item;
+            String eventName = JsonTestUtil.getString(event, "event");
+            String scopeId = JsonTestUtil.getString(event, "scopeId");
+            if ("enterScope".equals(eventName)) {
+                if (!openScopes.add(scopeId)) {
+                    throw new IllegalArgumentException("duplicate enterScope for scopeId: " + scopeId);
+                }
+                scopeStack.push(scopeId);
+                continue;
+            }
+            if (!"leaveScope".equals(eventName)) {
+                continue;
+            }
+            if (!openScopes.contains(scopeId)) {
+                throw new IllegalArgumentException("scope balance violated for scopeId: " + scopeId);
+            }
+            String expected = scopeStack.peek();
+            if (!scopeId.equals(expected)) {
+                throw new IllegalArgumentException(
+                    "scope nesting violated: expected leaveScope for scopeId: " + expected + " but got: " + scopeId);
+            }
+            scopeStack.pop();
+            openScopes.remove(scopeId);
         }
     }
 

@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 
@@ -149,6 +151,7 @@ public final class ParserIrConformanceValidator {
         }
 
         Set<String> openScopes = new HashSet<>();
+        Deque<String> scopeStack = new ArrayDeque<>();
         for (Object item : scopeEvents) {
             @SuppressWarnings("unchecked")
             Map<String, Object> event = (Map<String, Object>) item;
@@ -158,6 +161,7 @@ public final class ParserIrConformanceValidator {
                 if (!openScopes.add(scopeId)) {
                     throw new IllegalArgumentException("duplicate enterScope for scopeId: " + scopeId);
                 }
+                scopeStack.push(scopeId);
                 continue;
             }
             if ("define".equals(eventName) || "use".equals(eventName)) {
@@ -172,12 +176,21 @@ public final class ParserIrConformanceValidator {
                 }
                 continue;
             }
-            if ("leaveScope".equals(eventName) && !openScopes.remove(scopeId)) {
-                throw new IllegalArgumentException("scope balance violated for scopeId: " + scopeId);
+            if ("leaveScope".equals(eventName)) {
+                if (!openScopes.contains(scopeId)) {
+                    throw new IllegalArgumentException("scope balance violated for scopeId: " + scopeId);
+                }
+                String expected = scopeStack.peek();
+                if (!scopeId.equals(expected)) {
+                    throw new IllegalArgumentException(
+                        "scope nesting violated: expected leaveScope for scopeId: " + expected + " but got: " + scopeId);
+                }
+                scopeStack.pop();
+                openScopes.remove(scopeId);
             }
         }
-        if (!openScopes.isEmpty()) {
-            throw new IllegalArgumentException("scope balance violated: unclosed scopes " + openScopes);
+        if (!scopeStack.isEmpty()) {
+            throw new IllegalArgumentException("scope balance violated: unclosed scopes " + scopeStack);
         }
     }
 

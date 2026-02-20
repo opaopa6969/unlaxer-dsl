@@ -88,6 +88,18 @@ public class ParserIrSchemaValidatorTest {
     }
 
     @Test
+    public void testRejectsScopeNestingFixture() throws Exception {
+        String payload = loadFixture("invalid-scope-nesting.json");
+        try {
+            ParserIrSchemaValidator.validate(payload);
+            fail("expected parser ir validation error");
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-PARSER-IR-CONSTRAINT", expected.code());
+            assertTrue(expected.getMessage().contains("scope nesting violated"));
+        }
+    }
+
+    @Test
     public void testRejectsUnknownTargetScopeIdFixture() throws Exception {
         String payload = loadFixture("invalid-target-scope-id.json");
         try {

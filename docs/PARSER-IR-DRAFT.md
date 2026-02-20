@@ -21,6 +21,7 @@ Draft sample payloads: `src/test/resources/schema/parser-ir/`
   - `use` and `define` require `symbol`.
   - `define` requires `kind`; `use` must not include `kind`.
   - `enterScope` and `leaveScope` must not include `symbol`, `kind`, or `targetScopeId`.
+  - `leaveScope` order must be nested (LIFO) within each event stream.
 
 ## 1. Design Goals
 
@@ -129,6 +130,7 @@ Diagnostic:
 - `nodes` must contain at least one node.
 - if `parentId` exists, parent node must exist.
 - scope enter/leave must be balanced per `scopeId`.
+- scope enter/leave must also follow nested (stack/LIFO) order.
 - diagnostic spans must be within source span range.
 - ids are stable only within the same parse result unless stated otherwise.
 
