@@ -154,6 +154,17 @@ public class ParserIrSchemaSampleConsistencyTest {
     }
 
     @Test
+    public void testParentChildrenMismatchIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-parent-children-mismatch.json");
+        try {
+            validateParentReferences(sample);
+            fail("expected parent/children mismatch failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("parent/children mismatch"));
+        }
+    }
+
+    @Test
     public void testInvalidScopeBalanceIsRejected() throws Exception {
         Map<String, Object> sample = loadSample("invalid-scope-balance.json");
         try {
@@ -317,6 +328,7 @@ public class ParserIrSchemaSampleConsistencyTest {
 
     private static void validateParentReferences(Map<String, Object> sample) {
         List<Object> nodes = JsonTestUtil.getArray(sample, "nodes");
+        Map<String, Map<String, Object>> byId = new java.util.LinkedHashMap<>();
         Set<String> ids = new HashSet<>();
         for (Object item : nodes) {
             @SuppressWarnings("unchecked")
@@ -325,6 +337,7 @@ public class ParserIrSchemaSampleConsistencyTest {
             if (!ids.add(id)) {
                 throw new IllegalArgumentException("duplicate node id: " + id);
             }
+            byId.put(id, n);
         }
         for (Object item : nodes) {
             @SuppressWarnings("unchecked")
@@ -350,6 +363,15 @@ public class ParserIrSchemaSampleConsistencyTest {
                     }
                     if (id.equals(childId)) {
                         throw new IllegalArgumentException("child self reference: " + id);
+                    }
+                    Map<String, Object> child = byId.get(childId);
+                    if (child != null && child.containsKey("parentId")) {
+                        String childParentId = JsonTestUtil.getString(child, "parentId");
+                        if (!id.equals(childParentId)) {
+                            throw new IllegalArgumentException(
+                                "parent/children mismatch: parent=" + id + " child=" + childId + " child.parentId=" + childParentId
+                            );
+                        }
                     }
                 }
             }
