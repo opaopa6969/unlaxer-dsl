@@ -89,6 +89,17 @@ public class ParserIrSchemaSampleConsistencyTest {
     }
 
     @Test
+    public void testDuplicateDiagnosticIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-duplicate-diagnostic.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected duplicate diagnostic failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("duplicate diagnostic"));
+        }
+    }
+
+    @Test
     public void testInvalidScopeEventIsRejected() throws Exception {
         Map<String, Object> sample = loadSample("invalid-scope-event.json");
         try {
@@ -424,6 +435,7 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
 
         List<Object> diagnostics = JsonTestUtil.getArray(sample, "diagnostics");
+        Set<String> uniqueDiagnostics = new HashSet<>();
         for (Object item : diagnostics) {
             if (!(item instanceof Map<?, ?> raw)) {
                 throw new IllegalArgumentException("diagnostic must be object");
@@ -446,7 +458,11 @@ public class ParserIrSchemaSampleConsistencyTest {
                     "diagnostic span out of range: [" + start + "," + end + "] not in [" + minStart + "," + maxEnd + "]"
                 );
             }
-            JsonTestUtil.getString(diagnostic, "message");
+            String message = JsonTestUtil.getString(diagnostic, "message");
+            String dedupKey = code + "\u0000" + start + "\u0000" + end + "\u0000" + message;
+            if (!uniqueDiagnostics.add(dedupKey)) {
+                throw new IllegalArgumentException("duplicate diagnostic: " + dedupKey);
+            }
             if (diagnostic.containsKey("related")) {
                 List<Object> related = JsonTestUtil.getArray(diagnostic, "related");
                 for (Object relItem : related) {

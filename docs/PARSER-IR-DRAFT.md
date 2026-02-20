@@ -16,6 +16,7 @@ Draft sample payloads: `src/test/resources/schema/parser-ir/`
 - Annotation naming convention (draft): `^[a-z][a-zA-Z0-9-]*$`.
 - Annotation uniqueness policy (draft): `(targetId, name)` pairs must be unique in one IR document.
 - Annotation payload policy (draft): `payload` must be an object with at least one property.
+- Diagnostic uniqueness policy (draft): `(code, span.start, span.end, message)` tuples must be unique.
 
 ## 1. Design Goals
 
