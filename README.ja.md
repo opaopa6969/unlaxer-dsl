@@ -1293,6 +1293,29 @@ Double result = calc.eval(ast);
 System.out.println(result); // 7.0
 ```
 
+### ステップ 5: 外部 Parser Adapter で ScopeTree メタデータを使う
+
+UBNF 以外のパーサーでは、ルール単位メタデータから parser-IR の `scopeEvents` を生成できる。
+
+```java
+// ParserGenerator が生成するメタデータ API
+Map<String, TinyCalcParsers.ScopeMode> modeByRule = TinyCalcParsers.getScopeTreeModeByRule();
+
+Map<String, String> modeByRuleName = new LinkedHashMap<>();
+for (var e : modeByRule.entrySet()) {
+    modeByRuleName.put(e.getKey(), e.getValue().name().toLowerCase(Locale.ROOT));
+}
+
+List<Object> scopeEvents = ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRules(
+    "TinyCalc",
+    modeByRuleName,
+    nodes
+);
+```
+
+実行可能な最小サンプル:
+- `src/test/java/org/unlaxer/dsl/ParserIrAdapterContractTest.java` (`ScopeTreeSampleAdapter`)
+
 ---
 
 ## チュートリアル 2: UBNF の VS Code 拡張を作る

@@ -85,6 +85,11 @@ Current behavior:
 - Intended role: declare scope-tree-aware processing intent for symbol/tooling phases.
 - Parser behavior is unchanged in this phase (metadata-only).
 - Validator contract (current): at most one per rule, and `mode` must be `lexical` or `dynamic`.
+- Parser generator emits scope-tree metadata APIs:
+  `getScopeTreeMode(ruleName)`, `getScopeTreeModeEnum(ruleName)`, `getScopeTreeRules()`,
+  `getScopeTreeModeByRule()`, `getScopeTreeSpec(ruleName)`, and `getScopeTreeSpecs()`.
+- `ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRules(grammarName, scopeModeByRuleName, nodes)`
+  converts rule-level scope metadata into parser-IR `scopeEvents`.
 
 ## Token Resolution
 
