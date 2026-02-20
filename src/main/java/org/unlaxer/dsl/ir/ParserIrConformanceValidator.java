@@ -3,6 +3,9 @@ package org.unlaxer.dsl.ir;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 
 /**
  * Lightweight runtime contract checks for parser IR adapters.
@@ -27,20 +30,79 @@ public final class ParserIrConformanceValidator {
             throw new IllegalArgumentException("nodes must not be empty");
         }
         readArray(payload, "diagnostics");
-
+        Map<String, Map<String, Object>> nodesById = new LinkedHashMap<>();
         for (Object item : nodes) {
             if (!(item instanceof Map<?, ?> rawNode)) {
                 throw new IllegalArgumentException("node must be object");
             }
             @SuppressWarnings("unchecked")
             Map<String, Object> node = (Map<String, Object>) rawNode;
-            readString(node, "id");
+            String nodeId = readString(node, "id");
+            if (nodesById.put(nodeId, node) != null) {
+                throw new IllegalArgumentException("duplicate node id: " + nodeId);
+            }
             readString(node, "kind");
             Map<String, Object> span = readObject(node, "span");
             long start = readLong(span, "start");
             long end = readLong(span, "end");
             if (start > end) {
                 throw new IllegalArgumentException("span.start <= span.end required");
+            }
+        }
+        validateParentChildLinks(nodesById);
+        validateAnnotationTargets(payload, nodesById.keySet());
+    }
+
+    private static void validateParentChildLinks(Map<String, Map<String, Object>> nodesById) {
+        for (Map.Entry<String, Map<String, Object>> entry : nodesById.entrySet()) {
+            String nodeId = entry.getKey();
+            Map<String, Object> node = entry.getValue();
+            if (node.containsKey("parentId")) {
+                String parentId = readString(node, "parentId");
+                if (!nodesById.containsKey(parentId)) {
+                    throw new IllegalArgumentException("unknown parentId: " + parentId);
+                }
+                Map<String, Object> parent = nodesById.get(parentId);
+                if (!parent.containsKey("children")) {
+                    throw new IllegalArgumentException("missing parent children link: parent=" + parentId + " child=" + nodeId);
+                }
+                List<Object> children = readArray(parent, "children");
+                if (!children.contains(nodeId)) {
+                    throw new IllegalArgumentException("missing parent children link: parent=" + parentId + " child=" + nodeId);
+                }
+            }
+            if (node.containsKey("children")) {
+                List<Object> children = readArray(node, "children");
+                Set<String> seen = new HashSet<>();
+                for (Object childObj : children) {
+                    if (!(childObj instanceof String childId) || childId.isBlank()) {
+                        throw new IllegalArgumentException("invalid child id type");
+                    }
+                    if (!seen.add(childId)) {
+                        throw new IllegalArgumentException("duplicate child id: " + childId);
+                    }
+                    if (!nodesById.containsKey(childId)) {
+                        throw new IllegalArgumentException("unknown child id: " + childId);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void validateAnnotationTargets(Map<String, Object> payload, Set<String> nodeIds) {
+        if (!payload.containsKey("annotations")) {
+            return;
+        }
+        List<Object> annotations = readArray(payload, "annotations");
+        for (Object item : annotations) {
+            if (!(item instanceof Map<?, ?> rawAnnotation)) {
+                throw new IllegalArgumentException("annotation must be object");
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> annotation = (Map<String, Object>) rawAnnotation;
+            String targetId = readString(annotation, "targetId");
+            if (!nodeIds.contains(targetId)) {
+                throw new IllegalArgumentException("unknown annotation targetId: " + targetId);
             }
         }
     }

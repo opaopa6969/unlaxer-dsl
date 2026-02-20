@@ -39,6 +39,30 @@ public class ParserIrSchemaValidatorTest {
         }
     }
 
+    @Test
+    public void testRejectsDuplicateNodeIdFixture() throws Exception {
+        String payload = loadFixture("invalid-duplicate-node-id.json");
+        try {
+            ParserIrSchemaValidator.validate(payload);
+            fail("expected parser ir validation error");
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-PARSER-IR-CONSTRAINT", expected.code());
+            assertTrue(expected.getMessage().contains("duplicate node id"));
+        }
+    }
+
+    @Test
+    public void testRejectsUnknownAnnotationTargetFixture() throws Exception {
+        String payload = loadFixture("invalid-annotation-target-id.json");
+        try {
+            ParserIrSchemaValidator.validate(payload);
+            fail("expected parser ir validation error");
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-PARSER-IR-CONSTRAINT", expected.code());
+            assertTrue(expected.getMessage().contains("unknown annotation targetId"));
+        }
+    }
+
     private static String loadFixture(String name) throws Exception {
         return Files.readString(Path.of("src/test/resources/schema/parser-ir").resolve(name));
     }
