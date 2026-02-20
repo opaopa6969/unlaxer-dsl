@@ -35,21 +35,31 @@ public final class GrammarToParserIrExporter {
 
         List<Object> nodes = new ArrayList<>();
         List<Object> annotations = new ArrayList<>();
-        Map<String, String> scopeModeByNodeId = new LinkedHashMap<>();
+        List<Object> scopeEvents = new ArrayList<>();
         for (GrammarDecl grammar : grammars) {
             if (grammar == null) {
                 continue;
             }
+            List<Object> grammarNodes = new ArrayList<>();
+            Map<String, String> scopeModeByRuleName = new LinkedHashMap<>();
             for (RuleDecl rule : grammar.rules()) {
                 String nodeId = buildNodeId(grammar.name(), rule.name());
-                nodes.add(buildRuleNode(nodeId));
+                Map<String, Object> node = buildRuleNode(nodeId);
+                nodes.add(node);
+                grammarNodes.add(node);
                 for (Annotation annotation : rule.annotations()) {
                     annotations.add(buildAnnotation(nodeId, annotation));
-                    collectScopeMode(scopeModeByNodeId, nodeId, annotation);
+                    collectScopeMode(scopeModeByRuleName, rule.name(), annotation);
                 }
             }
+            scopeEvents.addAll(
+                ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRules(
+                    grammar.name(),
+                    scopeModeByRuleName,
+                    grammarNodes
+                )
+            );
         }
-        List<Object> scopeEvents = ParserIrScopeEvents.emitSyntheticEnterLeaveEvents(scopeModeByNodeId, nodes);
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("irVersion", "1.0");
@@ -134,10 +144,10 @@ public final class GrammarToParserIrExporter {
         return out;
     }
 
-    private static void collectScopeMode(Map<String, String> out, String nodeId, Annotation annotation) {
+    private static void collectScopeMode(Map<String, String> out, String ruleName, Annotation annotation) {
         if (!(annotation instanceof ScopeTreeAnnotation scopeTree)) {
             return;
         }
-        out.put(nodeId, scopeTree.mode().trim());
+        out.put(ruleName, scopeTree.mode().trim());
     }
 }

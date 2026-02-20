@@ -92,6 +92,32 @@ public class GrammarToParserIrExporterTest {
         assertEquals(2, nodes.size());
     }
 
+    @Test
+    public void testExportAllScopeEventsPreserveGrammarQualifiedScopeIds() {
+        GrammarDecl a = parseGrammar("""
+            grammar A {
+              @package: org.example.a
+              @scopeTree(mode=lexical)
+              Start ::= 'a' ;
+            }
+            """);
+        GrammarDecl b = parseGrammar("""
+            grammar B {
+              @package: org.example.b
+              @scopeTree(mode=dynamic)
+              Start ::= 'b' ;
+            }
+            """);
+
+        ParserIrDocument document = GrammarToParserIrExporter.exportAll(List.of(a, b), "in-memory://multi-scope.ubnf");
+        ParserIrConformanceValidator.validate(document);
+        List<Object> scopeEvents = JsonTestUtil.getArray(document.payload(), "scopeEvents");
+        assertEquals(4, scopeEvents.size());
+        String text = scopeEvents.toString();
+        assertTrue(text.contains("scope:A::Start"));
+        assertTrue(text.contains("scope:B::Start"));
+    }
+
     private static boolean hasAnnotation(List<Object> annotations, String name, String payloadKey, Object payloadValue) {
         for (Object item : annotations) {
             @SuppressWarnings("unchecked")
