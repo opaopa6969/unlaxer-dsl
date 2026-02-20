@@ -5,6 +5,7 @@ import static org.junit.Assert.fail;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +26,7 @@ public class ParserIrSchemaSampleConsistencyTest {
         validateTopLevelContract(schema, sample);
         validateNodeContract(schema, sample);
         validateSpanOrder(sample);
+        validateParentReferences(sample);
         validateOptionalContracts(sample);
     }
 
@@ -35,6 +37,7 @@ public class ParserIrSchemaSampleConsistencyTest {
         validateTopLevelContract(schema, sample);
         validateNodeContract(schema, sample);
         validateSpanOrder(sample);
+        validateParentReferences(sample);
         validateOptionalContracts(sample);
     }
 
@@ -94,6 +97,28 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
     }
 
+    @Test
+    public void testInvalidParentIdReferenceIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-parent-id.json");
+        try {
+            validateParentReferences(sample);
+            fail("expected parentId reference failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("unknown parentId"));
+        }
+    }
+
+    @Test
+    public void testInvalidScopeBalanceIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-scope-balance.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected scope balance failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("scope balance"));
+        }
+    }
+
     private static void validateTopLevelContract(Map<String, Object> schema, Map<String, Object> sample) {
         List<Object> required = JsonTestUtil.getArray(schema, "required");
         for (Object k : required) {
@@ -148,6 +173,28 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
         if (sample.containsKey("scopeEvents")) {
             validateScopeEventsContract(sample);
+            validateScopeBalance(sample);
+        }
+    }
+
+    private static void validateParentReferences(Map<String, Object> sample) {
+        List<Object> nodes = JsonTestUtil.getArray(sample, "nodes");
+        Set<String> ids = new HashSet<>();
+        for (Object item : nodes) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> n = (Map<String, Object>) item;
+            ids.add(JsonTestUtil.getString(n, "id"));
+        }
+        for (Object item : nodes) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> n = (Map<String, Object>) item;
+            if (!n.containsKey("parentId")) {
+                continue;
+            }
+            String parentId = JsonTestUtil.getString(n, "parentId");
+            if (!ids.contains(parentId)) {
+                throw new IllegalArgumentException("unknown parentId: " + parentId);
+            }
         }
     }
 
@@ -198,6 +245,29 @@ public class ParserIrSchemaSampleConsistencyTest {
             }
             JsonTestUtil.getString(event, "scopeId");
             JsonTestUtil.getObject(event, "span");
+        }
+    }
+
+    private static void validateScopeBalance(Map<String, Object> sample) {
+        List<Object> scopeEvents = JsonTestUtil.getArray(sample, "scopeEvents");
+        Set<String> openScopes = new HashSet<>();
+        for (Object item : scopeEvents) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> event = (Map<String, Object>) item;
+            String eventName = JsonTestUtil.getString(event, "event");
+            String scopeId = JsonTestUtil.getString(event, "scopeId");
+            if ("enterScope".equals(eventName)) {
+                openScopes.add(scopeId);
+                continue;
+            }
+            if ("leaveScope".equals(eventName)) {
+                if (!openScopes.remove(scopeId)) {
+                    throw new IllegalArgumentException("scope balance violated for scopeId: " + scopeId);
+                }
+            }
+        }
+        if (!openScopes.isEmpty()) {
+            throw new IllegalArgumentException("scope balance violated: unclosed scopes " + openScopes);
         }
     }
 
