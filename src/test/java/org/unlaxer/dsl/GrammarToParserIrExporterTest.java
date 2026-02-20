@@ -40,6 +40,8 @@ public class GrammarToParserIrExporterTest {
         assertTrue(hasAnnotation(annotations, "backref", "name", "ident"));
         assertTrue(hasAnnotation(annotations, "scope-tree", "mode", "lexical"));
         assertTrue(hasAnnotation(annotations, "precedence", "level", 10L));
+        assertTrue(document.payload().containsKey("scopeEvents"));
+        assertEquals(2, JsonTestUtil.getArray(document.payload(), "scopeEvents").size());
     }
 
     @Test

@@ -35,6 +35,7 @@ public final class GrammarToParserIrExporter {
 
         List<Object> nodes = new ArrayList<>();
         List<Object> annotations = new ArrayList<>();
+        List<Object> scopeEvents = new ArrayList<>();
         for (GrammarDecl grammar : grammars) {
             if (grammar == null) {
                 continue;
@@ -44,6 +45,7 @@ public final class GrammarToParserIrExporter {
                 nodes.add(buildRuleNode(nodeId));
                 for (Annotation annotation : rule.annotations()) {
                     annotations.add(buildAnnotation(nodeId, annotation));
+                    collectScopeEvents(scopeEvents, nodeId, annotation);
                 }
             }
         }
@@ -53,6 +55,9 @@ public final class GrammarToParserIrExporter {
         payload.put("source", sourceId);
         payload.put("nodes", nodes);
         payload.put("diagnostics", List.of());
+        if (!scopeEvents.isEmpty()) {
+            payload.put("scopeEvents", scopeEvents);
+        }
         if (!annotations.isEmpty()) {
             payload.put("annotations", annotations);
         }
@@ -126,5 +131,26 @@ public final class GrammarToParserIrExporter {
         out.put("name", name);
         out.put("payload", payload);
         return out;
+    }
+
+    private static void collectScopeEvents(List<Object> out, String nodeId, Annotation annotation) {
+        if (!(annotation instanceof ScopeTreeAnnotation)) {
+            return;
+        }
+        String scopeId = "scope:" + nodeId;
+        out.add(buildScopeEvent("enterScope", scopeId));
+        out.add(buildScopeEvent("leaveScope", scopeId));
+    }
+
+    private static Map<String, Object> buildScopeEvent(String event, String scopeId) {
+        Map<String, Object> span = new LinkedHashMap<>();
+        span.put("start", 0);
+        span.put("end", 0);
+
+        Map<String, Object> scopeEvent = new LinkedHashMap<>();
+        scopeEvent.put("event", event);
+        scopeEvent.put("scopeId", scopeId);
+        scopeEvent.put("span", span);
+        return scopeEvent;
     }
 }

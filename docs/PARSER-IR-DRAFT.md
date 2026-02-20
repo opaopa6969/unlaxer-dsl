@@ -162,6 +162,11 @@ Current minimal runtime entry points:
 - `org.unlaxer.dsl.ir.GrammarToParserIrExporter`
 - `org.unlaxer.dsl.ParserIrSchemaValidator`
 
+Current exporter behavior notes:
+- `GrammarToParserIrExporter` emits rule-level nodes and annotations.
+- For rules with `@scopeTree(...)`, exporter currently emits synthetic balanced scope events:
+  `enterScope` -> `leaveScope` with `scopeId = "scope:{GrammarName}::{RuleName}"`.
+
 Suggested SPI shape:
 - `ParserIrAdapter#parseToIr(ParseRequest request): ParserIrDocument`
 - adapter metadata:
