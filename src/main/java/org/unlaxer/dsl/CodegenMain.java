@@ -143,8 +143,15 @@ public class CodegenMain {
             ParserIrConformanceValidator.validate(document);
             String json = ParserIrJsonWriter.toJson(document.payload());
             Files.writeString(Path.of(config.exportParserIrFile()), json);
+            int nodeCount = getArraySize(document.payload(), "nodes");
+            int annotationCount = getArraySize(document.payload(), "annotations");
             if (ndjsonRequested) {
-                out.println("{\"event\":\"parser-ir-export\",\"ok\":true}");
+                out.println(
+                    "{\"event\":\"parser-ir-export\",\"ok\":true,\"source\":\""
+                        + escapeJson(config.grammarFile()) + "\",\"output\":\""
+                        + escapeJson(config.exportParserIrFile()) + "\",\"nodeCount\":"
+                        + nodeCount + ",\"annotationCount\":" + annotationCount + "}"
+                );
             } else {
                 out.println("Parser IR export succeeded: " + config.exportParserIrFile());
             }
@@ -157,6 +164,23 @@ public class CodegenMain {
             }
             return EXIT_VALIDATION_ERROR;
         }
+    }
+
+    private static int getArraySize(java.util.Map<String, Object> payload, String key) {
+        Object raw = payload.get(key);
+        if (!(raw instanceof java.util.List<?> list)) {
+            return 0;
+        }
+        return list.size();
+    }
+
+    private static String escapeJson(String s) {
+        return s
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t");
     }
 
     private static boolean isNdjsonRequested(String[] args) {

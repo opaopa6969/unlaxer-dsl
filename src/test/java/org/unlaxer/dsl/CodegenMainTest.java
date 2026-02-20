@@ -766,6 +766,39 @@ public class CodegenMainTest {
     }
 
     @Test
+    public void testExportParserIrNdjsonSuccessEventContainsCounts() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              @interleave(profile=javaStyle)
+              @scopeTree(mode=lexical)
+              Start ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-export-parser-ir-ndjson", ".ubnf");
+        Path exportFile = Files.createTempFile("codegen-main-export-parser-ir-ndjson-out", ".json");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--export-parser-ir", exportFile.toString(),
+            "--report-format", "ndjson"
+        );
+
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        Map<String, Object> event = JsonTestUtil.parseObject(lastJsonLine(result.out()));
+        assertEquals("parser-ir-export", JsonTestUtil.getString(event, "event"));
+        assertTrue(JsonTestUtil.getBoolean(event, "ok"));
+        assertEquals(grammarFile.toString(), JsonTestUtil.getString(event, "source"));
+        assertEquals(exportFile.toString(), JsonTestUtil.getString(event, "output"));
+        assertTrue(JsonTestUtil.getLong(event, "nodeCount") > 0);
+        assertTrue(JsonTestUtil.getLong(event, "annotationCount") > 0);
+        assertTrue(result.err().isBlank());
+    }
+
+    @Test
     public void testValidateParserIrReturnsOkForValidFixture() throws Exception {
         String payload = Files.readString(Path.of("src/test/resources/schema/parser-ir/valid-minimal.json"));
         Path parserIrFile = Files.createTempFile("codegen-main-parser-ir-valid", ".json");
