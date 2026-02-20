@@ -1068,6 +1068,22 @@ public class ParserGenerator implements CodeGenerator {
                 .append("        );\n")
                 .append("    }\n\n");
 
+            sb.append("    public static java.util.List<Object> buildSyntheticScopeEventsForNodes(\n")
+                .append("        java.util.List<Object> nodes,\n")
+                .append("        java.util.Map<String, ?> modeOverridesByRule\n")
+                .append("    ) {\n")
+                .append("        java.util.LinkedHashMap<String, Object> merged = new java.util.LinkedHashMap<>();\n")
+                .append("        merged.putAll(getScopeTreeModeByRule());\n")
+                .append("        if (modeOverridesByRule != null) {\n")
+                .append("            merged.putAll(modeOverridesByRule);\n")
+                .append("        }\n")
+                .append("        return org.unlaxer.dsl.ir.ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRulesAnyMode(\n")
+                .append("            \"").append(escapeJava(grammar.name())).append("\",\n")
+                .append("            merged,\n")
+                .append("            nodes\n")
+                .append("        );\n")
+                .append("    }\n\n");
+
             sb.append("    public static java.util.List<Object> buildSyntheticScopeEventsForNodesByScopeId(java.util.List<Object> nodes) {\n")
                 .append("        return org.unlaxer.dsl.ir.ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForScopeIdsAnyMode(\n")
                 .append("            getScopeTreeModeNameByScopeId(),\n")

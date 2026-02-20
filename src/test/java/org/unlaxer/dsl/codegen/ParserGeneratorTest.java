@@ -346,6 +346,8 @@ public class ParserGeneratorTest {
             source.contains("getScopeTreeModeNameByScopeId()"));
         assertTrue("should generate synthetic scope event builder by rule metadata",
             source.contains("buildSyntheticScopeEventsForNodes(java.util.List<Object> nodes)"));
+        assertTrue("should generate synthetic scope event builder with overrides",
+            source.contains("buildSyntheticScopeEventsForNodes(\n        java.util.List<Object> nodes,\n        java.util.Map<String, ?> modeOverridesByRule"));
         assertTrue("should generate synthetic scope event builder by scope-id metadata",
             source.contains("buildSyntheticScopeEventsForNodesByScopeId(java.util.List<Object> nodes)"));
         assertTrue("should generate scope-tree existence helper",
@@ -372,6 +374,10 @@ public class ParserGeneratorTest {
             source.contains("e.getValue().name().toLowerCase(java.util.Locale.ROOT)"));
         assertTrue("should bridge generated metadata to parser ir scope event helper",
             source.contains("ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRulesAnyMode("));
+        assertTrue("should merge generated scope modes with overrides",
+            source.contains("merged.putAll(getScopeTreeModeByRule());"));
+        assertTrue("should merge override scope modes when provided",
+            source.contains("if (modeOverridesByRule != null) {"));
         assertTrue("should bridge scope-id metadata to parser ir scope event helper",
             source.contains("ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForScopeIdsAnyMode("));
         assertTrue("should return immutable scope mode map",
