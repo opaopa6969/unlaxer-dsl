@@ -7,6 +7,13 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.util.List;
 
+import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
+import org.unlaxer.dsl.bootstrap.UBNFAST.UBNFFile;
+import org.unlaxer.dsl.bootstrap.UBNFMapper;
+import org.unlaxer.dsl.ir.GrammarToParserIrExporter;
+import org.unlaxer.dsl.ir.ParserIrConformanceValidator;
+import org.unlaxer.dsl.ir.ParserIrJsonWriter;
+
 /**
  * CLI tool entry point for UBNF validation and source generation.
  */
@@ -44,6 +51,9 @@ public class CodegenMain {
             }
             if (config.validateParserIrFile() != null) {
                 return runParserIrValidation(config, out, err, ndjsonRequested);
+            }
+            if (config.exportParserIrFile() != null) {
+                return runParserIrExport(config, out, err, ndjsonRequested);
             }
             return CodegenRunner.execute(config, out, err, clock, TOOL_VERSION, ArgsHashUtil.fromOptions(config));
         } catch (CodegenCliParser.UsageException e) {
@@ -116,6 +126,39 @@ public class CodegenMain {
         }
     }
 
+    private static int runParserIrExport(
+        CodegenCliParser.CliOptions config,
+        PrintStream out,
+        PrintStream err,
+        boolean ndjsonRequested
+    ) throws IOException {
+        try {
+            String source = Files.readString(Path.of(config.grammarFile()));
+            UBNFFile ubnf = UBNFMapper.parse(source);
+            if (ubnf.grammars().size() != 1) {
+                throw new IllegalArgumentException("parser ir export currently supports exactly one grammar block");
+            }
+            GrammarDecl grammar = ubnf.grammars().get(0);
+            var document = GrammarToParserIrExporter.export(grammar, config.grammarFile());
+            ParserIrConformanceValidator.validate(document);
+            String json = ParserIrJsonWriter.toJson(document.payload());
+            Files.writeString(Path.of(config.exportParserIrFile()), json);
+            if (ndjsonRequested) {
+                out.println("{\"event\":\"parser-ir-export\",\"ok\":true}");
+            } else {
+                out.println("Parser IR export succeeded: " + config.exportParserIrFile());
+            }
+            return EXIT_OK;
+        } catch (IllegalArgumentException e) {
+            if (ndjsonRequested) {
+                emitNdjsonCliError(out, "E-PARSER-IR-EXPORT", normalizeMessage("Parser IR export error", e.getMessage()), null);
+            } else {
+                err.println("E-PARSER-IR-EXPORT: " + e.getMessage());
+            }
+            return EXIT_VALIDATION_ERROR;
+        }
+    }
+
     private static boolean isNdjsonRequested(String[] args) {
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
@@ -144,6 +187,7 @@ public class CodegenMain {
             "Usage: CodegenMain [--help] [--version] --grammar <file.ubnf> --output <dir>"
                 + " [--generators AST,Parser,Mapper,Evaluator,LSP,Launcher,DAP,DAPLauncher]"
                 + " [--validate-parser-ir <parser-ir.json>]"
+                + " [--export-parser-ir <parser-ir.json>]"
                 + " [--validate-only]"
                 + " [--dry-run]"
                 + " [--clean-output]"

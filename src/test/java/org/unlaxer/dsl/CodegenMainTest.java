@@ -562,6 +562,7 @@ public class CodegenMainTest {
         assertTrue(result.out().contains("--output-manifest"));
         assertTrue(result.out().contains("--manifest-format"));
         assertTrue(result.out().contains("--validate-parser-ir"));
+        assertTrue(result.out().contains("--export-parser-ir"));
         assertTrue(result.out().contains("text|json|ndjson"));
         assertTrue(result.out().contains("--warnings-as-json"));
     }
@@ -691,6 +692,7 @@ public class CodegenMainTest {
         assertEquals(CodegenMain.EXIT_CLI_ERROR, result.exitCode());
         assertTrue(result.err().contains("Usage: CodegenMain"));
         assertTrue(result.err().contains("--validate-parser-ir"));
+        assertTrue(result.err().contains("--export-parser-ir"));
         assertTrue(result.err().contains("--report-version 1"));
         assertTrue(result.err().contains("--strict"));
         assertTrue(result.err().contains("--dry-run"));
@@ -701,6 +703,66 @@ public class CodegenMainTest {
         assertTrue(result.err().contains("--manifest-format"));
         assertTrue(result.err().contains("--report-schema-check"));
         assertTrue(result.err().contains("--warnings-as-json"));
+    }
+
+    @Test
+    public void testExportParserIrWritesFile() throws Exception {
+        String source = """
+            grammar Valid {
+              @package: org.example.valid
+              @root
+              @mapping(RootNode, params=[value])
+              @interleave(profile=javaStyle)
+              @scopeTree(mode=lexical)
+              Start ::= 'ok' @value ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-export-parser-ir", ".ubnf");
+        Path exportFile = Files.createTempFile("codegen-main-export-parser-ir-out", ".json");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--export-parser-ir", exportFile.toString()
+        );
+
+        assertEquals(CodegenMain.EXIT_OK, result.exitCode());
+        assertTrue(result.out().contains("Parser IR export succeeded"));
+        String payload = Files.readString(exportFile);
+        Map<String, Object> obj = JsonTestUtil.parseObject(payload);
+        assertEquals("1.0", JsonTestUtil.getString(obj, "irVersion"));
+        assertEquals(grammarFile.toString(), JsonTestUtil.getString(obj, "source"));
+        assertTrue(!JsonTestUtil.getArray(obj, "nodes").isEmpty());
+        assertTrue(!JsonTestUtil.getArray(obj, "annotations").isEmpty());
+    }
+
+    @Test
+    public void testExportParserIrRejectsMultipleGrammarBlocks() throws Exception {
+        String source = """
+            grammar A {
+              @package: org.example.a
+              @root
+              @mapping(NodeA, params=[v])
+              Start ::= 'a' @v ;
+            }
+            grammar B {
+              @package: org.example.b
+              @root
+              @mapping(NodeB, params=[v])
+              Start ::= 'b' @v ;
+            }
+            """;
+        Path grammarFile = Files.createTempFile("codegen-main-export-parser-ir-multi", ".ubnf");
+        Path exportFile = Files.createTempFile("codegen-main-export-parser-ir-multi-out", ".json");
+        Files.writeString(grammarFile, source);
+
+        RunResult result = runCodegen(
+            "--grammar", grammarFile.toString(),
+            "--export-parser-ir", exportFile.toString()
+        );
+
+        assertEquals(CodegenMain.EXIT_VALIDATION_ERROR, result.exitCode());
+        assertTrue(result.err().contains("E-PARSER-IR-EXPORT"));
     }
 
     @Test

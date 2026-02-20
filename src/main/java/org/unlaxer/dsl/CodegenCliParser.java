@@ -27,6 +27,7 @@ final class CodegenCliParser {
         String reportFile = null;
         String outputManifest = null;
         String validateParserIrFile = null;
+        String exportParserIrFile = null;
         String manifestFormat = "json";
         int reportVersion = DEFAULT_REPORT_VERSION;
         boolean reportSchemaCheck = false;
@@ -97,6 +98,12 @@ final class CodegenCliParser {
                         throw new UsageException("Missing value for --validate-parser-ir", true);
                     }
                     validateParserIrFile = args[++i];
+                }
+                case "--export-parser-ir" -> {
+                    if (i + 1 >= args.length) {
+                        throw new UsageException("Missing value for --export-parser-ir", true);
+                    }
+                    exportParserIrFile = args[++i];
                 }
                 case "--report-version" -> {
                     if (i + 1 >= args.length) {
@@ -196,6 +203,7 @@ final class CodegenCliParser {
                 reportFile,
                 outputManifest,
                 validateParserIrFile,
+                exportParserIrFile,
                 manifestFormat,
                 reportVersion,
                 reportSchemaCheck,
@@ -207,9 +215,9 @@ final class CodegenCliParser {
         }
 
         if (validateParserIrFile != null) {
-            if (grammarFile != null || outputDir != null || validateOnly) {
+            if (grammarFile != null || outputDir != null || validateOnly || exportParserIrFile != null) {
                 throw new UsageException(
-                    "--validate-parser-ir must not be combined with --grammar/--output/--validate-only",
+                    "--validate-parser-ir must not be combined with --grammar/--output/--validate-only/--export-parser-ir",
                     false
                 );
             }
@@ -227,6 +235,39 @@ final class CodegenCliParser {
                 reportFile,
                 outputManifest,
                 validateParserIrFile,
+                exportParserIrFile,
+                manifestFormat,
+                reportVersion,
+                reportSchemaCheck,
+                warningsAsJson,
+                overwrite,
+                failOn,
+                failOnWarningsThreshold
+            );
+        }
+
+        if (exportParserIrFile != null) {
+            if (grammarFile == null || outputDir != null || validateOnly) {
+                throw new UsageException(
+                    "--export-parser-ir requires --grammar and must not be combined with --output/--validate-only",
+                    false
+                );
+            }
+            return new CliOptions(
+                grammarFile,
+                outputDir,
+                generators,
+                validateOnly,
+                dryRun,
+                cleanOutput,
+                strict,
+                help,
+                version,
+                reportFormat,
+                reportFile,
+                outputManifest,
+                validateParserIrFile,
+                exportParserIrFile,
                 manifestFormat,
                 reportVersion,
                 reportSchemaCheck,
@@ -255,6 +296,7 @@ final class CodegenCliParser {
             reportFile,
             outputManifest,
             validateParserIrFile,
+            exportParserIrFile,
             manifestFormat,
             reportVersion,
             reportSchemaCheck,
@@ -279,6 +321,7 @@ final class CodegenCliParser {
         String reportFile,
         String outputManifest,
         String validateParserIrFile,
+        String exportParserIrFile,
         String manifestFormat,
         int reportVersion,
         boolean reportSchemaCheck,

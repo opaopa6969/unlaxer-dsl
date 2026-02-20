@@ -12,6 +12,7 @@ EXPECTED_FLAGS=(
   '--output'
   '--generators'
   '--validate-parser-ir'
+  '--export-parser-ir'
   '--validate-only'
   '--dry-run'
   '--clean-output'

@@ -23,6 +23,7 @@ public class CodegenCliParserTest {
         assertEquals(1, options.reportVersion());
         assertTrue(options.validateOnly());
         assertEquals(null, options.validateParserIrFile());
+        assertEquals(null, options.exportParserIrFile());
         assertFalse(options.dryRun());
         assertFalse(options.cleanOutput());
         assertFalse(options.strict());
@@ -312,6 +313,7 @@ public class CodegenCliParserTest {
             "--validate-parser-ir", "build/parser-ir.json"
         });
         assertEquals("build/parser-ir.json", options.validateParserIrFile());
+        assertEquals(null, options.exportParserIrFile());
         assertEquals(null, options.grammarFile());
         assertEquals(null, options.outputDir());
     }
@@ -327,6 +329,30 @@ public class CodegenCliParserTest {
         } catch (CodegenCliParser.UsageException e) {
             assertFalse(e.showUsage());
             assertTrue(e.getMessage().contains("--validate-parser-ir must not be combined"));
+        }
+    }
+
+    @Test
+    public void testParseExportParserIrMode() throws Exception {
+        var options = CodegenCliParser.parse(new String[] {
+            "--grammar", "a.ubnf",
+            "--export-parser-ir", "build/parser-ir.json"
+        });
+        assertEquals("a.ubnf", options.grammarFile());
+        assertEquals("build/parser-ir.json", options.exportParserIrFile());
+        assertEquals(null, options.outputDir());
+    }
+
+    @Test
+    public void testRejectExportParserIrWithoutGrammar() {
+        try {
+            CodegenCliParser.parse(new String[] {
+                "--export-parser-ir", "build/parser-ir.json"
+            });
+            fail("expected parser usage error");
+        } catch (CodegenCliParser.UsageException e) {
+            assertFalse(e.showUsage());
+            assertTrue(e.getMessage().contains("--export-parser-ir requires --grammar"));
         }
     }
 }

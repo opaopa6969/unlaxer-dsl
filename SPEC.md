@@ -110,6 +110,7 @@ Current behavior:
 - Validation failures are aggregated across grammar blocks and reported in one error.
 - `--validate-only` runs grammar validation without writing generated sources.
 - `--validate-parser-ir <path>` validates Parser IR JSON directly without parsing `.ubnf`.
+- `--export-parser-ir <path>` exports Parser IR JSON from a `.ubnf` grammar without code generation.
 - `--report-format json` emits machine-readable validation output (especially useful with `--validate-only`).
 - `--report-format ndjson` emits newline-delimited JSON events (`file` events plus summary report event).
 - In `ndjson`, CLI failures (usage/argument errors and runtime failures such as unknown generator) are emitted as `cli-error` events.
@@ -134,7 +135,7 @@ Current behavior:
   `reportVersion`, `schemaVersion`, `schemaUrl`, `toolVersion`, `argsHash`, `generatedAt` (UTC ISO-8601), and `mode` (`validate` or `generate`).
 - `argsHash` is SHA-256 of normalized semantic CLI settings (not raw argv).
 - `argsHash` includes: `grammar`, `output`, `generators`, `validate-only`, `dry-run`, `clean-output`, `strict`,
-  `validate-parser-ir`, `report-format`, `manifest-format`, `report-version`, `report-schema-check`, `warnings-as-json`,
+  `validate-parser-ir`, `export-parser-ir`, `report-format`, `manifest-format`, `report-version`, `report-schema-check`, `warnings-as-json`,
   `overwrite`, `fail-on`, and warnings threshold.
 - `argsHash` excludes destination-only paths and non-executing flags (for example: `--report-file`, `--output-manifest`, `--help`, `--version`).
 - `argsHash` normalization is versioned internally (`version=1`) for forward-compatible evolution.
