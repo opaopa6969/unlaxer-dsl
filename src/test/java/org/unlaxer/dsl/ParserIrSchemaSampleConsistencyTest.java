@@ -619,7 +619,12 @@ public class ParserIrSchemaSampleConsistencyTest {
                 throw new IllegalArgumentException("unsupported scope event: " + eventName);
             }
             JsonTestUtil.getString(event, "scopeId");
-            JsonTestUtil.getObject(event, "span");
+            Map<String, Object> span = JsonTestUtil.getObject(event, "span");
+            long start = JsonTestUtil.getLong(span, "start");
+            long end = JsonTestUtil.getLong(span, "end");
+            if (start > end) {
+                throw new IllegalArgumentException("scopeEvent span.start <= span.end required");
+            }
             if ("use".equals(eventName) || "define".equals(eventName)) {
                 if (!event.containsKey("symbol")) {
                     throw new IllegalArgumentException(eventName + " requires symbol");

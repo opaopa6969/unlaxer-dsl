@@ -100,6 +100,18 @@ public class ParserIrSchemaValidatorTest {
     }
 
     @Test
+    public void testRejectsScopeSpanOrderFixture() throws Exception {
+        String payload = loadFixture("invalid-scope-span-order.json");
+        try {
+            ParserIrSchemaValidator.validate(payload);
+            fail("expected parser ir validation error");
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-PARSER-IR-CONSTRAINT", expected.code());
+            assertTrue(expected.getMessage().contains("scopeEvent span.start <= span.end required"));
+        }
+    }
+
+    @Test
     public void testRejectsUnknownTargetScopeIdFixture() throws Exception {
         String payload = loadFixture("invalid-target-scope-id.json");
         try {

@@ -129,7 +129,12 @@ public final class ParserIrConformanceValidator {
                 throw new IllegalArgumentException("unsupported scope event: " + eventName);
             }
             String scopeId = readString(event, "scopeId");
-            readObject(event, "span");
+            Map<String, Object> span = readObject(event, "span");
+            long start = readLong(span, "start");
+            long end = readLong(span, "end");
+            if (start > end) {
+                throw new IllegalArgumentException("scopeEvent span.start <= span.end required");
+            }
             knownScopeIds.add(scopeId);
 
             if ("define".equals(eventName) || "use".equals(eventName)) {
