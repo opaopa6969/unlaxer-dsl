@@ -131,6 +131,7 @@ Diagnostic:
 - if `parentId` exists, parent node must exist.
 - scope enter/leave must be balanced per `scopeId`.
 - scope enter/leave must also follow nested (stack/LIFO) order.
+- scope event spans must be non-negative.
 - scope event spans must satisfy `span.start <= span.end`.
 - diagnostic spans must be within source span range.
 - ids are stable only within the same parse result unless stated otherwise.

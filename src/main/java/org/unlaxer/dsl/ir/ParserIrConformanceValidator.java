@@ -49,6 +49,9 @@ public final class ParserIrConformanceValidator {
             Map<String, Object> span = readObject(node, "span");
             long start = readLong(span, "start");
             long end = readLong(span, "end");
+            if (start < 0 || end < 0) {
+                throw new IllegalArgumentException("span.start and span.end must be non-negative");
+            }
             if (start > end) {
                 throw new IllegalArgumentException("span.start <= span.end required");
             }
@@ -132,6 +135,9 @@ public final class ParserIrConformanceValidator {
             Map<String, Object> span = readObject(event, "span");
             long start = readLong(span, "start");
             long end = readLong(span, "end");
+            if (start < 0 || end < 0) {
+                throw new IllegalArgumentException("scopeEvent span.start and span.end must be non-negative");
+            }
             if (start > end) {
                 throw new IllegalArgumentException("scopeEvent span.start <= span.end required");
             }

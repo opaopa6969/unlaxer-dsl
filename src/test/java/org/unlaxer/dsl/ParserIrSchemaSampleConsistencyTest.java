@@ -449,6 +449,9 @@ public class ParserIrSchemaSampleConsistencyTest {
             Map<String, Object> span = JsonTestUtil.getObject(n, "span");
             long start = JsonTestUtil.getLong(span, "start");
             long end = JsonTestUtil.getLong(span, "end");
+            if (start < 0 || end < 0) {
+                throw new IllegalArgumentException("span.start and span.end must be non-negative");
+            }
             if (start > end) {
                 throw new IllegalArgumentException("span.start <= span.end required");
             }
@@ -622,6 +625,9 @@ public class ParserIrSchemaSampleConsistencyTest {
             Map<String, Object> span = JsonTestUtil.getObject(event, "span");
             long start = JsonTestUtil.getLong(span, "start");
             long end = JsonTestUtil.getLong(span, "end");
+            if (start < 0 || end < 0) {
+                throw new IllegalArgumentException("scopeEvent span.start and span.end must be non-negative");
+            }
             if (start > end) {
                 throw new IllegalArgumentException("scopeEvent span.start <= span.end required");
             }

@@ -40,6 +40,18 @@ public class ParserIrSchemaValidatorTest {
     }
 
     @Test
+    public void testRejectsNegativeNodeSpanFixture() throws Exception {
+        String payload = loadFixture("invalid-node-negative-span.json");
+        try {
+            ParserIrSchemaValidator.validate(payload);
+            fail("expected parser ir validation error");
+        } catch (ReportSchemaValidationException expected) {
+            assertEquals("E-PARSER-IR-CONSTRAINT", expected.code());
+            assertTrue(expected.getMessage().contains("non-negative"));
+        }
+    }
+
+    @Test
     public void testRejectsDuplicateNodeIdFixture() throws Exception {
         String payload = loadFixture("invalid-duplicate-node-id.json");
         try {
