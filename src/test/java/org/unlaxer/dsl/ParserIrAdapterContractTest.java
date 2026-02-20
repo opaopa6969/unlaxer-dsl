@@ -55,13 +55,26 @@ public class ParserIrAdapterContractTest {
 
         ParserIrDocument document = adapter.parseToIr(request);
         ParserIrConformanceValidator.validate(document);
+        assertScopeTreePayload(document, "dynamic");
+    }
 
+    @Test
+    public void testScopeTreeSampleAdapterDefaultsToLexicalMode() {
+        ParserIrAdapter adapter = new ScopeTreeSampleAdapter();
+        ParseRequest request = new ParseRequest("sample://scope-tree-default", "ok", Map.of());
+
+        ParserIrDocument document = adapter.parseToIr(request);
+        ParserIrConformanceValidator.validate(document);
+        assertScopeTreePayload(document, "lexical");
+    }
+
+    private static void assertScopeTreePayload(ParserIrDocument document, String expectedMode) {
         List<Object> scopeEvents = JsonTestUtil.getArray(document.payload(), "scopeEvents");
         assertEquals(4, scopeEvents.size());
         @SuppressWarnings("unchecked")
         Map<String, Object> first = (Map<String, Object>) scopeEvents.get(0);
         assertEquals("enterScope", first.get("event"));
-        assertEquals("dynamic", first.get("scopeMode"));
+        assertEquals(expectedMode, first.get("scopeMode"));
         @SuppressWarnings("unchecked")
         Map<String, Object> define = (Map<String, Object>) scopeEvents.get(1);
         @SuppressWarnings("unchecked")
@@ -81,7 +94,7 @@ public class ParserIrAdapterContractTest {
         assertEquals("scope-tree", annotation.get("name"));
         @SuppressWarnings("unchecked")
         Map<String, Object> payload = (Map<String, Object>) annotation.get("payload");
-        assertEquals("dynamic", payload.get("mode"));
+        assertEquals(expectedMode, payload.get("mode"));
     }
 
     private static final class FixtureBackedAdapter implements ParserIrAdapter {
