@@ -153,6 +153,13 @@ Suggested components:
   - expected IR snapshots
   - required invariants (span order, scope balance, stable ids)
 
+Current minimal runtime entry points:
+- `org.unlaxer.dsl.ir.ParseRequest`
+- `org.unlaxer.dsl.ir.ParserIrAdapter`
+- `org.unlaxer.dsl.ir.ParserIrAdapterMetadata`
+- `org.unlaxer.dsl.ir.ParserIrDocument`
+- `org.unlaxer.dsl.ir.ParserIrConformanceValidator`
+
 Suggested SPI shape:
 - `ParserIrAdapter#parseToIr(ParseRequest request): ParserIrDocument`
 - adapter metadata:
