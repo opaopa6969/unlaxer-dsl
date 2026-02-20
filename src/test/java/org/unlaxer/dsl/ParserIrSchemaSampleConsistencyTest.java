@@ -186,6 +186,17 @@ public class ParserIrSchemaSampleConsistencyTest {
         }
     }
 
+    @Test
+    public void testDuplicateAnnotationNameOnSameTargetIsRejected() throws Exception {
+        Map<String, Object> sample = loadSample("invalid-annotation-duplicate-name.json");
+        try {
+            validateOptionalContracts(sample);
+            fail("expected duplicate annotation failure");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("duplicate annotation"));
+        }
+    }
+
     private static void validateTopLevelContract(Map<String, Object> schema, Map<String, Object> sample) {
         List<Object> required = JsonTestUtil.getArray(schema, "required");
         for (Object k : required) {
@@ -420,6 +431,7 @@ public class ParserIrSchemaSampleConsistencyTest {
             nodeIds.add(JsonTestUtil.getString(node, "id"));
         }
         List<Object> annotations = JsonTestUtil.getArray(sample, "annotations");
+        Set<String> seen = new HashSet<>();
         for (Object item : annotations) {
             @SuppressWarnings("unchecked")
             Map<String, Object> annotation = (Map<String, Object>) item;
@@ -432,6 +444,10 @@ public class ParserIrSchemaSampleConsistencyTest {
                 throw new IllegalArgumentException("annotation name pattern mismatch: " + name);
             }
             JsonTestUtil.getObject(annotation, "payload");
+            String key = targetId + "\u0000" + name;
+            if (!seen.add(key)) {
+                throw new IllegalArgumentException("duplicate annotation for targetId=" + targetId + " name=" + name);
+            }
         }
     }
 
