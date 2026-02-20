@@ -62,6 +62,16 @@ public class ParserIrAdapterContractTest {
         Map<String, Object> first = (Map<String, Object>) scopeEvents.get(0);
         assertEquals("enterScope", first.get("event"));
         assertEquals("dynamic", first.get("scopeMode"));
+
+        List<Object> annotations = JsonTestUtil.getArray(document.payload(), "annotations");
+        assertEquals(1, annotations.size());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> annotation = (Map<String, Object>) annotations.get(0);
+        assertEquals("Sample::Start", annotation.get("targetId"));
+        assertEquals("scope-tree", annotation.get("name"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payload = (Map<String, Object>) annotation.get("payload");
+        assertEquals("dynamic", payload.get("mode"));
     }
 
     private static final class FixtureBackedAdapter implements ParserIrAdapter {
@@ -100,7 +110,7 @@ public class ParserIrAdapterContractTest {
             return new ParserIrAdapterMetadata(
                 "scope-tree-sample-adapter",
                 Set.of("1.0"),
-                Set.of(ParserIrFeature.SCOPE_TREE, ParserIrFeature.SCOPE_EVENTS)
+                Set.of(ParserIrFeature.SCOPE_TREE, ParserIrFeature.SCOPE_EVENTS, ParserIrFeature.ANNOTATIONS)
             );
         }
 
@@ -115,12 +125,18 @@ public class ParserIrAdapterContractTest {
             String mode = String.valueOf(request.options().getOrDefault("scopeMode", "lexical"));
             Map<String, String> scopeModeByNodeId = Map.of("Sample::Start", mode);
             List<Object> scopeEvents = ParserIrScopeEvents.emitSyntheticEnterLeaveEvents(scopeModeByNodeId, nodes);
+            List<Object> annotations = List.of(Map.of(
+                "targetId", "Sample::Start",
+                "name", "scope-tree",
+                "payload", Map.of("mode", mode)
+            ));
 
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("irVersion", "1.0");
             payload.put("source", request.sourceId());
             payload.put("nodes", nodes);
             payload.put("scopeEvents", scopeEvents);
+            payload.put("annotations", annotations);
             payload.put("diagnostics", List.of());
             return new ParserIrDocument(payload);
         }
