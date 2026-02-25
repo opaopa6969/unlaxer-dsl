@@ -144,7 +144,7 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("    @Override\n");
         sb.append("    public CompletableFuture<Void> next(NextArguments args) {\n");
         sb.append("        stepIndex++;\n");
-        sb.append("        if (stepIndex >= stepPoints.size()) {\n");
+        sb.append("        if (stepIndex >= stepLimit()) {\n");
         sb.append("            sendOutput(\"stdout\", \"Completed: \" + pendingProgram + \"\\n\");\n");
         sb.append("            sendTerminated();\n");
         sb.append("        } else {\n");
@@ -192,8 +192,12 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("    @Override\n");
         sb.append("    public CompletableFuture<StackTraceResponse> stackTrace(StackTraceArguments args) {\n");
         sb.append("        StackTraceResponse response = new StackTraceResponse();\n");
-        sb.append("        if (!stepPoints.isEmpty() && stepIndex < stepPoints.size()) {\n");
-        sb.append("            Token current = stepPoints.get(stepIndex);\n");
+        sb.append("        if (hasCurrentStep()) {\n");
+        sb.append("            Token current = currentStepToken();\n");
+        sb.append("            if (current == null) {\n");
+        sb.append("                response.setStackFrames(new StackFrame[0]);\n");
+        sb.append("                return CompletableFuture.completedFuture(response);\n");
+        sb.append("            }\n");
         sb.append("            int charOffset = current.source.offsetFromRoot().value();\n");
         sb.append("            int line = 0, col = 0;\n");
         sb.append("            for (int i = 0; i < charOffset && i < sourceContent.length(); i++) {\n");
@@ -202,7 +206,7 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("            }\n");
         sb.append("            StackFrame frame = new StackFrame();\n");
         sb.append("            frame.setId(0);\n");
-        sb.append("            frame.setName(\"step \" + (stepIndex + 1) + \"/\" + stepPoints.size());\n");
+        sb.append("            frame.setName(currentStepLabel() + \" (\" + (stepIndex + 1) + \"/\" + stepLimit() + \")\");\n");
         sb.append("            frame.setLine(line + 1);   // DAP は 1-based\n");
         sb.append("            frame.setColumn(col + 1);\n");
         sb.append("            Source source = new Source();\n");
@@ -230,9 +234,9 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("    @Override\n");
         sb.append("    public CompletableFuture<ScopesResponse> scopes(ScopesArguments args) {\n");
         sb.append("        ScopesResponse response = new ScopesResponse();\n");
-        sb.append("        if (!stepPoints.isEmpty() && stepIndex < stepPoints.size()) {\n");
+        sb.append("        if (hasCurrentStep()) {\n");
         sb.append("            Scope scope = new Scope();\n");
-        sb.append("            scope.setName(\"Current Token\");\n");
+        sb.append("            scope.setName(isAstRuntimeMode() ? \"Current AST Node\" : \"Current Token\");\n");
         sb.append("            scope.setVariablesReference(1);\n");
         sb.append("            scope.setExpensive(false);\n");
         sb.append("            response.setScopes(new Scope[]{scope});\n");
@@ -246,8 +250,12 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("    @Override\n");
         sb.append("    public CompletableFuture<VariablesResponse> variables(VariablesArguments args) {\n");
         sb.append("        VariablesResponse response = new VariablesResponse();\n");
-        sb.append("        if (!stepPoints.isEmpty() && stepIndex < stepPoints.size()) {\n");
-        sb.append("            Token current = stepPoints.get(stepIndex);\n");
+        sb.append("        if (hasCurrentStep()) {\n");
+        sb.append("            Token current = currentStepToken();\n");
+        sb.append("            if (current == null) {\n");
+        sb.append("                response.setVariables(new Variable[0]);\n");
+        sb.append("                return CompletableFuture.completedFuture(response);\n");
+        sb.append("            }\n");
         sb.append("            String text = current.source.sourceAsString().strip();\n");
         sb.append("            String parserName = current.getParser().getClass().getSimpleName();\n");
         sb.append("            Variable var = new Variable();\n");
@@ -407,6 +415,38 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("        }\n");
         sb.append("        String className = value.getClass().getName();\n");
         sb.append("        return className.startsWith(\"").append(packageName).append(".").append(grammarName).append("AST\");\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private int stepLimit() {\n");
+        sb.append("        if (isAstRuntimeMode() && !astNodeTypes.isEmpty()) {\n");
+        sb.append("            return astNodeTypes.size();\n");
+        sb.append("        }\n");
+        sb.append("        return stepPoints.size();\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private boolean hasCurrentStep() {\n");
+        sb.append("        return stepLimit() > 0 && stepIndex < stepLimit();\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private Token currentStepToken() {\n");
+        sb.append("        if (stepPoints.isEmpty()) {\n");
+        sb.append("            return null;\n");
+        sb.append("        }\n");
+        sb.append("        if (isAstRuntimeMode() && !astNodeTypes.isEmpty()) {\n");
+        sb.append("            int limit = Math.max(1, stepLimit());\n");
+        sb.append("            int capped = Math.min(stepIndex, limit - 1);\n");
+        sb.append("            int mapped = (int) Math.floor((double) capped * (stepPoints.size() - 1) / Math.max(1, limit - 1));\n");
+        sb.append("            return stepPoints.get(Math.max(0, Math.min(mapped, stepPoints.size() - 1)));\n");
+        sb.append("        }\n");
+        sb.append("        return stepPoints.get(Math.max(0, Math.min(stepIndex, stepPoints.size() - 1)));\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private String currentStepLabel() {\n");
+        sb.append("        if (isAstRuntimeMode() && !astNodeTypes.isEmpty()) {\n");
+        sb.append("            return astNodeTypes.get(Math.min(stepIndex, astNodeTypes.size() - 1));\n");
+        sb.append("        }\n");
+        sb.append("        Token current = currentStepToken();\n");
+        sb.append("        return current == null ? \"step\" : current.getParser().getClass().getSimpleName();\n");
         sb.append("    }\n\n");
 
         // collectStepPoints() - dispatch by runtime mode
