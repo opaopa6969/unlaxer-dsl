@@ -232,6 +232,8 @@ public class MapperGenerator implements CodeGenerator {
                     String repeatParserClass = parsersClass + "." + rule.name() + "Repeat" + assocShape.repeatIndex + "Parser.class";
                     String leftParserClass = parserClassLiteral(assocShape.leftElement, parsersClass, tokenDeclByName, ruleByName)
                         .orElse(ruleParserClass);
+                    String opParserClass = parserClassLiteral(assocShape.opElement, parsersClass, tokenDeclByName, ruleByName)
+                        .orElse("org.unlaxer.parser.elementary.WordParser.class");
                     String rightParserClass = parserClassLiteral(assocShape.rightElement, parsersClass, tokenDeclByName, ruleByName)
                         .orElse(ruleParserClass);
 
@@ -277,7 +279,8 @@ public class MapperGenerator implements CodeGenerator {
                     sb.append("        List<").append(opType).append("> op = new ArrayList<>();\n");
                     sb.append("        List<").append(rightType).append("> right = new ArrayList<>();\n");
                     sb.append("        for (Token repeatToken : findDescendants(working, ").append(repeatParserClass).append(")) {\n");
-                    sb.append("            String opValue = firstTokenText(repeatToken);\n");
+                    sb.append("            Token opToken = findFirstDescendant(repeatToken, ").append(opParserClass).append(");\n");
+                    sb.append("            String opValue = firstTokenText(opToken == null ? repeatToken : opToken);\n");
                     sb.append("            if (opValue != null && !opValue.isEmpty()) {\n");
                     sb.append("                op.add(stripQuotes(opValue));\n");
                     sb.append("            }\n");
