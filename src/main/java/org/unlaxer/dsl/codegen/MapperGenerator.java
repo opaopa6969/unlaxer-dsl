@@ -296,6 +296,7 @@ public class MapperGenerator implements CodeGenerator {
                 }
             } else {
                 String ruleParserClass = parsersClass + "." + rule.name() + "Parser.class";
+                Map<String, Integer> scalarCaptureIndexByParserClass = new LinkedHashMap<>();
                 for (String param : mapping.paramNames()) {
                     String type = inferType(grammar, rule, param);
                     List<AtomicElement> capturedElements = findCapturedElements(rule.body(), param);
@@ -344,6 +345,9 @@ public class MapperGenerator implements CodeGenerator {
                             AtomicElement normalized = normalizeCapturedElement(element).orElse(element);
                             String parserClass = parserClassLiteral(normalized, parsersClass, tokenDeclByName, ruleByName)
                                 .orElse(ruleParserClass);
+                            int parserOccurrenceIndex =
+                                scalarCaptureIndexByParserClass.getOrDefault(parserClass, 0);
+                            scalarCaptureIndexByParserClass.put(parserClass, parserOccurrenceIndex + 1);
                             String tokenVarName = "paramToken_" + safeName(param) + "_" + i;
                             String candidateType = inferTypeFromElement(grammar, normalized);
                             if (!isTypeCompatible(optionalElementType.get(), candidateType) && !"String".equals(optionalElementType.get())) {
@@ -358,7 +362,8 @@ public class MapperGenerator implements CodeGenerator {
                                 ruleByName);
                             sb.append("        if (!found_").append(safeName(param)).append(") {\n");
                             sb.append("            Token ").append(tokenVarName)
-                                .append(" = findFirstDescendant(token, ").append(parserClass).append(");\n");
+                                .append(" = findDescendantByIndex(token, ").append(parserClass).append(", ")
+                                .append(parserOccurrenceIndex).append(");\n");
                             sb.append("            if (").append(tokenVarName).append(" != null) {\n");
                             sb.append("                ").append(param).append(" = Optional.ofNullable(").append(mapExpression).append(");\n");
                             sb.append("                found_").append(safeName(param)).append(" = true;\n");
@@ -376,6 +381,9 @@ public class MapperGenerator implements CodeGenerator {
                         AtomicElement normalized = normalizeCapturedElement(element).orElse(element);
                         String parserClass = parserClassLiteral(normalized, parsersClass, tokenDeclByName, ruleByName)
                             .orElse(ruleParserClass);
+                        int parserOccurrenceIndex =
+                            scalarCaptureIndexByParserClass.getOrDefault(parserClass, 0);
+                        scalarCaptureIndexByParserClass.put(parserClass, parserOccurrenceIndex + 1);
                         String tokenVarName = "paramToken_" + safeName(param) + "_" + i;
                         String candidateType = inferTypeFromElement(grammar, normalized);
                         if (!isTypeCompatible(type, candidateType) && !"String".equals(type)) {
@@ -390,9 +398,10 @@ public class MapperGenerator implements CodeGenerator {
                             ruleByName);
                         sb.append("        if (!assigned_").append(safeName(param)).append(") {\n");
                         sb.append("            Token ").append(tokenVarName)
-                            .append(" = findFirstDescendant(token, ").append(parserClass).append(");\n");
+                            .append(" = findDescendantByIndex(token, ").append(parserClass).append(", ")
+                            .append(parserOccurrenceIndex).append(");\n");
                         sb.append("            if (").append(tokenVarName).append(" != null) {\n");
-                        sb.append("                ").append(param).append(" = ").append(mapExpression).append(";\n");
+                            sb.append("                ").append(param).append(" = ").append(mapExpression).append(";\n");
                         sb.append("                assigned_").append(safeName(param)).append(" = true;\n");
                         sb.append("            }\n");
                         sb.append("        }\n");
@@ -445,6 +454,23 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("            }\n");
         sb.append("        }\n");
         sb.append("        return null;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    static Token findDescendantByIndex(Token token, Class<? extends Parser> parserClass, int index) {\n");
+        sb.append("        if (index < 0) {\n");
+        sb.append("            return null;\n");
+        sb.append("        }\n");
+        sb.append("        if (token != null && token.parser.getClass() == parserClass) {\n");
+        sb.append("            if (index == 0) {\n");
+        sb.append("                return token;\n");
+        sb.append("            }\n");
+        sb.append("            index = index - 1;\n");
+        sb.append("        }\n");
+        sb.append("        List<Token> descendants = findDescendants(token, parserClass);\n");
+        sb.append("        if (index >= descendants.size()) {\n");
+        sb.append("            return null;\n");
+        sb.append("        }\n");
+        sb.append("        return descendants.get(index);\n");
         sb.append("    }\n\n");
 
         sb.append("    static String firstTokenText(Token token) {\n");
