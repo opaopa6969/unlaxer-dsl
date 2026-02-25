@@ -118,7 +118,8 @@ public class MapperGenerator implements CodeGenerator {
             sb.append("        }\n");
             sb.append("        return to").append(rootMappingClass).append("(mappingRoot);\n");
         } else {
-            sb.append("        ").append(astClass).append(" mapped = mapNode(rootToken);\n");
+            sb.append("        Token bestMappedToken = findBestMappedToken(rootToken);\n");
+            sb.append("        ").append(astClass).append(" mapped = mapToken(bestMappedToken);\n");
             sb.append("        if (mapped == null) {\n");
             sb.append("            throw new IllegalArgumentException(\"No mapped node found in parse tree\");\n");
             sb.append("        }\n");
@@ -126,7 +127,7 @@ public class MapperGenerator implements CodeGenerator {
         }
         sb.append("    }\n\n");
 
-        sb.append("    private static ").append(astClass).append(" mapNode(Token token) {\n");
+        sb.append("    private static ").append(astClass).append(" mapToken(Token token) {\n");
         sb.append("        if (token == null) {\n");
         sb.append("            return null;\n");
         sb.append("        }\n");
@@ -138,13 +139,54 @@ public class MapperGenerator implements CodeGenerator {
             sb.append("            return to").append(className).append("(token);\n");
             sb.append("        }\n");
         }
-        sb.append("        for (Token child : token.filteredChildren) {\n");
-        sb.append("            ").append(astClass).append(" mapped = mapNode(child);\n");
-        sb.append("            if (mapped != null) {\n");
-        sb.append("                return mapped;\n");
-        sb.append("            }\n");
-        sb.append("        }\n");
         sb.append("        return null;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private static Token findBestMappedToken(Token token) {\n");
+        sb.append("        MappingCandidate best = findBestMappedToken(token, 0, null);\n");
+        sb.append("        return best == null ? null : best.token;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private static MappingCandidate findBestMappedToken(Token token, int depth, MappingCandidate best) {\n");
+        sb.append("        if (token == null) {\n");
+        sb.append("            return best;\n");
+        sb.append("        }\n");
+        sb.append("        ").append(astClass).append(" mapped = mapToken(token);\n");
+        sb.append("        if (mapped != null) {\n");
+        sb.append("            MappingCandidate candidate = new MappingCandidate(token, depth, tokenStartOffsetCompat(token));\n");
+        sb.append("            best = betterCandidate(best, candidate);\n");
+        sb.append("        }\n");
+        sb.append("        for (Token child : token.filteredChildren) {\n");
+        sb.append("            best = findBestMappedToken(child, depth + 1, best);\n");
+        sb.append("        }\n");
+        sb.append("        return best;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private static MappingCandidate betterCandidate(MappingCandidate current, MappingCandidate candidate) {\n");
+        sb.append("        if (candidate == null) {\n");
+        sb.append("            return current;\n");
+        sb.append("        }\n");
+        sb.append("        if (current == null) {\n");
+        sb.append("            return candidate;\n");
+        sb.append("        }\n");
+        sb.append("        if (candidate.depth < current.depth) {\n");
+        sb.append("            return candidate;\n");
+        sb.append("        }\n");
+        sb.append("        if (candidate.depth > current.depth) {\n");
+        sb.append("            return current;\n");
+        sb.append("        }\n");
+        sb.append("        return candidate.startOffset >= current.startOffset ? candidate : current;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private static final class MappingCandidate {\n");
+        sb.append("        private final Token token;\n");
+        sb.append("        private final int depth;\n");
+        sb.append("        private final int startOffset;\n\n");
+        sb.append("        private MappingCandidate(Token token, int depth, int startOffset) {\n");
+        sb.append("            this.token = token;\n");
+        sb.append("            this.depth = depth;\n");
+        sb.append("            this.startOffset = startOffset;\n");
+        sb.append("        }\n");
         sb.append("    }\n\n");
 
         sb.append("    // =========================================================================\n");
