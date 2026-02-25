@@ -16,10 +16,12 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.StringSettingValue;
 import org.unlaxer.dsl.bootstrap.UBNFAST.TerminalElement;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -92,19 +94,34 @@ public class ASTGenerator implements CodeGenerator {
      * ルール内の指定フィールド名に対応する Java 型を推論する。
      */
     String inferType(GrammarDecl grammar, RuleDecl rule, String fieldName) {
-        Optional<CaptureResult> result = findCapturedElement(rule.body(), fieldName);
-        if (result.isEmpty()) {
+        List<CaptureResult> captures = findCapturedElements(rule.body(), fieldName);
+        if (captures.isEmpty()) {
             return "Object";
         }
-        CaptureResult capture = result.get();
-        String innerType = inferTypeFromElement(grammar, capture.element());
-        if (capture.inOptional()) {
-            return "Optional<" + innerType + ">";
-        }
-        if (capture.inRepeat()) {
+        String innerType = mergeCapturedTypes(grammar, captures);
+        boolean inOptional = captures.stream().anyMatch(CaptureResult::inOptional);
+        boolean inRepeat = captures.stream().anyMatch(CaptureResult::inRepeat);
+        if (inRepeat) {
             return "List<" + innerType + ">";
         }
+        if (inOptional) {
+            return "Optional<" + innerType + ">";
+        }
         return innerType;
+    }
+
+    private String mergeCapturedTypes(GrammarDecl grammar, List<CaptureResult> captures) {
+        Set<String> types = new LinkedHashSet<>();
+        for (CaptureResult capture : captures) {
+            types.add(inferTypeFromElement(grammar, capture.element()));
+        }
+        if (types.isEmpty()) {
+            return "Object";
+        }
+        if (types.size() == 1) {
+            return types.iterator().next();
+        }
+        return "Object";
     }
 
     private String inferTypeFromElement(GrammarDecl grammar, AtomicElement element) {
@@ -164,46 +181,43 @@ public class ASTGenerator implements CodeGenerator {
      * ルール本体からキャプチャ名を持つ要素を再帰的に探す。
      * Optional / Repeat の中に入る場合は inOptional / inRepeat フラグを立てる。
      */
-    private Optional<CaptureResult> findCapturedElement(RuleBody body, String captureName) {
-        return findCapturedElementInBody(body, captureName, false, false);
+    private List<CaptureResult> findCapturedElements(RuleBody body, String captureName) {
+        return findCapturedElementsInBody(body, captureName, false, false);
     }
 
-    private Optional<CaptureResult> findCapturedElementInBody(
+    private List<CaptureResult> findCapturedElementsInBody(
             RuleBody body, String captureName, boolean inOptional, boolean inRepeat) {
         return switch (body) {
             case ChoiceBody choice -> choice.alternatives().stream()
-                .flatMap(seq -> findCapturedElementInSequence(seq, captureName, inOptional, inRepeat).stream())
-                .findFirst();
-            case SequenceBody seq -> findCapturedElementInSequence(seq, captureName, inOptional, inRepeat);
+                .flatMap(seq -> findCapturedElementsInSequence(seq, captureName, inOptional, inRepeat).stream())
+                .toList();
+            case SequenceBody seq -> findCapturedElementsInSequence(seq, captureName, inOptional, inRepeat);
         };
     }
 
-    private Optional<CaptureResult> findCapturedElementInSequence(
+    private List<CaptureResult> findCapturedElementsInSequence(
             SequenceBody seq, String captureName, boolean inOptional, boolean inRepeat) {
+        List<CaptureResult> captures = new ArrayList<>();
         for (AnnotatedElement ae : seq.elements()) {
             if (ae.captureName().isPresent() && ae.captureName().get().equals(captureName)) {
-                return Optional.of(new CaptureResult(ae.element(), inOptional, inRepeat));
+                captures.add(new CaptureResult(ae.element(), inOptional, inRepeat));
             }
             // 入れ子要素（Optional / Repeat / Group）の中も探す
-            Optional<CaptureResult> nested = findCapturedElementInAtomic(
-                ae.element(), captureName, inOptional, inRepeat);
-            if (nested.isPresent()) {
-                return nested;
-            }
+            captures.addAll(findCapturedElementsInAtomic(ae.element(), captureName, inOptional, inRepeat));
         }
-        return Optional.empty();
+        return captures;
     }
 
-    private Optional<CaptureResult> findCapturedElementInAtomic(
+    private List<CaptureResult> findCapturedElementsInAtomic(
             AtomicElement element, String captureName, boolean inOptional, boolean inRepeat) {
         return switch (element) {
             case OptionalElement opt ->
-                findCapturedElementInBody(opt.body(), captureName, true, inRepeat);
+                findCapturedElementsInBody(opt.body(), captureName, true, inRepeat);
             case RepeatElement rep ->
-                findCapturedElementInBody(rep.body(), captureName, inOptional, true);
+                findCapturedElementsInBody(rep.body(), captureName, inOptional, true);
             case GroupElement g ->
-                findCapturedElementInBody(g.body(), captureName, inOptional, inRepeat);
-            default -> Optional.empty();
+                findCapturedElementsInBody(g.body(), captureName, inOptional, inRepeat);
+            default -> List.of();
         };
     }
 

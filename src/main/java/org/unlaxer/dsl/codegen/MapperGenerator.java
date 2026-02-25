@@ -20,6 +20,7 @@ import org.unlaxer.dsl.bootstrap.UBNFAST.TerminalElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.TokenDecl;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -304,14 +305,13 @@ public class MapperGenerator implements CodeGenerator {
                             if (!isTypeCompatible(listElementType.get(), candidateType) && !"String".equals(listElementType.get())) {
                                 continue;
                             }
-                            String mapExpression = "String".equals(listElementType.get())
-                                ? "stripQuotes(firstTokenText(" + tokenVarName + "))"
-                                : mapExpressionForElement(
-                                    normalized,
-                                    tokenVarName,
-                                    mappedClassByRuleName,
-                                    tokenDeclByName,
-                                    ruleByName);
+                            String mapExpression = mapExpressionForTargetType(
+                                listElementType.get(),
+                                normalized,
+                                tokenVarName,
+                                mappedClassByRuleName,
+                                tokenDeclByName,
+                                ruleByName);
                             sb.append("        for (Token ").append(tokenVarName)
                                 .append(" : findDescendants(token, ").append(parserClass).append(")) {\n");
                             sb.append("            ").append(param).append(".add(").append(mapExpression).append(");\n");
@@ -335,14 +335,13 @@ public class MapperGenerator implements CodeGenerator {
                             if (!isTypeCompatible(optionalElementType.get(), candidateType) && !"String".equals(optionalElementType.get())) {
                                 continue;
                             }
-                            String mapExpression = "String".equals(optionalElementType.get())
-                                ? "stripQuotes(firstTokenText(" + tokenVarName + "))"
-                                : mapExpressionForElement(
-                                    normalized,
-                                    tokenVarName,
-                                    mappedClassByRuleName,
-                                    tokenDeclByName,
-                                    ruleByName);
+                            String mapExpression = mapExpressionForTargetType(
+                                optionalElementType.get(),
+                                normalized,
+                                tokenVarName,
+                                mappedClassByRuleName,
+                                tokenDeclByName,
+                                ruleByName);
                             sb.append("        if (!found_").append(safeName(param)).append(") {\n");
                             sb.append("            Token ").append(tokenVarName)
                                 .append(" = findFirstDescendant(token, ").append(parserClass).append(");\n");
@@ -368,14 +367,13 @@ public class MapperGenerator implements CodeGenerator {
                         if (!isTypeCompatible(type, candidateType) && !"String".equals(type)) {
                             continue;
                         }
-                        String mapExpression = "String".equals(type)
-                            ? "stripQuotes(firstTokenText(" + tokenVarName + "))"
-                            : mapExpressionForElement(
-                                normalized,
-                                tokenVarName,
-                                mappedClassByRuleName,
-                                tokenDeclByName,
-                                ruleByName);
+                        String mapExpression = mapExpressionForTargetType(
+                            type,
+                            normalized,
+                            tokenVarName,
+                            mappedClassByRuleName,
+                            tokenDeclByName,
+                            ruleByName);
                         sb.append("        if (!assigned_").append(safeName(param)).append(") {\n");
                         sb.append("            Token ").append(tokenVarName)
                             .append(" = findFirstDescendant(token, ").append(parserClass).append(");\n");
@@ -575,6 +573,52 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("        }\n");
         sb.append("        return quoted;\n");
         sb.append("    }\n");
+        sb.append("\n");
+        sb.append("    static String identifierLikeText(Token token) {\n");
+        sb.append("        if (token == null) {\n");
+        sb.append("            return null;\n");
+        sb.append("        }\n");
+        sb.append("        String raw = tokenTextCompat(token);\n");
+        sb.append("        String fromRaw = extractIdentifierLike(raw);\n");
+        sb.append("        if (fromRaw != null) {\n");
+        sb.append("            return fromRaw;\n");
+        sb.append("        }\n");
+        sb.append("        for (Token child : token.filteredChildren) {\n");
+        sb.append("            String fromChild = identifierLikeText(child);\n");
+        sb.append("            if (fromChild != null) {\n");
+        sb.append("                return fromChild;\n");
+        sb.append("            }\n");
+        sb.append("        }\n");
+        sb.append("        return extractIdentifierLike(firstTokenText(token));\n");
+        sb.append("    }\n");
+        sb.append("\n");
+        sb.append("    static String extractIdentifierLike(String raw) {\n");
+        sb.append("        if (raw == null) {\n");
+        sb.append("            return null;\n");
+        sb.append("        }\n");
+        sb.append("        String text = raw.strip();\n");
+        sb.append("        int start = -1;\n");
+        sb.append("        int end = -1;\n");
+        sb.append("        for (int i = 0; i < text.length(); i++) {\n");
+        sb.append("            char c = text.charAt(i);\n");
+        sb.append("            if (start < 0) {\n");
+        sb.append("                if (Character.isLetter(c) || c == '_') {\n");
+        sb.append("                    start = i;\n");
+        sb.append("                    end = i + 1;\n");
+        sb.append("                }\n");
+        sb.append("                continue;\n");
+        sb.append("            }\n");
+        sb.append("            if (Character.isLetterOrDigit(c) || c == '_') {\n");
+        sb.append("                end = i + 1;\n");
+        sb.append("                continue;\n");
+        sb.append("            }\n");
+        sb.append("            break;\n");
+        sb.append("        }\n");
+        sb.append("        if (start < 0 || end <= start) {\n");
+        sb.append("            return null;\n");
+        sb.append("        }\n");
+        sb.append("        return text.substring(start, end);\n");
+        sb.append("    }\n");
 
         sb.append("}\n");
 
@@ -715,7 +759,14 @@ public class MapperGenerator implements CodeGenerator {
             if (mappedClassByRuleName.containsKey(name)) {
                 return "to" + mappedClassByRuleName.get(name) + "(" + tokenVar + ")";
             }
-            if (tokenDeclByName.containsKey(name) || ruleByName.containsKey(name)) {
+            if (tokenDeclByName.containsKey(name)) {
+                TokenDecl tokenDecl = tokenDeclByName.get(name);
+                if (isIdentifierToken(tokenDecl)) {
+                    return "identifierLikeText(" + tokenVar + ")";
+                }
+                return "stripQuotes(firstTokenText(" + tokenVar + "))";
+            }
+            if (ruleByName.containsKey(name)) {
                 return "stripQuotes(firstTokenText(" + tokenVar + "))";
             }
         }
@@ -723,6 +774,29 @@ public class MapperGenerator implements CodeGenerator {
             return "stripQuotes(firstTokenText(" + tokenVar + "))";
         }
         return "stripQuotes(firstTokenText(" + tokenVar + "))";
+    }
+
+    private String mapExpressionForTargetType(String targetType, AtomicElement element, String tokenVar,
+        Map<String, String> mappedClassByRuleName,
+        Map<String, TokenDecl> tokenDeclByName,
+        Map<String, RuleDecl> ruleByName) {
+        if (!"String".equals(targetType)) {
+            return mapExpressionForElement(element, tokenVar, mappedClassByRuleName, tokenDeclByName, ruleByName);
+        }
+        if (element instanceof RuleRefElement ruleRefElement) {
+            TokenDecl tokenDecl = tokenDeclByName.get(ruleRefElement.name());
+            if (isIdentifierToken(tokenDecl)) {
+                return "identifierLikeText(" + tokenVar + ")";
+            }
+        }
+        return "stripQuotes(firstTokenText(" + tokenVar + "))";
+    }
+
+    private boolean isIdentifierToken(TokenDecl tokenDecl) {
+        if (tokenDecl == null || tokenDecl.parserClass() == null) {
+            return false;
+        }
+        return tokenDecl.parserClass().contains("IdentifierParser");
     }
 
     private Optional<String> unwrapListType(String type) {
@@ -801,19 +875,34 @@ public class MapperGenerator implements CodeGenerator {
 
     // inferType logic is borrowed from ASTGenerator to keep generated constructor argument types compile-safe.
     private String inferType(GrammarDecl grammar, RuleDecl rule, String fieldName) {
-        Optional<CaptureResult> result = findCapturedType(rule.body(), fieldName);
-        if (result.isEmpty()) {
+        List<CaptureResult> captures = findCapturedTypes(rule.body(), fieldName);
+        if (captures.isEmpty()) {
             return "Object";
         }
-        CaptureResult capture = result.get();
-        String innerType = inferTypeFromElement(grammar, capture.element());
-        if (capture.inOptional()) {
-            return "Optional<" + innerType + ">";
-        }
-        if (capture.inRepeat()) {
+        String innerType = mergeCapturedTypes(grammar, captures);
+        boolean inOptional = captures.stream().anyMatch(CaptureResult::inOptional);
+        boolean inRepeat = captures.stream().anyMatch(CaptureResult::inRepeat);
+        if (inRepeat) {
             return "List<" + innerType + ">";
         }
+        if (inOptional) {
+            return "Optional<" + innerType + ">";
+        }
         return innerType;
+    }
+
+    private String mergeCapturedTypes(GrammarDecl grammar, List<CaptureResult> captures) {
+        Set<String> types = new LinkedHashSet<>();
+        for (CaptureResult capture : captures) {
+            types.add(inferTypeFromElement(grammar, capture.element()));
+        }
+        if (types.isEmpty()) {
+            return "Object";
+        }
+        if (types.size() == 1) {
+            return types.iterator().next();
+        }
+        return "Object";
     }
 
     private String inferTypeFromElement(GrammarDecl grammar, AtomicElement element) {
@@ -856,47 +945,45 @@ public class MapperGenerator implements CodeGenerator {
         return inferTypeFromElement(grammar, single.element());
     }
 
-    private Optional<CaptureResult> findCapturedType(RuleBody body, String captureName) {
-        return findCapturedTypeInBody(body, captureName, false, false);
+    private List<CaptureResult> findCapturedTypes(RuleBody body, String captureName) {
+        return findCapturedTypesInBody(body, captureName, false, false);
     }
 
-    private Optional<CaptureResult> findCapturedTypeInBody(
+    private List<CaptureResult> findCapturedTypesInBody(
         RuleBody body, String captureName, boolean inOptional, boolean inRepeat) {
 
         return switch (body) {
             case ChoiceBody choiceBody -> choiceBody.alternatives().stream()
-                .flatMap(sequenceBody -> findCapturedTypeInSequence(sequenceBody, captureName, inOptional, inRepeat).stream())
-                .findFirst();
-            case SequenceBody sequenceBody -> findCapturedTypeInSequence(sequenceBody, captureName, inOptional, inRepeat);
+                .flatMap(sequenceBody -> findCapturedTypesInSequence(sequenceBody, captureName, inOptional, inRepeat).stream())
+                .toList();
+            case SequenceBody sequenceBody -> findCapturedTypesInSequence(sequenceBody, captureName, inOptional, inRepeat);
         };
     }
 
-    private Optional<CaptureResult> findCapturedTypeInSequence(
+    private List<CaptureResult> findCapturedTypesInSequence(
         SequenceBody sequenceBody, String captureName, boolean inOptional, boolean inRepeat) {
 
+        List<CaptureResult> captures = new ArrayList<>();
         for (AnnotatedElement element : sequenceBody.elements()) {
             if (element.captureName().isPresent() && element.captureName().get().equals(captureName)) {
-                return Optional.of(new CaptureResult(element.element(), inOptional, inRepeat));
+                captures.add(new CaptureResult(element.element(), inOptional, inRepeat));
             }
-            Optional<CaptureResult> nested = findCapturedTypeInAtomic(element.element(), captureName, inOptional, inRepeat);
-            if (nested.isPresent()) {
-                return nested;
-            }
+            captures.addAll(findCapturedTypesInAtomic(element.element(), captureName, inOptional, inRepeat));
         }
-        return Optional.empty();
+        return captures;
     }
 
-    private Optional<CaptureResult> findCapturedTypeInAtomic(
+    private List<CaptureResult> findCapturedTypesInAtomic(
         AtomicElement element, String captureName, boolean inOptional, boolean inRepeat) {
 
         return switch (element) {
             case OptionalElement optionalElement ->
-                findCapturedTypeInBody(optionalElement.body(), captureName, true, inRepeat);
+                findCapturedTypesInBody(optionalElement.body(), captureName, true, inRepeat);
             case RepeatElement repeatElement ->
-                findCapturedTypeInBody(repeatElement.body(), captureName, inOptional, true);
+                findCapturedTypesInBody(repeatElement.body(), captureName, inOptional, true);
             case GroupElement groupElement ->
-                findCapturedTypeInBody(groupElement.body(), captureName, inOptional, inRepeat);
-            default -> Optional.empty();
+                findCapturedTypesInBody(groupElement.body(), captureName, inOptional, inRepeat);
+            default -> List.of();
         };
     }
 
