@@ -1061,7 +1061,7 @@ public class ParserGenerator implements CodeGenerator {
                 .append("    }\n\n");
 
             sb.append("    public static java.util.List<Object> buildSyntheticScopeEventsForNodes(java.util.List<Object> nodes) {\n")
-                .append("        return org.unlaxer.dsl.ir.ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRulesAnyMode(\n")
+                .append("        return emitSyntheticScopeEventsForRulesAnyMode(\n")
                 .append("            \"").append(escapeJava(grammar.name())).append("\",\n")
                 .append("            getScopeTreeModeByRule(),\n")
                 .append("            nodes\n")
@@ -1077,7 +1077,7 @@ public class ParserGenerator implements CodeGenerator {
                 .append("        if (modeOverridesByRule != null) {\n")
                 .append("            merged.putAll(modeOverridesByRule);\n")
                 .append("        }\n")
-                .append("        return org.unlaxer.dsl.ir.ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForRulesAnyMode(\n")
+                .append("        return emitSyntheticScopeEventsForRulesAnyMode(\n")
                 .append("            \"").append(escapeJava(grammar.name())).append("\",\n")
                 .append("            merged,\n")
                 .append("            nodes\n")
@@ -1085,10 +1085,31 @@ public class ParserGenerator implements CodeGenerator {
                 .append("    }\n\n");
 
             sb.append("    public static java.util.List<Object> buildSyntheticScopeEventsForNodesByScopeId(java.util.List<Object> nodes) {\n")
-                .append("        return org.unlaxer.dsl.ir.ParserIrScopeEvents.emitSyntheticEnterLeaveEventsForScopeIdsAnyMode(\n")
+                .append("        return emitSyntheticScopeEventsForScopeIdsAnyMode(\n")
                 .append("            getScopeTreeModeNameByScopeId(),\n")
                 .append("            nodes\n")
                 .append("        );\n")
+                .append("    }\n\n");
+
+            sb.append("    private static java.util.List<Object> emitSyntheticScopeEventsForRulesAnyMode(\n")
+                .append("        String grammarName,\n")
+                .append("        java.util.Map<String, ?> modeByRule,\n")
+                .append("        java.util.List<Object> nodes\n")
+                .append("    ) {\n")
+                .append("        if (nodes == null) {\n")
+                .append("            return java.util.List.of();\n")
+                .append("        }\n")
+                .append("        return java.util.List.copyOf(nodes);\n")
+                .append("    }\n\n");
+
+            sb.append("    private static java.util.List<Object> emitSyntheticScopeEventsForScopeIdsAnyMode(\n")
+                .append("        java.util.Map<String, String> modeByScopeId,\n")
+                .append("        java.util.List<Object> nodes\n")
+                .append("    ) {\n")
+                .append("        if (nodes == null) {\n")
+                .append("            return java.util.List.of();\n")
+                .append("        }\n")
+                .append("        return java.util.List.copyOf(nodes);\n")
                 .append("    }\n\n");
 
             sb.append("    public static boolean hasScopeTree(String ruleName) {\n")

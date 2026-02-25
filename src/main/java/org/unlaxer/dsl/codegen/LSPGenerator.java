@@ -116,7 +116,7 @@ public class LSPGenerator implements CodeGenerator {
         // parseDocument()
         sb.append("    public ParseResult parseDocument(String uri, String content) {\n");
         sb.append("        Parser parser = ").append(parsersClass).append(".getRootParser();\n");
-        sb.append("        ParseContext context = new ParseContext(StringSource.createRootSource(content));\n");
+        sb.append("        ParseContext context = new ParseContext(createRootSourceCompat(content));\n");
         sb.append("        Parsed result = parser.parse(context);\n");
         sb.append("        int consumedLength = 0;\n");
         sb.append("        if (result.isSucceeded()) {\n");
@@ -130,6 +130,32 @@ public class LSPGenerator implements CodeGenerator {
         sb.append("            publishDiagnostics(uri, content, parseResult);\n");
         sb.append("        }\n");
         sb.append("        return parseResult;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private static StringSource createRootSourceCompat(String source) {\n");
+        sb.append("        try {\n");
+        sb.append("            java.lang.reflect.Method m = StringSource.class.getMethod(\"createRootSource\", String.class);\n");
+        sb.append("            Object v = m.invoke(null, source);\n");
+        sb.append("            if (v instanceof StringSource s) {\n");
+        sb.append("                return s;\n");
+        sb.append("            }\n");
+        sb.append("        } catch (Throwable ignored) {}\n");
+        sb.append("        try {\n");
+        sb.append("            for (java.lang.reflect.Constructor<?> c : StringSource.class.getDeclaredConstructors()) {\n");
+        sb.append("                Class<?>[] types = c.getParameterTypes();\n");
+        sb.append("                if (types.length == 0 || types[0] != String.class) {\n");
+        sb.append("                    continue;\n");
+        sb.append("                }\n");
+        sb.append("                Object[] args = new Object[types.length];\n");
+        sb.append("                args[0] = source;\n");
+        sb.append("                c.setAccessible(true);\n");
+        sb.append("                Object v = c.newInstance(args);\n");
+        sb.append("                if (v instanceof StringSource s) {\n");
+        sb.append("                    return s;\n");
+        sb.append("                }\n");
+        sb.append("            }\n");
+        sb.append("        } catch (Throwable ignored) {}\n");
+        sb.append("        throw new IllegalStateException(\"No compatible StringSource initializer found\");\n");
         sb.append("    }\n\n");
 
         // publishDiagnostics()

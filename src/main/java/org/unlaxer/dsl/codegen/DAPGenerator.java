@@ -286,7 +286,7 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("            return false;\n");
         sb.append("        }\n");
         sb.append("        Parser parser = ").append(parsersClass).append(".getRootParser();\n");
-        sb.append("        ParseContext context = new ParseContext(StringSource.createRootSource(sourceContent));\n");
+        sb.append("        ParseContext context = new ParseContext(createRootSourceCompat(sourceContent));\n");
         sb.append("        Parsed result = parser.parse(context);\n");
         sb.append("        context.close();\n");
         sb.append("        boolean fullParse = result.isSucceeded() &&\n");
@@ -305,6 +305,32 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("        }\n");
         sb.append("        stepIndex = 0;\n");
         sb.append("        return true;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private static StringSource createRootSourceCompat(String source) {\n");
+        sb.append("        try {\n");
+        sb.append("            java.lang.reflect.Method m = StringSource.class.getMethod(\"createRootSource\", String.class);\n");
+        sb.append("            Object v = m.invoke(null, source);\n");
+        sb.append("            if (v instanceof StringSource s) {\n");
+        sb.append("                return s;\n");
+        sb.append("            }\n");
+        sb.append("        } catch (Throwable ignored) {}\n");
+        sb.append("        try {\n");
+        sb.append("            for (java.lang.reflect.Constructor<?> c : StringSource.class.getDeclaredConstructors()) {\n");
+        sb.append("                Class<?>[] types = c.getParameterTypes();\n");
+        sb.append("                if (types.length == 0 || types[0] != String.class) {\n");
+        sb.append("                    continue;\n");
+        sb.append("                }\n");
+        sb.append("                Object[] args = new Object[types.length];\n");
+        sb.append("                args[0] = source;\n");
+        sb.append("                c.setAccessible(true);\n");
+        sb.append("                Object v = c.newInstance(args);\n");
+        sb.append("                if (v instanceof StringSource s) {\n");
+        sb.append("                    return s;\n");
+        sb.append("                }\n");
+        sb.append("            }\n");
+        sb.append("        } catch (Throwable ignored) {}\n");
+        sb.append("        throw new IllegalStateException(\"No compatible StringSource initializer found\");\n");
         sb.append("    }\n\n");
 
         // collectStepPoints() - dispatch by runtime mode
