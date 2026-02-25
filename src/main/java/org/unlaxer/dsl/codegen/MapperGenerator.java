@@ -96,7 +96,7 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("        if (!parsed.isSucceeded()) {\n");
         sb.append("            throw new IllegalArgumentException(\"Parse failed: \" + source);\n");
         sb.append("        }\n");
-        sb.append("        int consumed = parsed.getConsumed().source.sourceAsString().length();\n");
+        sb.append("        int consumed = consumedLengthCompat(parsed.getConsumed());\n");
         sb.append("        if (consumed != source.length()) {\n");
         sb.append("            throw new IllegalArgumentException(\"Parse failed at offset \" + consumed + \": \" + source);\n");
         sb.append("        }\n");
@@ -316,6 +316,11 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("            }\n");
         sb.append("        } catch (Throwable ignored) {}\n");
         sb.append("        return null;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    static int consumedLengthCompat(Token token) {\n");
+        sb.append("        String text = tokenTextCompat(token);\n");
+        sb.append("        return text == null ? 0 : text.length();\n");
         sb.append("    }\n\n");
 
         sb.append("    static StringSource createRootSourceCompat(String source) {\n");
