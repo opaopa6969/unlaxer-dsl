@@ -780,6 +780,10 @@ public class MapperGenerator implements CodeGenerator {
                     yield Optional.of(parsersClass + "." + ruleRefElement.name() + "Parser.class");
                 }
                 if (tokenDeclByName.containsKey(ruleRefElement.name())) {
+                    TokenDecl tokenDecl = tokenDeclByName.get(ruleRefElement.name());
+                    if (isIdentifierToken(tokenDecl)) {
+                        yield Optional.of("org.unlaxer.parser.clang.IdentifierParser.class");
+                    }
                     yield Optional.empty();
                 }
                 yield Optional.empty();
