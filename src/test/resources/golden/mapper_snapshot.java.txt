@@ -22,17 +22,49 @@ public class SnapshotMapper {
     // =========================================================================
 
     public static SnapshotAST.ExprNode parse(String source) {
-        // TODO: implement after SnapshotParsers is generated
-        // StringSource stringSource = StringSource.createRootSource(source);
-        // try (ParseContext context = new ParseContext(stringSource)) {
-        //     Parser rootParser = SnapshotParsers.getRootParser();
-        //     Parsed parsed = rootParser.parse(context);
-        //     if (!parsed.isSucceeded()) {
-        //         throw new IllegalArgumentException("Parse failed: " + source);
-        //     }
-        //     return toExprNode(parsed.getRootToken());
-        // }
-        throw new UnsupportedOperationException("SnapshotParsers: not implemented");
+        Parser rootParser = SnapshotParsers.getRootParser();
+        ParseContext context = new ParseContext(StringSource.createRootSource(source));
+        Parsed parsed;
+        try {
+            parsed = rootParser.parse(context);
+        } finally {
+            context.close();
+        }
+        if (!parsed.isSucceeded()) {
+            throw new IllegalArgumentException("Parse failed: " + source);
+        }
+        int consumed = parsed.getConsumed().source.sourceAsString().length();
+        if (consumed != source.length()) {
+            throw new IllegalArgumentException("Parse failed at offset " + consumed + ": " + source);
+        }
+        Token rootToken = parsed.getRootToken(true);
+        Token mappingRoot = rootToken;
+        if (mappingRoot.parser.getClass() != SnapshotParsers.ExprParser.class) {
+            mappingRoot = findFirstDescendant(mappingRoot, SnapshotParsers.ExprParser.class);
+        }
+        if (mappingRoot == null) {
+            throw new IllegalArgumentException("Root mapping token not found for Expr");
+        }
+        return toExprNode(mappingRoot);
+    }
+
+    private static SnapshotAST mapNode(Token token) {
+        if (token == null) {
+            return null;
+        }
+        if (token.parser.getClass() == SnapshotParsers.ExprParser.class) {
+            return toExprNode(token);
+        }
+        if (token.parser.getClass() == SnapshotParsers.TermParser.class) {
+            return toTermNode(token);
+        }
+        for (Token child : token.filteredChildren) {
+            SnapshotAST mapped = mapNode(child);
+            if (mapped != null) {
+                return mapped;
+            }
+        }
+        return null;
     }
 
     // =========================================================================
@@ -40,53 +72,59 @@ public class SnapshotMapper {
     // =========================================================================
 
     static SnapshotAST.ExprNode toExprNode(Token token) {
-        // TODO: extract left seed node from token
-        // TODO: extract repeated operators and right operands from token
-        SnapshotAST.ExprNode left = null;
-        List<String> ops = List.of();
-        List<SnapshotAST.ExprNode> rights = List.of();
-        return foldLeftAssocExprNode(left, ops, rights);
+        Token working = token;
+        if (working.parser.getClass() != SnapshotParsers.ExprParser.class) {
+            working = findFirstDescendant(working, SnapshotParsers.ExprParser.class);
+        }
+        if (working == null) {
+            throw new IllegalArgumentException("Mapping token not found for rule Expr");
+        }
+        Token leftToken = findFirstDescendant(working, SnapshotParsers.TermParser.class);
+        if (leftToken == null) {
+            throw new IllegalArgumentException("Left operand not found for rule Expr");
+        }
+        SnapshotAST.TermNode left = toTermNode(leftToken);
+        List<String> op = new ArrayList<>();
+        List<SnapshotAST.TermNode> right = new ArrayList<>();
+        for (Token repeatToken : findDescendants(working, SnapshotParsers.ExprRepeat0Parser.class)) {
+            String opValue = firstTokenText(repeatToken);
+            if (opValue != null && !opValue.isEmpty()) {
+                op.add(stripQuotes(opValue));
+            }
+            Token rightToken = findFirstDescendant(repeatToken, SnapshotParsers.TermParser.class);
+            if (rightToken != null) {
+                right.add(toTermNode(rightToken));
+            }
+        }
+        return new SnapshotAST.ExprNode(left, op, right);
     }
 
     static SnapshotAST.TermNode toTermNode(Token token) {
-        // TODO: extract left seed node from token
-        // TODO: extract repeated operators and right operands from token
-        SnapshotAST.TermNode left = null;
-        List<String> ops = List.of();
-        List<SnapshotAST.TermNode> rights = List.of();
-        return foldLeftAssocTermNode(left, ops, rights);
-    }
-
-    static SnapshotAST.ExprNode foldLeftAssocExprNode(
-        SnapshotAST.ExprNode left,
-        List<String> ops,
-        List<SnapshotAST.ExprNode> rights
-    ) {
-        if (left == null) return null;
-        if (ops.size() != rights.size()) {
-            throw new IllegalArgumentException("ops/rights length mismatch");
+        Token working = token;
+        if (working.parser.getClass() != SnapshotParsers.TermParser.class) {
+            working = findFirstDescendant(working, SnapshotParsers.TermParser.class);
         }
-        SnapshotAST.ExprNode current = left;
-        for (int i = 0; i < ops.size(); i++) {
-            current = new SnapshotAST.ExprNode(current, ops.get(i), rights.get(i));
+        if (working == null) {
+            throw new IllegalArgumentException("Mapping token not found for rule Term");
         }
-        return current;
-    }
-
-    static SnapshotAST.TermNode foldLeftAssocTermNode(
-        SnapshotAST.TermNode left,
-        List<String> ops,
-        List<SnapshotAST.TermNode> rights
-    ) {
-        if (left == null) return null;
-        if (ops.size() != rights.size()) {
-            throw new IllegalArgumentException("ops/rights length mismatch");
+        Token leftToken = findFirstDescendant(working, SnapshotParsers.FactorParser.class);
+        if (leftToken == null) {
+            throw new IllegalArgumentException("Left operand not found for rule Term");
         }
-        SnapshotAST.TermNode current = left;
-        for (int i = 0; i < ops.size(); i++) {
-            current = new SnapshotAST.TermNode(current, ops.get(i), rights.get(i));
+        String left = stripQuotes(firstTokenText(leftToken));
+        List<String> op = new ArrayList<>();
+        List<String> right = new ArrayList<>();
+        for (Token repeatToken : findDescendants(working, SnapshotParsers.TermRepeat0Parser.class)) {
+            String opValue = firstTokenText(repeatToken);
+            if (opValue != null && !opValue.isEmpty()) {
+                op.add(stripQuotes(opValue));
+            }
+            Token rightToken = findFirstDescendant(repeatToken, SnapshotParsers.FactorParser.class);
+            if (rightToken != null) {
+                right.add(stripQuotes(firstTokenText(rightToken)));
+            }
         }
-        return current;
+        return new SnapshotAST.TermNode(left, op, right);
     }
 
     // =========================================================================
@@ -95,17 +133,55 @@ public class SnapshotMapper {
 
     static List<Token> findDescendants(Token token, Class<? extends Parser> parserClass) {
         List<Token> results = new ArrayList<>();
+        if (token == null) {
+            return results;
+        }
         for (Token child : token.filteredChildren) {
             if (child.parser.getClass() == parserClass) {
                 results.add(child);
-            } else {
-                results.addAll(findDescendants(child, parserClass));
             }
+            results.addAll(findDescendants(child, parserClass));
         }
         return results;
     }
 
+    static Token findFirstDescendant(Token token, Class<? extends Parser> parserClass) {
+        if (token == null) {
+            return null;
+        }
+        if (token.parser.getClass() == parserClass) {
+            return token;
+        }
+        for (Token child : token.filteredChildren) {
+            Token found = findFirstDescendant(child, parserClass);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
+    }
+
+    static String firstTokenText(Token token) {
+        if (token == null) {
+            return null;
+        }
+        String raw = token.source == null ? null : token.source.sourceAsString();
+        if (raw != null && !raw.isBlank()) {
+            return raw.strip();
+        }
+        for (Token child : token.filteredChildren) {
+            String found = firstTokenText(child);
+            if (found != null && !found.isEmpty()) {
+                return found;
+            }
+        }
+        return raw == null ? null : raw.strip();
+    }
+
     static String stripQuotes(String quoted) {
+        if (quoted == null) {
+            return null;
+        }
         if (quoted.length() >= 2
             && '\'' == quoted.charAt(0)
             && '\'' == quoted.charAt(quoted.length() - 1)) {
