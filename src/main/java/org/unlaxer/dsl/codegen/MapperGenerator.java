@@ -76,6 +76,8 @@ public class MapperGenerator implements CodeGenerator {
         sb.append(" */\n");
         sb.append("public class ").append(mapperClass).append(" {\n\n");
         sb.append("    private ").append(mapperClass).append("() {}\n\n");
+        sb.append("    private static final java.util.IdentityHashMap<Object, int[]> NODE_SOURCE_SPANS =\n");
+        sb.append("        new java.util.IdentityHashMap<>();\n\n");
 
         String rootClassName = rootRule.flatMap(this::getMappingAnnotation)
             .map(m -> astClass + "." + m.className())
@@ -85,6 +87,7 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("    // Entry Point\n");
         sb.append("    // =========================================================================\n\n");
         sb.append("    public static ").append(rootClassName).append(" parse(String source) {\n");
+        sb.append("        NODE_SOURCE_SPANS.clear();\n");
         sb.append("        Parser rootParser = ").append(parsersClass).append(".getRootParser();\n");
         sb.append("        ParseContext context = new ParseContext(createRootSourceCompat(source));\n");
         sb.append("        Parsed parsed;\n");
@@ -199,8 +202,8 @@ public class MapperGenerator implements CodeGenerator {
                     if (leafFallbackSupported) {
                         sb.append("            String literal = stripQuotes(firstTokenText(token));\n");
                         sb.append("            literal = literal == null ? \"\" : literal;\n");
-                        sb.append("            return new ").append(astClass).append(".").append(className)
-                            .append("(null, List.of(literal), List.of());\n");
+                        sb.append("            return registerNodeSourceSpan(new ").append(astClass).append(".").append(className)
+                            .append("(null, List.of(literal), List.of()), token);\n");
                     } else {
                         sb.append("            throw new IllegalArgumentException(\"Mapping token not found for rule ").append(rule.name()).append("\");\n");
                     }
@@ -210,8 +213,8 @@ public class MapperGenerator implements CodeGenerator {
                     if (leafFallbackSupported) {
                         sb.append("            String literal = stripQuotes(firstTokenText(working));\n");
                         sb.append("            literal = literal == null ? \"\" : literal;\n");
-                        sb.append("            return new ").append(astClass).append(".").append(className)
-                            .append("(null, List.of(literal), List.of());\n");
+                        sb.append("            return registerNodeSourceSpan(new ").append(astClass).append(".").append(className)
+                            .append("(null, List.of(literal), List.of()), working);\n");
                     } else {
                         sb.append("            throw new IllegalArgumentException(\"Left operand not found for rule ").append(rule.name()).append("\");\n");
                     }
@@ -229,7 +232,7 @@ public class MapperGenerator implements CodeGenerator {
                     sb.append("                right.add(").append(rightMapper).append(");\n");
                     sb.append("            }\n");
                     sb.append("        }\n");
-                    sb.append("        return new ").append(astClass).append(".").append(className).append("(left, op, right);\n");
+                    sb.append("        return registerNodeSourceSpan(new ").append(astClass).append(".").append(className).append("(left, op, right), working);\n");
                 } else {
                     sb.append("        throw new IllegalArgumentException(\"Unsupported assoc mapping shape for rule: ")
                       .append(rule.name()).append("\");\n");
@@ -288,7 +291,8 @@ public class MapperGenerator implements CodeGenerator {
                     sb.append("            ").append(param).append(" = ").append(mapExpression).append(";\n");
                     sb.append("        }\n");
                 }
-                sb.append("        return new ").append(astClass).append(".").append(className).append("(\n");
+                sb.append("        ").append(astClass).append(".").append(className).append(" mapped = new ")
+                    .append(astClass).append(".").append(className).append("(\n");
                 for (int i = 0; i < mapping.paramNames().size(); i++) {
                     String param = mapping.paramNames().get(i);
                     String suffix = i < mapping.paramNames().size() - 1 ? "," : "";
@@ -296,6 +300,7 @@ public class MapperGenerator implements CodeGenerator {
                         .append(" // ").append(param).append("\n");
                 }
                 sb.append("        );\n");
+                sb.append("        return registerNodeSourceSpan(mapped, token);\n");
             }
 
             sb.append("    }\n\n");
@@ -387,6 +392,55 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("    static int consumedLengthCompat(Token token) {\n");
         sb.append("        String text = tokenTextCompat(token);\n");
         sb.append("        return text == null ? 0 : text.length();\n");
+        sb.append("    }\n\n");
+
+        sb.append("    static int tokenStartOffsetCompat(Token token) {\n");
+        sb.append("        if (token == null) {\n");
+        sb.append("            return 0;\n");
+        sb.append("        }\n");
+        sb.append("        try {\n");
+        sb.append("            java.lang.reflect.Field sourceField = token.getClass().getField(\"source\");\n");
+        sb.append("            Object source = sourceField.get(token);\n");
+        sb.append("            if (source == null) {\n");
+        sb.append("                return 0;\n");
+        sb.append("            }\n");
+        sb.append("            java.lang.reflect.Method offsetMethod = source.getClass().getMethod(\"offsetFromRoot\");\n");
+        sb.append("            Object offset = offsetMethod.invoke(source);\n");
+        sb.append("            if (offset == null) {\n");
+        sb.append("                return 0;\n");
+        sb.append("            }\n");
+        sb.append("            java.lang.reflect.Method valueMethod = offset.getClass().getMethod(\"value\");\n");
+        sb.append("            Object value = valueMethod.invoke(offset);\n");
+        sb.append("            if (value instanceof Integer i) {\n");
+        sb.append("                return i;\n");
+        sb.append("            }\n");
+        sb.append("            if (value instanceof Number n) {\n");
+        sb.append("                return n.intValue();\n");
+        sb.append("            }\n");
+        sb.append("        } catch (Throwable ignored) {}\n");
+        sb.append("        return 0;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    static <T> T registerNodeSourceSpan(T node, Token token) {\n");
+        sb.append("        if (node == null || token == null) {\n");
+        sb.append("            return node;\n");
+        sb.append("        }\n");
+        sb.append("        int start = Math.max(0, tokenStartOffsetCompat(token));\n");
+        sb.append("        int length = Math.max(0, consumedLengthCompat(token));\n");
+        sb.append("        int end = start + length;\n");
+        sb.append("        NODE_SOURCE_SPANS.put(node, new int[]{start, end});\n");
+        sb.append("        return node;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    public static Optional<int[]> sourceSpanOf(Object node) {\n");
+        sb.append("        if (node == null) {\n");
+        sb.append("            return Optional.empty();\n");
+        sb.append("        }\n");
+        sb.append("        int[] span = NODE_SOURCE_SPANS.get(node);\n");
+        sb.append("        if (span == null || span.length < 2) {\n");
+        sb.append("            return Optional.empty();\n");
+        sb.append("        }\n");
+        sb.append("        return Optional.of(new int[]{span[0], span[1]});\n");
         sb.append("    }\n\n");
 
         sb.append("    static StringSource createRootSourceCompat(String source) {\n");

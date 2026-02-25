@@ -62,6 +62,7 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("    private int stepIndex = 0;\n");
         sb.append("    private int astNodeCount = 0;\n");
         sb.append("    private List<String> astNodeTypes = new ArrayList<>();\n");
+        sb.append("    private List<int[]> astNodeSpans = new ArrayList<>();\n");
         sb.append("    private Set<Integer> breakpointLines = new HashSet<>();\n\n");
 
         // connect()
@@ -199,6 +200,12 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("                return CompletableFuture.completedFuture(response);\n");
         sb.append("            }\n");
         sb.append("            int charOffset = current.source.offsetFromRoot().value();\n");
+        sb.append("            if (isAstRuntimeMode()) {\n");
+        sb.append("                int[] span = currentAstSpan();\n");
+        sb.append("                if (span != null) {\n");
+        sb.append("                    charOffset = span[0];\n");
+        sb.append("                }\n");
+        sb.append("            }\n");
         sb.append("            int line = 0, col = 0;\n");
         sb.append("            for (int i = 0; i < charOffset && i < sourceContent.length(); i++) {\n");
         sb.append("                if (sourceContent.charAt(i) == '\\n') { line++; col = 0; }\n");
@@ -258,10 +265,14 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("            }\n");
         sb.append("            String text = current.source.sourceAsString().strip();\n");
         sb.append("            String parserName = current.getParser().getClass().getSimpleName();\n");
+        sb.append("            if (isAstRuntimeMode() && !astNodeTypes.isEmpty()) {\n");
+        sb.append("                parserName = currentStepLabel();\n");
+        sb.append("                text = currentAstSourceText();\n");
+        sb.append("            }\n");
         sb.append("            Variable var = new Variable();\n");
         sb.append("            var.setName(parserName);\n");
         sb.append("            var.setValue(\"\\\"\" + text.replace(\"\\\"\", \"\\\\\\\"\") + \"\\\"\");\n");
-        sb.append("            var.setType(\"Token\");\n");
+        sb.append("            var.setType(isAstRuntimeMode() ? \"ASTNode\" : \"Token\");\n");
         sb.append("            var.setVariablesReference(0);\n");
         sb.append("            Variable mode = new Variable();\n");
         sb.append("            mode.setName(\"runtimeMode\");\n");
@@ -328,10 +339,11 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("            stepPoints.add(result.getConsumed()); // fallback: root token\n");
         sb.append("        }\n");
         sb.append("        if (isAstRuntimeMode()) {\n");
-        sb.append("            astNodeTypes = collectAstNodeTypes();\n");
+        sb.append("            collectAstSteps();\n");
         sb.append("            astNodeCount = astNodeTypes.size();\n");
         sb.append("        } else {\n");
         sb.append("            astNodeTypes = List.of();\n");
+        sb.append("            astNodeSpans = List.of();\n");
         sb.append("            astNodeCount = 0;\n");
         sb.append("        }\n");
         sb.append("        stepIndex = 0;\n");
@@ -364,22 +376,26 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("        throw new IllegalStateException(\"No compatible StringSource initializer found\");\n");
         sb.append("    }\n\n");
 
-        sb.append("    private List<String> collectAstNodeTypes() {\n");
+        sb.append("    private void collectAstSteps() {\n");
         sb.append("        try {\n");
         sb.append("            Object ast = ").append(mapperClass).append(".parse(sourceContent);\n");
-        sb.append("            List<String> out = new ArrayList<>();\n");
-        sb.append("            collectAstNodeTypes(ast, out);\n");
-        sb.append("            return out;\n");
+        sb.append("            List<String> types = new ArrayList<>();\n");
+        sb.append("            List<int[]> spans = new ArrayList<>();\n");
+        sb.append("            collectAstNodeMeta(ast, types, spans);\n");
+        sb.append("            astNodeTypes = types;\n");
+        sb.append("            astNodeSpans = spans;\n");
         sb.append("        } catch (Throwable ignored) {\n");
-        sb.append("            return List.of();\n");
+        sb.append("            astNodeTypes = List.of();\n");
+        sb.append("            astNodeSpans = List.of();\n");
         sb.append("        }\n");
         sb.append("    }\n\n");
 
-        sb.append("    private void collectAstNodeTypes(Object node, List<String> out) {\n");
+        sb.append("    private void collectAstNodeMeta(Object node, List<String> types, List<int[]> spans) {\n");
         sb.append("        if (node == null) {\n");
         sb.append("            return;\n");
         sb.append("        }\n");
-        sb.append("        out.add(node.getClass().getSimpleName());\n");
+        sb.append("        types.add(node.getClass().getSimpleName());\n");
+        sb.append("        spans.add(sourceSpanOfAstNode(node));\n");
         sb.append("        java.lang.reflect.Method[] methods = node.getClass().getMethods();\n");
         sb.append("        for (java.lang.reflect.Method method : methods) {\n");
         sb.append("            if (method.getParameterCount() != 0) {\n");
@@ -397,16 +413,36 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("                if (value instanceof List<?> list) {\n");
         sb.append("                    for (Object element : list) {\n");
         sb.append("                        if (isAstNodeCandidate(element)) {\n");
-        sb.append("                            collectAstNodeTypes(element, out);\n");
+        sb.append("                            collectAstNodeMeta(element, types, spans);\n");
         sb.append("                        }\n");
         sb.append("                    }\n");
         sb.append("                    continue;\n");
         sb.append("                }\n");
         sb.append("                if (isAstNodeCandidate(value)) {\n");
-        sb.append("                    collectAstNodeTypes(value, out);\n");
+        sb.append("                    collectAstNodeMeta(value, types, spans);\n");
         sb.append("                }\n");
         sb.append("            } catch (Throwable ignored) {}\n");
         sb.append("        }\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private int[] sourceSpanOfAstNode(Object node) {\n");
+        sb.append("        try {\n");
+        sb.append("            Class<?> mapperClass = Class.forName(\"").append(packageName).append(".").append(mapperClass).append("\");\n");
+        sb.append("            java.lang.reflect.Method method = mapperClass.getMethod(\"sourceSpanOf\", Object.class);\n");
+        sb.append("            Object raw = method.invoke(null, node);\n");
+        sb.append("            if (raw instanceof java.util.Optional<?> optional && optional.isPresent()) {\n");
+        sb.append("                Object rawSpan = optional.get();\n");
+        sb.append("                if (!(rawSpan instanceof int[] value)) {\n");
+        sb.append("                    return null;\n");
+        sb.append("                }\n");
+        sb.append("                if (value != null && value.length >= 2) {\n");
+        sb.append("                    int start = Math.max(0, Math.min(value[0], sourceContent.length()));\n");
+        sb.append("                    int end = Math.max(start, Math.min(value[1], sourceContent.length()));\n");
+        sb.append("                    return new int[]{start, end};\n");
+        sb.append("                }\n");
+        sb.append("            }\n");
+        sb.append("        } catch (Throwable ignored) {}\n");
+        sb.append("        return null;\n");
         sb.append("    }\n\n");
 
         sb.append("    private boolean isAstNodeCandidate(Object value) {\n");
@@ -447,6 +483,29 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("        }\n");
         sb.append("        Token current = currentStepToken();\n");
         sb.append("        return current == null ? \"step\" : current.getParser().getClass().getSimpleName();\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private int[] currentAstSpan() {\n");
+        sb.append("        if (!isAstRuntimeMode() || astNodeSpans.isEmpty()) {\n");
+        sb.append("            return null;\n");
+        sb.append("        }\n");
+        sb.append("        int index = Math.min(stepIndex, astNodeSpans.size() - 1);\n");
+        sb.append("        int[] span = astNodeSpans.get(index);\n");
+        sb.append("        if (span == null || span.length < 2) {\n");
+        sb.append("            return null;\n");
+        sb.append("        }\n");
+        sb.append("        return span;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private String currentAstSourceText() {\n");
+        sb.append("        int[] span = currentAstSpan();\n");
+        sb.append("        if (span == null) {\n");
+        sb.append("            Token current = currentStepToken();\n");
+        sb.append("            return current == null ? \"\" : current.source.sourceAsString().strip();\n");
+        sb.append("        }\n");
+        sb.append("        int start = Math.max(0, Math.min(span[0], sourceContent.length()));\n");
+        sb.append("        int end = Math.max(start, Math.min(span[1], sourceContent.length()));\n");
+        sb.append("        return sourceContent.substring(start, end).strip();\n");
         sb.append("    }\n\n");
 
         // collectStepPoints() - dispatch by runtime mode
@@ -492,12 +551,37 @@ public class DAPGenerator implements CodeGenerator {
 
         // findBreakpointIndex() - first token after fromIndex whose line is in breakpointLines
         sb.append("    private int findBreakpointIndex(int fromIndex) {\n");
-        sb.append("        for (int i = fromIndex + 1; i < stepPoints.size(); i++) {\n");
-        sb.append("            if (breakpointLines.contains(getLineForToken(stepPoints.get(i)))) {\n");
+        sb.append("        int limit = stepLimit();\n");
+        sb.append("        for (int i = fromIndex + 1; i < limit; i++) {\n");
+        sb.append("            if (breakpointLines.contains(getLineForStep(i))) {\n");
         sb.append("                return i;\n");
         sb.append("            }\n");
         sb.append("        }\n");
         sb.append("        return -1;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private int getLineForStep(int index) {\n");
+        sb.append("        if (isAstRuntimeMode() && !astNodeSpans.isEmpty()) {\n");
+        sb.append("            int[] span = astNodeSpans.get(Math.max(0, Math.min(index, astNodeSpans.size() - 1)));\n");
+        sb.append("            if (span != null && span.length >= 2) {\n");
+        sb.append("                return getLineForOffset(span[0]);\n");
+        sb.append("            }\n");
+        sb.append("        }\n");
+        sb.append("        if (stepPoints.isEmpty()) {\n");
+        sb.append("            return 1;\n");
+        sb.append("        }\n");
+        sb.append("        Token token = stepPoints.get(Math.max(0, Math.min(index, stepPoints.size() - 1)));\n");
+        sb.append("        return getLineForToken(token);\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private int getLineForOffset(int charOffset) {\n");
+        sb.append("        int line = 1;\n");
+        sb.append("        for (int i = 0; i < charOffset && i < sourceContent.length(); i++) {\n");
+        sb.append("            if (sourceContent.charAt(i) == '\\n') {\n");
+        sb.append("                line++;\n");
+        sb.append("            }\n");
+        sb.append("        }\n");
+        sb.append("        return line;\n");
         sb.append("    }\n\n");
 
         // sendOutput()
