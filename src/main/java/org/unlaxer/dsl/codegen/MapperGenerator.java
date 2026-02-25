@@ -283,33 +283,40 @@ public class MapperGenerator implements CodeGenerator {
                 String ruleParserClass = parsersClass + "." + rule.name() + "Parser.class";
                 for (String param : mapping.paramNames()) {
                     String type = inferType(grammar, rule, param);
-                    Optional<AtomicElement> capturedElement = findCapturedElement(rule.body(), param);
-                    if (capturedElement.isEmpty()) {
+                    List<AtomicElement> capturedElements = findCapturedElements(rule.body(), param);
+                    if (capturedElements.isEmpty()) {
                         sb.append("        ").append(type).append(" ").append(param)
                             .append(" = ").append(defaultValueForType(type)).append(";\n");
                         continue;
                     }
 
-                    AtomicElement element = capturedElement.get();
-                    AtomicElement normalized = normalizeCapturedElement(element).orElse(element);
-                    String parserClass = parserClassLiteral(normalized, parsersClass, tokenDeclByName, ruleByName)
-                        .orElse(ruleParserClass);
-                    String tokenVarName = "paramToken_" + safeName(param);
-                    String mapExpression = mapExpressionForElement(
-                        normalized,
-                        tokenVarName,
-                        mappedClassByRuleName,
-                        tokenDeclByName,
-                        ruleByName);
-
                     Optional<String> listElementType = unwrapListType(type);
                     if (listElementType.isPresent()) {
                         sb.append("        List<").append(listElementType.get()).append("> ").append(param)
                             .append(" = new ArrayList<>();\n");
-                        sb.append("        for (Token ").append(tokenVarName)
-                            .append(" : findDescendants(token, ").append(parserClass).append(")) {\n");
-                        sb.append("            ").append(param).append(".add(").append(mapExpression).append(");\n");
-                        sb.append("        }\n");
+                        for (int i = 0; i < capturedElements.size(); i++) {
+                            AtomicElement element = capturedElements.get(i);
+                            AtomicElement normalized = normalizeCapturedElement(element).orElse(element);
+                            String parserClass = parserClassLiteral(normalized, parsersClass, tokenDeclByName, ruleByName)
+                                .orElse(ruleParserClass);
+                            String tokenVarName = "paramToken_" + safeName(param) + "_" + i;
+                            String candidateType = inferTypeFromElement(grammar, normalized);
+                            if (!isTypeCompatible(listElementType.get(), candidateType) && !"String".equals(listElementType.get())) {
+                                continue;
+                            }
+                            String mapExpression = "String".equals(listElementType.get())
+                                ? "stripQuotes(firstTokenText(" + tokenVarName + "))"
+                                : mapExpressionForElement(
+                                    normalized,
+                                    tokenVarName,
+                                    mappedClassByRuleName,
+                                    tokenDeclByName,
+                                    ruleByName);
+                            sb.append("        for (Token ").append(tokenVarName)
+                                .append(" : findDescendants(token, ").append(parserClass).append(")) {\n");
+                            sb.append("            ").append(param).append(".add(").append(mapExpression).append(");\n");
+                            sb.append("        }\n");
+                        }
                         continue;
                     }
 
@@ -317,21 +324,67 @@ public class MapperGenerator implements CodeGenerator {
                     if (optionalElementType.isPresent()) {
                         sb.append("        Optional<").append(optionalElementType.get()).append("> ").append(param)
                             .append(" = Optional.empty();\n");
-                        sb.append("        Token ").append(tokenVarName)
-                            .append(" = findFirstDescendant(token, ").append(parserClass).append(");\n");
-                        sb.append("        if (").append(tokenVarName).append(" != null) {\n");
-                        sb.append("            ").append(param).append(" = Optional.ofNullable(").append(mapExpression).append(");\n");
-                        sb.append("        }\n");
+                        sb.append("        boolean found_").append(safeName(param)).append(" = false;\n");
+                        for (int i = 0; i < capturedElements.size(); i++) {
+                            AtomicElement element = capturedElements.get(i);
+                            AtomicElement normalized = normalizeCapturedElement(element).orElse(element);
+                            String parserClass = parserClassLiteral(normalized, parsersClass, tokenDeclByName, ruleByName)
+                                .orElse(ruleParserClass);
+                            String tokenVarName = "paramToken_" + safeName(param) + "_" + i;
+                            String candidateType = inferTypeFromElement(grammar, normalized);
+                            if (!isTypeCompatible(optionalElementType.get(), candidateType) && !"String".equals(optionalElementType.get())) {
+                                continue;
+                            }
+                            String mapExpression = "String".equals(optionalElementType.get())
+                                ? "stripQuotes(firstTokenText(" + tokenVarName + "))"
+                                : mapExpressionForElement(
+                                    normalized,
+                                    tokenVarName,
+                                    mappedClassByRuleName,
+                                    tokenDeclByName,
+                                    ruleByName);
+                            sb.append("        if (!found_").append(safeName(param)).append(") {\n");
+                            sb.append("            Token ").append(tokenVarName)
+                                .append(" = findFirstDescendant(token, ").append(parserClass).append(");\n");
+                            sb.append("            if (").append(tokenVarName).append(" != null) {\n");
+                            sb.append("                ").append(param).append(" = Optional.ofNullable(").append(mapExpression).append(");\n");
+                            sb.append("                found_").append(safeName(param)).append(" = true;\n");
+                            sb.append("            }\n");
+                            sb.append("        }\n");
+                        }
                         continue;
                     }
 
                     sb.append("        ").append(type).append(" ").append(param)
                         .append(" = ").append(defaultValueForType(type)).append(";\n");
-                    sb.append("        Token ").append(tokenVarName)
-                        .append(" = findFirstDescendant(token, ").append(parserClass).append(");\n");
-                    sb.append("        if (").append(tokenVarName).append(" != null) {\n");
-                    sb.append("            ").append(param).append(" = ").append(mapExpression).append(";\n");
-                    sb.append("        }\n");
+                    sb.append("        boolean assigned_").append(safeName(param)).append(" = false;\n");
+                    for (int i = 0; i < capturedElements.size(); i++) {
+                        AtomicElement element = capturedElements.get(i);
+                        AtomicElement normalized = normalizeCapturedElement(element).orElse(element);
+                        String parserClass = parserClassLiteral(normalized, parsersClass, tokenDeclByName, ruleByName)
+                            .orElse(ruleParserClass);
+                        String tokenVarName = "paramToken_" + safeName(param) + "_" + i;
+                        String candidateType = inferTypeFromElement(grammar, normalized);
+                        if (!isTypeCompatible(type, candidateType) && !"String".equals(type)) {
+                            continue;
+                        }
+                        String mapExpression = "String".equals(type)
+                            ? "stripQuotes(firstTokenText(" + tokenVarName + "))"
+                            : mapExpressionForElement(
+                                normalized,
+                                tokenVarName,
+                                mappedClassByRuleName,
+                                tokenDeclByName,
+                                ruleByName);
+                        sb.append("        if (!assigned_").append(safeName(param)).append(") {\n");
+                        sb.append("            Token ").append(tokenVarName)
+                            .append(" = findFirstDescendant(token, ").append(parserClass).append(");\n");
+                        sb.append("            if (").append(tokenVarName).append(" != null) {\n");
+                        sb.append("                ").append(param).append(" = ").append(mapExpression).append(";\n");
+                        sb.append("                assigned_").append(safeName(param)).append(" = true;\n");
+                        sb.append("            }\n");
+                        sb.append("        }\n");
+                    }
                 }
                 sb.append("        ").append(astClass).append(".").append(className).append(" mapped = new ")
                     .append(astClass).append(".").append(className).append("(\n");
@@ -607,6 +660,33 @@ public class MapperGenerator implements CodeGenerator {
         };
     }
 
+    private List<AtomicElement> findCapturedElements(RuleBody body, String captureName) {
+        return switch (body) {
+            case ChoiceBody choiceBody -> choiceBody.alternatives().stream()
+                .flatMap(alt -> findCapturedElements(alt, captureName).stream())
+                .toList();
+            case SequenceBody sequenceBody -> {
+                List<AtomicElement> elements = new ArrayList<>();
+                for (AnnotatedElement element : sequenceBody.elements()) {
+                    if (element.captureName().isPresent() && captureName.equals(element.captureName().get())) {
+                        elements.add(element.element());
+                    }
+                    elements.addAll(findCapturedElements(element.element(), captureName));
+                }
+                yield elements;
+            }
+        };
+    }
+
+    private List<AtomicElement> findCapturedElements(AtomicElement element, String captureName) {
+        return switch (element) {
+            case GroupElement groupElement -> findCapturedElements(groupElement.body(), captureName);
+            case OptionalElement optionalElement -> findCapturedElements(optionalElement.body(), captureName);
+            case RepeatElement repeatElement -> findCapturedElements(repeatElement.body(), captureName);
+            default -> List.of();
+        };
+    }
+
     private Optional<String> parserClassLiteral(AtomicElement element, String parsersClass,
         Map<String, TokenDecl> tokenDeclByName, Map<String, RuleDecl> ruleByName) {
 
@@ -697,6 +777,13 @@ public class MapperGenerator implements CodeGenerator {
         return "null";
     }
 
+
+    private boolean isTypeCompatible(String targetType, String candidateType) {
+        if ("Object".equals(targetType)) {
+            return true;
+        }
+        return targetType.equals(candidateType);
+    }
     private Optional<MappingAnnotation> getMappingAnnotation(RuleDecl rule) {
         return rule.annotations().stream()
             .filter(a -> a instanceof MappingAnnotation)
