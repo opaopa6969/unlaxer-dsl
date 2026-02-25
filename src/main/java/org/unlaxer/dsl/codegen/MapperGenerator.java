@@ -235,16 +235,64 @@ public class MapperGenerator implements CodeGenerator {
                       .append(rule.name()).append("\");\n");
                 }
             } else {
+                String ruleParserClass = parsersClass + "." + rule.name() + "Parser.class";
                 for (String param : mapping.paramNames()) {
-                    sb.append("        // TODO: extract ").append(param).append("\n");
+                    String type = inferType(grammar, rule, param);
+                    Optional<AtomicElement> capturedElement = findCapturedElement(rule.body(), param);
+                    if (capturedElement.isEmpty()) {
+                        sb.append("        ").append(type).append(" ").append(param)
+                            .append(" = ").append(defaultValueForType(type)).append(";\n");
+                        continue;
+                    }
+
+                    AtomicElement element = capturedElement.get();
+                    AtomicElement normalized = normalizeCapturedElement(element).orElse(element);
+                    String parserClass = parserClassLiteral(normalized, parsersClass, tokenDeclByName, ruleByName)
+                        .orElse(ruleParserClass);
+                    String tokenVarName = "paramToken_" + safeName(param);
+                    String mapExpression = mapExpressionForElement(
+                        normalized,
+                        tokenVarName,
+                        mappedClassByRuleName,
+                        tokenDeclByName,
+                        ruleByName);
+
+                    Optional<String> listElementType = unwrapListType(type);
+                    if (listElementType.isPresent()) {
+                        sb.append("        List<").append(listElementType.get()).append("> ").append(param)
+                            .append(" = new ArrayList<>();\n");
+                        sb.append("        for (Token ").append(tokenVarName)
+                            .append(" : findDescendants(token, ").append(parserClass).append(")) {\n");
+                        sb.append("            ").append(param).append(".add(").append(mapExpression).append(");\n");
+                        sb.append("        }\n");
+                        continue;
+                    }
+
+                    Optional<String> optionalElementType = unwrapOptionalType(type);
+                    if (optionalElementType.isPresent()) {
+                        sb.append("        Optional<").append(optionalElementType.get()).append("> ").append(param)
+                            .append(" = Optional.empty();\n");
+                        sb.append("        Token ").append(tokenVarName)
+                            .append(" = findFirstDescendant(token, ").append(parserClass).append(");\n");
+                        sb.append("        if (").append(tokenVarName).append(" != null) {\n");
+                        sb.append("            ").append(param).append(" = Optional.ofNullable(").append(mapExpression).append(");\n");
+                        sb.append("        }\n");
+                        continue;
+                    }
+
+                    sb.append("        ").append(type).append(" ").append(param)
+                        .append(" = ").append(defaultValueForType(type)).append(";\n");
+                    sb.append("        Token ").append(tokenVarName)
+                        .append(" = findFirstDescendant(token, ").append(parserClass).append(");\n");
+                    sb.append("        if (").append(tokenVarName).append(" != null) {\n");
+                    sb.append("            ").append(param).append(" = ").append(mapExpression).append(";\n");
+                    sb.append("        }\n");
                 }
                 sb.append("        return new ").append(astClass).append(".").append(className).append("(\n");
                 for (int i = 0; i < mapping.paramNames().size(); i++) {
                     String param = mapping.paramNames().get(i);
-                    String type = inferType(grammar, rule, param);
-                    String defaultValue = defaultValueForType(type);
                     String suffix = i < mapping.paramNames().size() - 1 ? "," : "";
-                    sb.append("            ").append(defaultValue).append(suffix)
+                    sb.append("            ").append(param).append(suffix)
                         .append(" // ").append(param).append("\n");
                 }
                 sb.append("        );\n");
@@ -472,7 +520,7 @@ public class MapperGenerator implements CodeGenerator {
                     yield Optional.of(parsersClass + "." + ruleRefElement.name() + "Parser.class");
                 }
                 if (tokenDeclByName.containsKey(ruleRefElement.name())) {
-                    yield Optional.of(tokenDeclByName.get(ruleRefElement.name()).parserClass() + ".class");
+                    yield Optional.empty();
                 }
                 yield Optional.empty();
             }
@@ -506,6 +554,38 @@ public class MapperGenerator implements CodeGenerator {
             return Optional.of(type.substring("List<".length(), type.length() - 1));
         }
         return Optional.empty();
+    }
+
+    private Optional<String> unwrapOptionalType(String type) {
+        if (type.startsWith("Optional<") && type.endsWith(">")) {
+            return Optional.of(type.substring("Optional<".length(), type.length() - 1));
+        }
+        return Optional.empty();
+    }
+
+    private Optional<AtomicElement> normalizeCapturedElement(AtomicElement element) {
+        return switch (element) {
+            case GroupElement groupElement -> firstAtomicElement(groupElement.body());
+            case OptionalElement optionalElement -> firstAtomicElement(optionalElement.body());
+            case RepeatElement repeatElement -> firstAtomicElement(repeatElement.body());
+            default -> Optional.of(element);
+        };
+    }
+
+    private Optional<AtomicElement> firstAtomicElement(RuleBody body) {
+        return switch (body) {
+            case SequenceBody sequenceBody -> sequenceBody.elements().stream()
+                .findFirst()
+                .map(AnnotatedElement::element)
+                .flatMap(this::normalizeCapturedElement);
+            case ChoiceBody choiceBody -> choiceBody.alternatives().stream()
+                .findFirst()
+                .flatMap(this::firstAtomicElement);
+        };
+    }
+
+    private String safeName(String name) {
+        return name.replaceAll("[^A-Za-z0-9_]", "_");
     }
 
     private String defaultValueForType(String type) {
