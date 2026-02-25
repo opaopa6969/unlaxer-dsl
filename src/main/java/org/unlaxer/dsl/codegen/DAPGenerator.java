@@ -61,6 +61,7 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("    private List<Token> stepPoints = new ArrayList<>();\n");
         sb.append("    private int stepIndex = 0;\n");
         sb.append("    private int astNodeCount = 0;\n");
+        sb.append("    private List<String> astNodeTypes = new ArrayList<>();\n");
         sb.append("    private Set<Integer> breakpointLines = new HashSet<>();\n\n");
 
         // connect()
@@ -264,7 +265,15 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("            astNodes.setValue(String.valueOf(astNodeCount));\n");
         sb.append("            astNodes.setType(\"int\");\n");
         sb.append("            astNodes.setVariablesReference(0);\n");
-        sb.append("            response.setVariables(new Variable[]{var, mode, astNodes});\n");
+        sb.append("            Variable astCurrent = new Variable();\n");
+        sb.append("            astCurrent.setName(\"astCurrentNode\");\n");
+        sb.append("            String currentAst = astNodeTypes.isEmpty()\n");
+        sb.append("                ? \"\"\n");
+        sb.append("                : astNodeTypes.get(Math.min(stepIndex, astNodeTypes.size() - 1));\n");
+        sb.append("            astCurrent.setValue(currentAst);\n");
+        sb.append("            astCurrent.setType(\"String\");\n");
+        sb.append("            astCurrent.setVariablesReference(0);\n");
+        sb.append("            response.setVariables(new Variable[]{var, mode, astNodes, astCurrent});\n");
         sb.append("        } else {\n");
         sb.append("            response.setVariables(new Variable[0]);\n");
         sb.append("        }\n");
@@ -310,7 +319,13 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("        if (stepPoints.isEmpty()) {\n");
         sb.append("            stepPoints.add(result.getConsumed()); // fallback: root token\n");
         sb.append("        }\n");
-        sb.append("        astNodeCount = isAstRuntimeMode() ? tryCountAstNodes() : 0;\n");
+        sb.append("        if (isAstRuntimeMode()) {\n");
+        sb.append("            astNodeTypes = collectAstNodeTypes();\n");
+        sb.append("            astNodeCount = astNodeTypes.size();\n");
+        sb.append("        } else {\n");
+        sb.append("            astNodeTypes = List.of();\n");
+        sb.append("            astNodeCount = 0;\n");
+        sb.append("        }\n");
         sb.append("        stepIndex = 0;\n");
         sb.append("        return true;\n");
         sb.append("    }\n\n");
@@ -341,20 +356,22 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("        throw new IllegalStateException(\"No compatible StringSource initializer found\");\n");
         sb.append("    }\n\n");
 
-        sb.append("    private int tryCountAstNodes() {\n");
+        sb.append("    private List<String> collectAstNodeTypes() {\n");
         sb.append("        try {\n");
         sb.append("            Object ast = ").append(mapperClass).append(".parse(sourceContent);\n");
-        sb.append("            return countAstNodes(ast);\n");
+        sb.append("            List<String> out = new ArrayList<>();\n");
+        sb.append("            collectAstNodeTypes(ast, out);\n");
+        sb.append("            return out;\n");
         sb.append("        } catch (Throwable ignored) {\n");
-        sb.append("            return 0;\n");
+        sb.append("            return List.of();\n");
         sb.append("        }\n");
         sb.append("    }\n\n");
 
-        sb.append("    private int countAstNodes(Object node) {\n");
+        sb.append("    private void collectAstNodeTypes(Object node, List<String> out) {\n");
         sb.append("        if (node == null) {\n");
-        sb.append("            return 0;\n");
+        sb.append("            return;\n");
         sb.append("        }\n");
-        sb.append("        int count = 1;\n");
+        sb.append("        out.add(node.getClass().getSimpleName());\n");
         sb.append("        java.lang.reflect.Method[] methods = node.getClass().getMethods();\n");
         sb.append("        for (java.lang.reflect.Method method : methods) {\n");
         sb.append("            if (method.getParameterCount() != 0) {\n");
@@ -372,17 +389,16 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("                if (value instanceof List<?> list) {\n");
         sb.append("                    for (Object element : list) {\n");
         sb.append("                        if (isAstNodeCandidate(element)) {\n");
-        sb.append("                            count += countAstNodes(element);\n");
+        sb.append("                            collectAstNodeTypes(element, out);\n");
         sb.append("                        }\n");
         sb.append("                    }\n");
         sb.append("                    continue;\n");
         sb.append("                }\n");
         sb.append("                if (isAstNodeCandidate(value)) {\n");
-        sb.append("                    count += countAstNodes(value);\n");
+        sb.append("                    collectAstNodeTypes(value, out);\n");
         sb.append("                }\n");
         sb.append("            } catch (Throwable ignored) {}\n");
         sb.append("        }\n");
-        sb.append("        return count;\n");
         sb.append("    }\n\n");
 
         sb.append("    private boolean isAstNodeCandidate(Object value) {\n");
