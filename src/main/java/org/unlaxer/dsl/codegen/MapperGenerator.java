@@ -1,18 +1,31 @@
 package org.unlaxer.dsl.codegen;
 
+import org.unlaxer.dsl.bootstrap.UBNFAST.AnnotatedElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.AtomicElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.ChoiceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.GrammarDecl;
+import org.unlaxer.dsl.bootstrap.UBNFAST.GroupElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.LeftAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.MappingAnnotation;
+import org.unlaxer.dsl.bootstrap.UBNFAST.OptionalElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.RepeatElement;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RightAssocAnnotation;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RootAnnotation;
+import org.unlaxer.dsl.bootstrap.UBNFAST.RuleBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.RuleDecl;
+import org.unlaxer.dsl.bootstrap.UBNFAST.RuleRefElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.SequenceBody;
 import org.unlaxer.dsl.bootstrap.UBNFAST.StringSettingValue;
+import org.unlaxer.dsl.bootstrap.UBNFAST.TerminalElement;
+import org.unlaxer.dsl.bootstrap.UBNFAST.TokenDecl;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * GrammarDecl から XxxMapper.java を生成する。
@@ -27,13 +40,23 @@ public class MapperGenerator implements CodeGenerator {
         String mapperClass = grammarName + "Mapper";
         String parsersClass = grammarName + "Parsers";
 
+        Map<String, TokenDecl> tokenDeclByName = grammar.tokens().stream()
+            .collect(Collectors.toMap(TokenDecl::name, t -> t, (a, b) -> a, LinkedHashMap::new));
+
+        Map<String, RuleDecl> ruleByName = grammar.rules().stream()
+            .collect(Collectors.toMap(RuleDecl::name, r -> r, (a, b) -> a, LinkedHashMap::new));
+
         Optional<RuleDecl> rootRule = grammar.rules().stream()
             .filter(r -> r.annotations().stream().anyMatch(a -> a instanceof RootAnnotation))
             .findFirst();
 
         Map<String, RuleDecl> mappingRules = new LinkedHashMap<>();
+        Map<String, String> mappedClassByRuleName = new LinkedHashMap<>();
         for (RuleDecl rule : grammar.rules()) {
-            getMappingAnnotation(rule).ifPresent(m -> mappingRules.putIfAbsent(m.className(), rule));
+            getMappingAnnotation(rule).ifPresent(m -> {
+                mappingRules.putIfAbsent(m.className(), rule);
+                mappedClassByRuleName.putIfAbsent(rule.name(), m.className());
+            });
         }
 
         StringBuilder sb = new StringBuilder();
@@ -62,20 +85,63 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("    // Entry Point\n");
         sb.append("    // =========================================================================\n\n");
         sb.append("    public static ").append(rootClassName).append(" parse(String source) {\n");
-        sb.append("        // TODO: implement after ").append(parsersClass).append(" is generated\n");
-        sb.append("        // StringSource stringSource = StringSource.createRootSource(source);\n");
-        sb.append("        // try (ParseContext context = new ParseContext(stringSource)) {\n");
-        sb.append("        //     Parser rootParser = ").append(parsersClass).append(".getRootParser();\n");
-        sb.append("        //     Parsed parsed = rootParser.parse(context);\n");
-        sb.append("        //     if (!parsed.isSucceeded()) {\n");
-        sb.append("        //         throw new IllegalArgumentException(\"Parse failed: \" + source);\n");
-        sb.append("        //     }\n");
-        sb.append("        //     return to").append(rootRule.flatMap(this::getMappingAnnotation)
-            .map(MappingAnnotation::className).orElse("Root"))
-          .append("(parsed.getRootToken());\n");
-        sb.append("        // }\n");
-        sb.append("        throw new UnsupportedOperationException(\"")
-          .append(parsersClass).append(": not implemented\");\n");
+        sb.append("        Parser rootParser = ").append(parsersClass).append(".getRootParser();\n");
+        sb.append("        ParseContext context = new ParseContext(StringSource.createRootSource(source));\n");
+        sb.append("        Parsed parsed;\n");
+        sb.append("        try {\n");
+        sb.append("            parsed = rootParser.parse(context);\n");
+        sb.append("        } finally {\n");
+        sb.append("            context.close();\n");
+        sb.append("        }\n");
+        sb.append("        if (!parsed.isSucceeded()) {\n");
+        sb.append("            throw new IllegalArgumentException(\"Parse failed: \" + source);\n");
+        sb.append("        }\n");
+        sb.append("        int consumed = parsed.getConsumed().source.sourceAsString().length();\n");
+        sb.append("        if (consumed != source.length()) {\n");
+        sb.append("            throw new IllegalArgumentException(\"Parse failed at offset \" + consumed + \": \" + source);\n");
+        sb.append("        }\n");
+        sb.append("        Token rootToken = parsed.getRootToken(true);\n");
+
+        if (rootRule.isPresent() && getMappingAnnotation(rootRule.get()).isPresent()) {
+            RuleDecl rr = rootRule.get();
+            String rootParserClass = parsersClass + "." + rr.name() + "Parser.class";
+            String rootMappingClass = getMappingAnnotation(rr).orElseThrow().className();
+            sb.append("        Token mappingRoot = rootToken;\n");
+            sb.append("        if (mappingRoot.parser.getClass() != ").append(rootParserClass).append(") {\n");
+            sb.append("            mappingRoot = findFirstDescendant(mappingRoot, ").append(rootParserClass).append(");\n");
+            sb.append("        }\n");
+            sb.append("        if (mappingRoot == null) {\n");
+            sb.append("            throw new IllegalArgumentException(\"Root mapping token not found for ").append(rr.name()).append("\");\n");
+            sb.append("        }\n");
+            sb.append("        return to").append(rootMappingClass).append("(mappingRoot);\n");
+        } else {
+            sb.append("        ").append(astClass).append(" mapped = mapNode(rootToken);\n");
+            sb.append("        if (mapped == null) {\n");
+            sb.append("            throw new IllegalArgumentException(\"No mapped node found in parse tree\");\n");
+            sb.append("        }\n");
+            sb.append("        return (").append(rootClassName).append(") mapped;\n");
+        }
+        sb.append("    }\n\n");
+
+        sb.append("    private static ").append(astClass).append(" mapNode(Token token) {\n");
+        sb.append("        if (token == null) {\n");
+        sb.append("            return null;\n");
+        sb.append("        }\n");
+        for (Map.Entry<String, RuleDecl> entry : mappingRules.entrySet()) {
+            String className = entry.getKey();
+            RuleDecl rule = entry.getValue();
+            sb.append("        if (token.parser.getClass() == ").append(parsersClass).append(".")
+                .append(rule.name()).append("Parser.class) {\n");
+            sb.append("            return to").append(className).append("(token);\n");
+            sb.append("        }\n");
+        }
+        sb.append("        for (Token child : token.filteredChildren) {\n");
+        sb.append("            ").append(astClass).append(" mapped = mapNode(child);\n");
+        sb.append("            if (mapped != null) {\n");
+        sb.append("                return mapped;\n");
+        sb.append("            }\n");
+        sb.append("        }\n");
+        sb.append("        return null;\n");
         sb.append("    }\n\n");
 
         sb.append("    // =========================================================================\n");
@@ -88,92 +154,84 @@ public class MapperGenerator implements CodeGenerator {
             MappingAnnotation mapping = getMappingAnnotation(rule).orElseThrow();
             boolean leftAssoc = isLeftAssocRule(rule, mapping);
             boolean rightAssoc = isRightAssocRule(rule, mapping);
-            String methodName = "to" + className;
 
             sb.append("    static ").append(astClass).append(".").append(className)
-              .append(" ").append(methodName).append("(Token token) {\n");
+              .append(" to").append(className).append("(Token token) {\n");
 
-            if (leftAssoc) {
-                sb.append("        // TODO: extract left seed node from token\n");
-                sb.append("        // TODO: extract repeated operators and right operands from token\n");
-                sb.append("        ").append(astClass).append(".").append(className).append(" left = null;\n");
-                sb.append("        List<String> ops = List.of();\n");
-                sb.append("        List<").append(astClass).append(".").append(className).append("> rights = List.of();\n");
-                sb.append("        return foldLeftAssoc").append(className).append("(left, ops, rights);\n");
-            } else if (rightAssoc) {
-                sb.append("        // TODO: extract left seed node from token\n");
-                sb.append("        // TODO: extract repeated operators and right operands from token\n");
-                sb.append("        ").append(astClass).append(".").append(className).append(" left = null;\n");
-                sb.append("        List<String> ops = List.of();\n");
-                sb.append("        List<").append(astClass).append(".").append(className).append("> rights = List.of();\n");
-                sb.append("        return foldRightAssoc").append(className).append("(left, ops, rights);\n");
+            if (leftAssoc || rightAssoc) {
+                Optional<AssocShape> assocShapeOpt = findAssocShape(rule, "left", "op", "right");
+                if (assocShapeOpt.isPresent()) {
+                    AssocShape assocShape = assocShapeOpt.get();
+
+                    String leftType = inferType(grammar, rule, "left");
+                    String opType = unwrapListType(inferType(grammar, rule, "op")).orElse("String");
+                    String rightType = unwrapListType(inferType(grammar, rule, "right")).orElse("Object");
+
+                    String ruleParserClass = parsersClass + "." + rule.name() + "Parser.class";
+                    String repeatParserClass = parsersClass + "." + rule.name() + "Repeat" + assocShape.repeatIndex + "Parser.class";
+                    String leftParserClass = parserClassLiteral(assocShape.leftElement, parsersClass, tokenDeclByName, ruleByName)
+                        .orElse(ruleParserClass);
+                    String rightParserClass = parserClassLiteral(assocShape.rightElement, parsersClass, tokenDeclByName, ruleByName)
+                        .orElse(ruleParserClass);
+
+                    String leftMapper = mapExpressionForElement(
+                        assocShape.leftElement,
+                        "leftToken",
+                        mappedClassByRuleName,
+                        tokenDeclByName,
+                        ruleByName);
+                    String rightMapper = mapExpressionForElement(
+                        assocShape.rightElement,
+                        "rightToken",
+                        mappedClassByRuleName,
+                        tokenDeclByName,
+                        ruleByName);
+
+                    sb.append("        Token working = token;\n");
+                    sb.append("        if (working.parser.getClass() != ").append(ruleParserClass).append(") {\n");
+                    sb.append("            working = findFirstDescendant(working, ").append(ruleParserClass).append(");\n");
+                    sb.append("        }\n");
+                    sb.append("        if (working == null) {\n");
+                    sb.append("            throw new IllegalArgumentException(\"Mapping token not found for rule ").append(rule.name()).append("\");\n");
+                    sb.append("        }\n");
+                    sb.append("        Token leftToken = findFirstDescendant(working, ").append(leftParserClass).append(");\n");
+                    sb.append("        if (leftToken == null) {\n");
+                    sb.append("            throw new IllegalArgumentException(\"Left operand not found for rule ").append(rule.name()).append("\");\n");
+                    sb.append("        }\n");
+                    sb.append("        ").append(leftType).append(" left = ").append(leftMapper).append(";\n");
+                    sb.append("        List<").append(opType).append("> op = new ArrayList<>();\n");
+                    sb.append("        List<").append(rightType).append("> right = new ArrayList<>();\n");
+                    sb.append("        for (Token repeatToken : findDescendants(working, ").append(repeatParserClass).append(")) {\n");
+                    sb.append("            String opValue = firstTokenText(repeatToken);\n");
+                    sb.append("            if (opValue != null && !opValue.isEmpty()) {\n");
+                    sb.append("                op.add(stripQuotes(opValue));\n");
+                    sb.append("            }\n");
+                    sb.append("            Token rightToken = findFirstDescendant(repeatToken, ").append(rightParserClass).append(");\n");
+                    sb.append("            if (rightToken != null) {\n");
+                    sb.append("                right.add(").append(rightMapper).append(");\n");
+                    sb.append("            }\n");
+                    sb.append("        }\n");
+                    sb.append("        return new ").append(astClass).append(".").append(className).append("(left, op, right);\n");
+                } else {
+                    sb.append("        throw new IllegalArgumentException(\"Unsupported assoc mapping shape for rule: ")
+                      .append(rule.name()).append("\");\n");
+                }
             } else {
                 for (String param : mapping.paramNames()) {
                     sb.append("        // TODO: extract ").append(param).append("\n");
                 }
                 sb.append("        return new ").append(astClass).append(".").append(className).append("(\n");
                 for (int i = 0; i < mapping.paramNames().size(); i++) {
+                    String param = mapping.paramNames().get(i);
+                    String type = inferType(grammar, rule, param);
+                    String defaultValue = defaultValueForType(type);
                     String suffix = i < mapping.paramNames().size() - 1 ? "," : "";
-                    sb.append("            null").append(suffix).append(" // ").append(mapping.paramNames().get(i)).append("\n");
+                    sb.append("            ").append(defaultValue).append(suffix)
+                        .append(" // ").append(param).append("\n");
                 }
                 sb.append("        );\n");
             }
-            sb.append("    }\n\n");
-        }
 
-        for (Map.Entry<String, RuleDecl> entry : mappingRules.entrySet()) {
-            String className = entry.getKey();
-            RuleDecl rule = entry.getValue();
-            MappingAnnotation mapping = getMappingAnnotation(rule).orElseThrow();
-            if (!isLeftAssocRule(rule, mapping)) {
-                continue;
-            }
-
-            sb.append("    static ").append(astClass).append(".").append(className)
-              .append(" foldLeftAssoc").append(className).append("(\n");
-            sb.append("        ").append(astClass).append(".").append(className).append(" left,\n");
-            sb.append("        List<String> ops,\n");
-            sb.append("        List<").append(astClass).append(".").append(className).append("> rights\n");
-            sb.append("    ) {\n");
-            sb.append("        if (left == null) return null;\n");
-            sb.append("        if (ops.size() != rights.size()) {\n");
-            sb.append("            throw new IllegalArgumentException(\"ops/rights length mismatch\");\n");
-            sb.append("        }\n");
-            sb.append("        ").append(astClass).append(".").append(className).append(" current = left;\n");
-            sb.append("        for (int i = 0; i < ops.size(); i++) {\n");
-            sb.append("            current = new ").append(astClass).append(".").append(className)
-              .append("(current, ops.get(i), rights.get(i));\n");
-            sb.append("        }\n");
-            sb.append("        return current;\n");
-            sb.append("    }\n\n");
-        }
-
-        for (Map.Entry<String, RuleDecl> entry : mappingRules.entrySet()) {
-            String className = entry.getKey();
-            RuleDecl rule = entry.getValue();
-            MappingAnnotation mapping = getMappingAnnotation(rule).orElseThrow();
-            if (!isRightAssocRule(rule, mapping)) {
-                continue;
-            }
-
-            sb.append("    static ").append(astClass).append(".").append(className)
-              .append(" foldRightAssoc").append(className).append("(\n");
-            sb.append("        ").append(astClass).append(".").append(className).append(" left,\n");
-            sb.append("        List<String> ops,\n");
-            sb.append("        List<").append(astClass).append(".").append(className).append("> rights\n");
-            sb.append("    ) {\n");
-            sb.append("        if (left == null) return null;\n");
-            sb.append("        if (ops.size() != rights.size()) {\n");
-            sb.append("            throw new IllegalArgumentException(\"ops/rights length mismatch\");\n");
-            sb.append("        }\n");
-            sb.append("        if (ops.isEmpty()) return left;\n");
-            sb.append("        ").append(astClass).append(".").append(className).append(" current = rights.get(ops.size() - 1);\n");
-            sb.append("        for (int i = ops.size() - 2; i >= 0; i--) {\n");
-            sb.append("            current = new ").append(astClass).append(".").append(className)
-              .append("(rights.get(i), ops.get(i + 1), current);\n");
-            sb.append("        }\n");
-            sb.append("        return new ").append(astClass).append(".").append(className)
-              .append("(left, ops.get(0), current);\n");
             sb.append("    }\n\n");
         }
 
@@ -183,17 +241,55 @@ public class MapperGenerator implements CodeGenerator {
 
         sb.append("    static List<Token> findDescendants(Token token, Class<? extends Parser> parserClass) {\n");
         sb.append("        List<Token> results = new ArrayList<>();\n");
+        sb.append("        if (token == null) {\n");
+        sb.append("            return results;\n");
+        sb.append("        }\n");
         sb.append("        for (Token child : token.filteredChildren) {\n");
         sb.append("            if (child.parser.getClass() == parserClass) {\n");
         sb.append("                results.add(child);\n");
-        sb.append("            } else {\n");
-        sb.append("                results.addAll(findDescendants(child, parserClass));\n");
         sb.append("            }\n");
+        sb.append("            results.addAll(findDescendants(child, parserClass));\n");
         sb.append("        }\n");
         sb.append("        return results;\n");
         sb.append("    }\n\n");
 
+        sb.append("    static Token findFirstDescendant(Token token, Class<? extends Parser> parserClass) {\n");
+        sb.append("        if (token == null) {\n");
+        sb.append("            return null;\n");
+        sb.append("        }\n");
+        sb.append("        if (token.parser.getClass() == parserClass) {\n");
+        sb.append("            return token;\n");
+        sb.append("        }\n");
+        sb.append("        for (Token child : token.filteredChildren) {\n");
+        sb.append("            Token found = findFirstDescendant(child, parserClass);\n");
+        sb.append("            if (found != null) {\n");
+        sb.append("                return found;\n");
+        sb.append("            }\n");
+        sb.append("        }\n");
+        sb.append("        return null;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    static String firstTokenText(Token token) {\n");
+        sb.append("        if (token == null) {\n");
+        sb.append("            return null;\n");
+        sb.append("        }\n");
+        sb.append("        String raw = token.source == null ? null : token.source.sourceAsString();\n");
+        sb.append("        if (raw != null && !raw.isBlank()) {\n");
+        sb.append("            return raw.strip();\n");
+        sb.append("        }\n");
+        sb.append("        for (Token child : token.filteredChildren) {\n");
+        sb.append("            String found = firstTokenText(child);\n");
+        sb.append("            if (found != null && !found.isEmpty()) {\n");
+        sb.append("                return found;\n");
+        sb.append("            }\n");
+        sb.append("        }\n");
+        sb.append("        return raw == null ? null : raw.strip();\n");
+        sb.append("    }\n\n");
+
         sb.append("    static String stripQuotes(String quoted) {\n");
+        sb.append("        if (quoted == null) {\n");
+        sb.append("            return null;\n");
+        sb.append("        }\n");
         sb.append("        if (quoted.length() >= 2\n");
         sb.append("            && '\\'' == quoted.charAt(0)\n");
         sb.append("            && '\\'' == quoted.charAt(quoted.length() - 1)) {\n");
@@ -225,6 +321,125 @@ public class MapperGenerator implements CodeGenerator {
         return params.contains("left") && params.contains("op") && params.contains("right");
     }
 
+    private Optional<AssocShape> findAssocShape(RuleDecl rule, String leftCapture, String opCapture, String rightCapture) {
+        SequenceBody sequence = firstSequence(rule.body()).orElse(null);
+        if (sequence == null) {
+            return Optional.empty();
+        }
+
+        AtomicElement leftElement = findCapturedElement(rule.body(), leftCapture).orElse(null);
+        int repeatIndex = 0;
+        for (AnnotatedElement element : sequence.elements()) {
+            AtomicElement atomic = element.element();
+            if (atomic instanceof RepeatElement repeatElement) {
+                Optional<AtomicElement> opElement = findCapturedElement(repeatElement.body(), opCapture);
+                Optional<AtomicElement> rightElement = findCapturedElement(repeatElement.body(), rightCapture);
+                if (opElement.isPresent() && rightElement.isPresent()) {
+                    if (leftElement != null) {
+                        return Optional.of(new AssocShape(leftElement, opElement.get(), rightElement.get(), repeatIndex));
+                    }
+                    return Optional.empty();
+                }
+                repeatIndex++;
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<SequenceBody> firstSequence(RuleBody body) {
+        return switch (body) {
+            case SequenceBody sequenceBody -> Optional.of(sequenceBody);
+            case ChoiceBody choiceBody -> choiceBody.alternatives().stream().findFirst();
+        };
+    }
+
+    private Optional<AtomicElement> findCapturedElement(RuleBody body, String captureName) {
+        return switch (body) {
+            case ChoiceBody choiceBody -> choiceBody.alternatives().stream()
+                .flatMap(alt -> findCapturedElement(alt, captureName).stream())
+                .findFirst();
+            case SequenceBody sequenceBody -> {
+                for (AnnotatedElement element : sequenceBody.elements()) {
+                    if (element.captureName().isPresent() && captureName.equals(element.captureName().get())) {
+                        yield Optional.of(element.element());
+                    }
+                    Optional<AtomicElement> nested = findCapturedElement(element.element(), captureName);
+                    if (nested.isPresent()) {
+                        yield nested;
+                    }
+                }
+                yield Optional.empty();
+            }
+        };
+    }
+
+    private Optional<AtomicElement> findCapturedElement(AtomicElement element, String captureName) {
+        return switch (element) {
+            case GroupElement groupElement -> findCapturedElement(groupElement.body(), captureName);
+            case OptionalElement optionalElement -> findCapturedElement(optionalElement.body(), captureName);
+            case RepeatElement repeatElement -> findCapturedElement(repeatElement.body(), captureName);
+            default -> Optional.empty();
+        };
+    }
+
+    private Optional<String> parserClassLiteral(AtomicElement element, String parsersClass,
+        Map<String, TokenDecl> tokenDeclByName, Map<String, RuleDecl> ruleByName) {
+
+        return switch (element) {
+            case RuleRefElement ruleRefElement -> {
+                if (ruleByName.containsKey(ruleRefElement.name())) {
+                    yield Optional.of(parsersClass + "." + ruleRefElement.name() + "Parser.class");
+                }
+                if (tokenDeclByName.containsKey(ruleRefElement.name())) {
+                    yield Optional.of(tokenDeclByName.get(ruleRefElement.name()).parserClass() + ".class");
+                }
+                yield Optional.empty();
+            }
+            case TerminalElement ignored -> Optional.of("org.unlaxer.parser.elementary.WordParser.class");
+            default -> Optional.empty();
+        };
+    }
+
+    private String mapExpressionForElement(AtomicElement element, String tokenVar,
+        Map<String, String> mappedClassByRuleName,
+        Map<String, TokenDecl> tokenDeclByName,
+        Map<String, RuleDecl> ruleByName) {
+
+        if (element instanceof RuleRefElement ruleRefElement) {
+            String name = ruleRefElement.name();
+            if (mappedClassByRuleName.containsKey(name)) {
+                return "to" + mappedClassByRuleName.get(name) + "(" + tokenVar + ")";
+            }
+            if (tokenDeclByName.containsKey(name) || ruleByName.containsKey(name)) {
+                return "stripQuotes(firstTokenText(" + tokenVar + "))";
+            }
+        }
+        if (element instanceof TerminalElement) {
+            return "stripQuotes(firstTokenText(" + tokenVar + "))";
+        }
+        return "stripQuotes(firstTokenText(" + tokenVar + "))";
+    }
+
+    private Optional<String> unwrapListType(String type) {
+        if (type.startsWith("List<") && type.endsWith(">")) {
+            return Optional.of(type.substring("List<".length(), type.length() - 1));
+        }
+        return Optional.empty();
+    }
+
+    private String defaultValueForType(String type) {
+        if (type.startsWith("List<")) {
+            return "List.of()";
+        }
+        if (type.startsWith("Optional<")) {
+            return "Optional.empty()";
+        }
+        if ("String".equals(type)) {
+            return "\"\"";
+        }
+        return "null";
+    }
+
     private Optional<MappingAnnotation> getMappingAnnotation(RuleDecl rule) {
         return rule.annotations().stream()
             .filter(a -> a instanceof MappingAnnotation)
@@ -239,4 +454,110 @@ public class MapperGenerator implements CodeGenerator {
             .findFirst()
             .orElse("generated");
     }
+
+    // inferType logic is borrowed from ASTGenerator to keep generated constructor argument types compile-safe.
+    private String inferType(GrammarDecl grammar, RuleDecl rule, String fieldName) {
+        Optional<CaptureResult> result = findCapturedType(rule.body(), fieldName);
+        if (result.isEmpty()) {
+            return "Object";
+        }
+        CaptureResult capture = result.get();
+        String innerType = inferTypeFromElement(grammar, capture.element());
+        if (capture.inOptional()) {
+            return "Optional<" + innerType + ">";
+        }
+        if (capture.inRepeat()) {
+            return "List<" + innerType + ">";
+        }
+        return innerType;
+    }
+
+    private String inferTypeFromElement(GrammarDecl grammar, AtomicElement element) {
+        String astClassName = grammar.name() + "AST";
+        return switch (element) {
+            case TerminalElement ignored -> "String";
+            case RuleRefElement ruleRefElement -> {
+                Optional<MappingAnnotation> mapping = grammar.rules().stream()
+                    .filter(r -> r.name().equals(ruleRefElement.name()))
+                    .flatMap(r -> r.annotations().stream())
+                    .filter(a -> a instanceof MappingAnnotation)
+                    .map(a -> (MappingAnnotation) a)
+                    .findFirst();
+                yield mapping.map(m -> astClassName + "." + m.className()).orElse("String");
+            }
+            case RepeatElement repeatElement -> {
+                String inner = inferTypeFromBody(grammar, repeatElement.body());
+                yield "List<" + inner + ">";
+            }
+            case OptionalElement optionalElement -> {
+                String inner = inferTypeFromBody(grammar, optionalElement.body());
+                yield "Optional<" + inner + ">";
+            }
+            case GroupElement ignored -> "Object";
+        };
+    }
+
+    private String inferTypeFromBody(GrammarDecl grammar, RuleBody body) {
+        AnnotatedElement single = switch (body) {
+            case SequenceBody sequenceBody when sequenceBody.elements().size() == 1 -> sequenceBody.elements().get(0);
+            case ChoiceBody choiceBody when choiceBody.alternatives().size() == 1 -> {
+                SequenceBody sequenceBody = choiceBody.alternatives().get(0);
+                yield sequenceBody.elements().size() == 1 ? sequenceBody.elements().get(0) : null;
+            }
+            default -> null;
+        };
+        if (single == null) {
+            return "Object";
+        }
+        return inferTypeFromElement(grammar, single.element());
+    }
+
+    private Optional<CaptureResult> findCapturedType(RuleBody body, String captureName) {
+        return findCapturedTypeInBody(body, captureName, false, false);
+    }
+
+    private Optional<CaptureResult> findCapturedTypeInBody(
+        RuleBody body, String captureName, boolean inOptional, boolean inRepeat) {
+
+        return switch (body) {
+            case ChoiceBody choiceBody -> choiceBody.alternatives().stream()
+                .flatMap(sequenceBody -> findCapturedTypeInSequence(sequenceBody, captureName, inOptional, inRepeat).stream())
+                .findFirst();
+            case SequenceBody sequenceBody -> findCapturedTypeInSequence(sequenceBody, captureName, inOptional, inRepeat);
+        };
+    }
+
+    private Optional<CaptureResult> findCapturedTypeInSequence(
+        SequenceBody sequenceBody, String captureName, boolean inOptional, boolean inRepeat) {
+
+        for (AnnotatedElement element : sequenceBody.elements()) {
+            if (element.captureName().isPresent() && element.captureName().get().equals(captureName)) {
+                return Optional.of(new CaptureResult(element.element(), inOptional, inRepeat));
+            }
+            Optional<CaptureResult> nested = findCapturedTypeInAtomic(element.element(), captureName, inOptional, inRepeat);
+            if (nested.isPresent()) {
+                return nested;
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<CaptureResult> findCapturedTypeInAtomic(
+        AtomicElement element, String captureName, boolean inOptional, boolean inRepeat) {
+
+        return switch (element) {
+            case OptionalElement optionalElement ->
+                findCapturedTypeInBody(optionalElement.body(), captureName, true, inRepeat);
+            case RepeatElement repeatElement ->
+                findCapturedTypeInBody(repeatElement.body(), captureName, inOptional, true);
+            case GroupElement groupElement ->
+                findCapturedTypeInBody(groupElement.body(), captureName, inOptional, inRepeat);
+            default -> Optional.empty();
+        };
+    }
+
+    private record CaptureResult(AtomicElement element, boolean inOptional, boolean inRepeat) {}
+
+    private record AssocShape(AtomicElement leftElement, AtomicElement opElement, AtomicElement rightElement,
+                              int repeatIndex) {}
 }
