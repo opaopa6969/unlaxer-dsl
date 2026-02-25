@@ -88,6 +88,9 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("    // Entry Point\n");
         sb.append("    // =========================================================================\n\n");
         sb.append("    public static ").append(rootClassName).append(" parse(String source) {\n");
+        sb.append("        return parse(source, null);\n");
+        sb.append("    }\n\n");
+        sb.append("    public static ").append(rootClassName).append(" parse(String source, String preferredAstSimpleName) {\n");
         sb.append("        NODE_SOURCE_SPANS.clear();\n");
         sb.append("        Parser rootParser = ").append(parsersClass).append(".getRootParser();\n");
         sb.append("        ParseContext context = new ParseContext(createRootSourceCompat(source));\n");
@@ -119,7 +122,7 @@ public class MapperGenerator implements CodeGenerator {
             sb.append("        }\n");
             sb.append("        return to").append(rootMappingClass).append("(mappingRoot);\n");
         } else {
-            sb.append("        Token bestMappedToken = findBestMappedToken(rootToken);\n");
+            sb.append("        Token bestMappedToken = findBestMappedToken(rootToken, preferredAstSimpleName);\n");
             sb.append("        ").append(astClass).append(" mapped = mapToken(bestMappedToken);\n");
             sb.append("        if (mapped == null) {\n");
             sb.append("            throw new IllegalArgumentException(\"No mapped node found in parse tree\");\n");
@@ -143,22 +146,25 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("        return null;\n");
         sb.append("    }\n\n");
 
-        sb.append("    private static Token findBestMappedToken(Token token) {\n");
-        sb.append("        MappingCandidate best = findBestMappedToken(token, 0, null);\n");
+        sb.append("    private static Token findBestMappedToken(Token token, String preferredAstSimpleName) {\n");
+        sb.append("        MappingCandidate best = findBestMappedToken(token, 0, null, preferredAstSimpleName);\n");
         sb.append("        return best == null ? null : best.token;\n");
         sb.append("    }\n\n");
 
-        sb.append("    private static MappingCandidate findBestMappedToken(Token token, int depth, MappingCandidate best) {\n");
+        sb.append("    private static MappingCandidate findBestMappedToken(Token token, int depth, MappingCandidate best, String preferredAstSimpleName) {\n");
         sb.append("        if (token == null) {\n");
         sb.append("            return best;\n");
         sb.append("        }\n");
         sb.append("        ").append(astClass).append(" mapped = mapToken(token);\n");
         sb.append("        if (mapped != null) {\n");
-        sb.append("            MappingCandidate candidate = new MappingCandidate(token, depth, tokenStartOffsetCompat(token));\n");
+        sb.append("            boolean preferred = preferredAstSimpleName == null\n");
+        sb.append("                || preferredAstSimpleName.isBlank()\n");
+        sb.append("                || mapped.getClass().getSimpleName().equals(preferredAstSimpleName);\n");
+        sb.append("            MappingCandidate candidate = new MappingCandidate(token, depth, tokenStartOffsetCompat(token), preferred);\n");
         sb.append("            best = betterCandidate(best, candidate);\n");
         sb.append("        }\n");
         sb.append("        for (Token child : token.filteredChildren) {\n");
-        sb.append("            best = findBestMappedToken(child, depth + 1, best);\n");
+        sb.append("            best = findBestMappedToken(child, depth + 1, best, preferredAstSimpleName);\n");
         sb.append("        }\n");
         sb.append("        return best;\n");
         sb.append("    }\n\n");
@@ -169,6 +175,9 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("        }\n");
         sb.append("        if (current == null) {\n");
         sb.append("            return candidate;\n");
+        sb.append("        }\n");
+        sb.append("        if (candidate.preferred != current.preferred) {\n");
+        sb.append("            return candidate.preferred ? candidate : current;\n");
         sb.append("        }\n");
         sb.append("        if (candidate.depth < current.depth) {\n");
         sb.append("            return candidate;\n");
@@ -182,11 +191,13 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("    private static final class MappingCandidate {\n");
         sb.append("        private final Token token;\n");
         sb.append("        private final int depth;\n");
-        sb.append("        private final int startOffset;\n\n");
-        sb.append("        private MappingCandidate(Token token, int depth, int startOffset) {\n");
+        sb.append("        private final int startOffset;\n");
+        sb.append("        private final boolean preferred;\n\n");
+        sb.append("        private MappingCandidate(Token token, int depth, int startOffset, boolean preferred) {\n");
         sb.append("            this.token = token;\n");
         sb.append("            this.depth = depth;\n");
         sb.append("            this.startOffset = startOffset;\n");
+        sb.append("            this.preferred = preferred;\n");
         sb.append("        }\n");
         sb.append("    }\n\n");
 
