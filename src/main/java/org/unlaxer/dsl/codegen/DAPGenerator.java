@@ -54,6 +54,7 @@ public class DAPGenerator implements CodeGenerator {
         // fields
         sb.append("    private IDebugProtocolClient client;\n");
         sb.append("    private String pendingProgram;\n");
+        sb.append("    private String runtimeMode = \"token\";\n");
         sb.append("    private boolean stopOnEntry;\n");
         sb.append("    private String sourceContent = \"\";\n");
         sb.append("    private List<Token> stepPoints = new ArrayList<>();\n");
@@ -77,6 +78,7 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("    @Override\n");
         sb.append("    public CompletableFuture<Void> launch(Map<String, Object> args) {\n");
         sb.append("        pendingProgram = (String) args.getOrDefault(\"program\", \"\");\n");
+        sb.append("        runtimeMode = String.valueOf(args.getOrDefault(\"runtimeMode\", \"token\"));\n");
         sb.append("        stopOnEntry = Boolean.TRUE.equals(args.get(\"stopOnEntry\"));\n");
         sb.append("        client.initialized();\n");
         sb.append("        return CompletableFuture.completedFuture(null);\n");
@@ -250,7 +252,12 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("            var.setValue(\"\\\"\" + text.replace(\"\\\"\", \"\\\\\\\"\") + \"\\\"\");\n");
         sb.append("            var.setType(\"Token\");\n");
         sb.append("            var.setVariablesReference(0);\n");
-        sb.append("            response.setVariables(new Variable[]{var});\n");
+        sb.append("            Variable mode = new Variable();\n");
+        sb.append("            mode.setName(\"runtimeMode\");\n");
+        sb.append("            mode.setValue(runtimeMode);\n");
+        sb.append("            mode.setType(\"String\");\n");
+        sb.append("            mode.setVariablesReference(0);\n");
+        sb.append("            response.setVariables(new Variable[]{var, mode});\n");
         sb.append("        } else {\n");
         sb.append("            response.setVariables(new Variable[0]);\n");
         sb.append("        }\n");
@@ -300,16 +307,35 @@ public class DAPGenerator implements CodeGenerator {
         sb.append("        return true;\n");
         sb.append("    }\n\n");
 
-        // collectStepPoints() - depth-first token collection
+        // collectStepPoints() - dispatch by runtime mode
         sb.append("    private void collectStepPoints(Token token, List<Token> out) {\n");
+        sb.append("        if (isAstRuntimeMode()) {\n");
+        sb.append("            collectAstStepPoints(token, out);\n");
+        sb.append("            return;\n");
+        sb.append("        }\n");
+        sb.append("        collectTokenStepPoints(token, out);\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private boolean isAstRuntimeMode() {\n");
+        sb.append("        return \"ast\".equalsIgnoreCase(runtimeMode) || \"ast_evaluator\".equalsIgnoreCase(runtimeMode);\n");
+        sb.append("    }\n\n");
+
+        // collectTokenStepPoints() - depth-first token collection
+        sb.append("    private void collectTokenStepPoints(Token token, List<Token> out) {\n");
         sb.append("        if (token == null) return;\n");
         sb.append("        if (token.filteredChildren == null || token.filteredChildren.isEmpty()) {\n");
         sb.append("            out.add(token);\n");
         sb.append("            return;\n");
         sb.append("        }\n");
         sb.append("        for (Token child : token.filteredChildren) {\n");
-        sb.append("            collectStepPoints(child, out);\n");
+        sb.append("            collectTokenStepPoints(child, out);\n");
         sb.append("        }\n");
+        sb.append("    }\n\n");
+
+        // collectAstStepPoints() - placeholder for AST evaluator stepping
+        sb.append("    private void collectAstStepPoints(Token token, List<Token> out) {\n");
+        sb.append("        // Current fallback keeps token-level stepping; replace with AST-node stepping when mapper/evaluator runtime is wired.\n");
+        sb.append("        collectTokenStepPoints(token, out);\n");
         sb.append("    }\n\n");
 
         // getLineForToken() - 1-based line number from char offset

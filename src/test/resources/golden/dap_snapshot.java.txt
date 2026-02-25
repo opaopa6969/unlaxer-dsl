@@ -21,6 +21,7 @@ public class SnapshotDebugAdapter implements IDebugProtocolServer {
 
     private IDebugProtocolClient client;
     private String pendingProgram;
+    private String runtimeMode = "token";
     private boolean stopOnEntry;
     private String sourceContent = "";
     private List<Token> stepPoints = new ArrayList<>();
@@ -41,6 +42,7 @@ public class SnapshotDebugAdapter implements IDebugProtocolServer {
     @Override
     public CompletableFuture<Void> launch(Map<String, Object> args) {
         pendingProgram = (String) args.getOrDefault("program", "");
+        runtimeMode = String.valueOf(args.getOrDefault("runtimeMode", "token"));
         stopOnEntry = Boolean.TRUE.equals(args.get("stopOnEntry"));
         client.initialized();
         return CompletableFuture.completedFuture(null);
@@ -206,7 +208,12 @@ public class SnapshotDebugAdapter implements IDebugProtocolServer {
             var.setValue("\"" + text.replace("\"", "\\\"") + "\"");
             var.setType("Token");
             var.setVariablesReference(0);
-            response.setVariables(new Variable[]{var});
+            Variable mode = new Variable();
+            mode.setName("runtimeMode");
+            mode.setValue(runtimeMode);
+            mode.setType("String");
+            mode.setVariablesReference(0);
+            response.setVariables(new Variable[]{var, mode});
         } else {
             response.setVariables(new Variable[0]);
         }
@@ -255,14 +262,31 @@ public class SnapshotDebugAdapter implements IDebugProtocolServer {
     }
 
     private void collectStepPoints(Token token, List<Token> out) {
+        if (isAstRuntimeMode()) {
+            collectAstStepPoints(token, out);
+            return;
+        }
+        collectTokenStepPoints(token, out);
+    }
+
+    private boolean isAstRuntimeMode() {
+        return "ast".equalsIgnoreCase(runtimeMode) || "ast_evaluator".equalsIgnoreCase(runtimeMode);
+    }
+
+    private void collectTokenStepPoints(Token token, List<Token> out) {
         if (token == null) return;
         if (token.filteredChildren == null || token.filteredChildren.isEmpty()) {
             out.add(token);
             return;
         }
         for (Token child : token.filteredChildren) {
-            collectStepPoints(child, out);
+            collectTokenStepPoints(child, out);
         }
+    }
+
+    private void collectAstStepPoints(Token token, List<Token> out) {
+        // Current fallback keeps token-level stepping; replace with AST-node stepping when mapper/evaluator runtime is wired.
+        collectTokenStepPoints(token, out);
     }
 
     private int getLineForToken(Token t) {
