@@ -166,6 +166,10 @@ public class MapperGenerator implements CodeGenerator {
                     String leftType = inferType(grammar, rule, "left");
                     String opType = unwrapListType(inferType(grammar, rule, "op")).orElse("String");
                     String rightType = unwrapListType(inferType(grammar, rule, "right")).orElse("Object");
+                    boolean leafFallbackSupported =
+                        (astClass + "." + className).equals(leftType)
+                        && "String".equals(opType)
+                        && (astClass + "." + className).equals(rightType);
 
                     String ruleParserClass = parsersClass + "." + rule.name() + "Parser.class";
                     String repeatParserClass = parsersClass + "." + rule.name() + "Repeat" + assocShape.repeatIndex + "Parser.class";
@@ -192,11 +196,25 @@ public class MapperGenerator implements CodeGenerator {
                     sb.append("            working = findFirstDescendant(working, ").append(ruleParserClass).append(");\n");
                     sb.append("        }\n");
                     sb.append("        if (working == null) {\n");
-                    sb.append("            throw new IllegalArgumentException(\"Mapping token not found for rule ").append(rule.name()).append("\");\n");
+                    if (leafFallbackSupported) {
+                        sb.append("            String literal = stripQuotes(firstTokenText(token));\n");
+                        sb.append("            literal = literal == null ? \"\" : literal;\n");
+                        sb.append("            return new ").append(astClass).append(".").append(className)
+                            .append("(null, List.of(literal), List.of());\n");
+                    } else {
+                        sb.append("            throw new IllegalArgumentException(\"Mapping token not found for rule ").append(rule.name()).append("\");\n");
+                    }
                     sb.append("        }\n");
                     sb.append("        Token leftToken = findFirstDescendant(working, ").append(leftParserClass).append(");\n");
                     sb.append("        if (leftToken == null) {\n");
-                    sb.append("            throw new IllegalArgumentException(\"Left operand not found for rule ").append(rule.name()).append("\");\n");
+                    if (leafFallbackSupported) {
+                        sb.append("            String literal = stripQuotes(firstTokenText(working));\n");
+                        sb.append("            literal = literal == null ? \"\" : literal;\n");
+                        sb.append("            return new ").append(astClass).append(".").append(className)
+                            .append("(null, List.of(literal), List.of());\n");
+                    } else {
+                        sb.append("            throw new IllegalArgumentException(\"Left operand not found for rule ").append(rule.name()).append("\");\n");
+                    }
                     sb.append("        }\n");
                     sb.append("        ").append(leftType).append(" left = ").append(leftMapper).append(";\n");
                     sb.append("        List<").append(opType).append("> op = new ArrayList<>();\n");
