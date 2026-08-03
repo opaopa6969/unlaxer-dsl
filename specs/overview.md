@@ -59,10 +59,10 @@ UBNF は以下の要素で構成される:
 | AST | `ASTGenerator` | `XxxAST.java` — sealed interface + record による型安全な AST |
 | Mapper | `MapperGenerator` | `XxxMapper.java` — Token 木から AST へのマッピング |
 | Evaluator | `EvaluatorGenerator` | `XxxEvaluator.java` — AST の評価スケルトン |
-| LSP | `LSPGenerator` | `XxxLSP.java` — Language Server Protocol サーバー実装 |
-| LSPLauncher | `LSPLauncherGenerator` | `XxxLSPLauncher.java` — LSP サーバーのランチャー |
-| DAP | `DAPGenerator` | `XxxDAP.java` — Debug Adapter Protocol サーバー実装 |
-| DAPLauncher | `DAPLauncherGenerator` | `XxxDAPLauncher.java` — DAP サーバーのランチャー |
+| LSP | `LSPGenerator` | `XxxLanguageServer.java` — Language Server Protocol サーバー実装 |
+| LSPLauncher | `LSPLauncherGenerator` | `XxxLspLauncher.java` — LSP サーバーのランチャー |
+| DAP | `DAPGenerator` | `XxxDebugAdapter.java` — Debug Adapter Protocol サーバー実装 |
+| DAPLauncher | `DAPLauncherGenerator` | `XxxDapLauncher.java` — DAP サーバーのランチャー |
 
 ## パイプライン
 
@@ -80,7 +80,7 @@ Java ソースファイル群
 
 ## 現在の制限事項
 
-- セルフホスティングは未完了（Bootstrap パーサーがハンドコード）
+- Bootstrap パーサーはハンドコードだが、生成した `UBNFParsers` で `grammar/ubnf.ubnf` を再パースするセルフホスティングのラウンドトリップをテストしている
 - `@interleave`, `@backref`, `@scopeTree` はメタデータとして受理されるが、パーサー動作には未反映
 
 ## 変更履歴

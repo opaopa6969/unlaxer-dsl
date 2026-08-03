@@ -132,7 +132,7 @@ public interface CodeGenerator {
 
 ### 出力
 
-`{GrammarName}LSP.java`
+`{GrammarName}LanguageServer.java`
 
 ### 生成内容
 
@@ -147,7 +147,7 @@ public interface CodeGenerator {
 
 ### 出力
 
-`{GrammarName}LSPLauncher.java`
+`{GrammarName}LspLauncher.java`
 
 ### 生成内容
 
@@ -161,7 +161,7 @@ public interface CodeGenerator {
 
 ### 出力
 
-`{GrammarName}DAP.java`
+`{GrammarName}DebugAdapter.java`
 
 ### 生成内容
 
@@ -176,7 +176,7 @@ public interface CodeGenerator {
 
 ### 出力
 
-`{GrammarName}DAPLauncher.java`
+`{GrammarName}DapLauncher.java`
 
 ### 生成内容
 

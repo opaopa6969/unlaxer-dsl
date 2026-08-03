@@ -70,10 +70,10 @@
 
 | ジェネレータ | 生成クラス | 説明 |
 |------------|-----------|------|
-| LSP | `{GrammarName}LSP.java` | LSP サーバー実装 |
-| LSPLauncher | `{GrammarName}LSPLauncher.java` | LSP サーバーの起動 `main()` |
-| DAP | `{GrammarName}DAP.java` | DAP サーバー実装 |
-| DAPLauncher | `{GrammarName}DAPLauncher.java` | DAP サーバーの起動 `main()` |
+| LSP | `{GrammarName}LanguageServer.java` | LSP サーバー実装 |
+| LSPLauncher | `{GrammarName}LspLauncher.java` | LSP サーバーの起動 `main()` |
+| DAP | `{GrammarName}DebugAdapter.java` | DAP サーバー実装 |
+| DAPLauncher | `{GrammarName}DapLauncher.java` | DAP サーバーの起動 `main()` |
 
 ---
 
