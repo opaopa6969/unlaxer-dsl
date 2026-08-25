@@ -79,6 +79,13 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("    private ").append(mapperClass).append("() {}\n\n");
         sb.append("    private static final java.util.IdentityHashMap<Object, int[]> NODE_SOURCE_SPANS =\n");
         sb.append("        new java.util.IdentityHashMap<>();\n\n");
+        // Per-parse memo of token -> mapped AST node. mapToken is otherwise re-invoked on the same
+        // token objects O(depth) times (findBestMappedToken probes every node, and each toXxxExpr maps
+        // its operands via findBestMappedToken again), so a deeply nested expression re-constructs the
+        // same subtrees millions of times. Memoizing by token identity collapses that to one
+        // construction per token. Cleared at the start of every parse(). (tinyexpression #49)
+        sb.append("    private static final java.util.IdentityHashMap<Token, ").append(astClass).append("> MAP_MEMO =\n");
+        sb.append("        new java.util.IdentityHashMap<>();\n\n");
 
         String rootClassName = rootRule.flatMap(this::getMappingAnnotation)
             .map(m -> astClass + "." + m.className())
@@ -92,6 +99,7 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("    }\n\n");
         sb.append("    public static ").append(rootClassName).append(" parse(String source, String preferredAstSimpleName) {\n");
         sb.append("        NODE_SOURCE_SPANS.clear();\n");
+        sb.append("        MAP_MEMO.clear();\n");
         sb.append("        Parser rootParser = ").append(parsersClass).append(".getRootParser();\n");
         sb.append("        ParseContext context = new ParseContext(createRootSourceCompat(source));\n");
         sb.append("        Parsed parsed;\n");
@@ -132,6 +140,18 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("    }\n\n");
 
         sb.append("    private static ").append(astClass).append(" mapToken(Token token) {\n");
+        sb.append("        if (token == null) {\n");
+        sb.append("            return null;\n");
+        sb.append("        }\n");
+        sb.append("        if (MAP_MEMO.containsKey(token)) {\n");
+        sb.append("            return MAP_MEMO.get(token);\n");
+        sb.append("        }\n");
+        sb.append("        ").append(astClass).append(" mapped = mapTokenUncached(token);\n");
+        sb.append("        MAP_MEMO.put(token, mapped);\n");
+        sb.append("        return mapped;\n");
+        sb.append("    }\n\n");
+
+        sb.append("    private static ").append(astClass).append(" mapTokenUncached(Token token) {\n");
         sb.append("        if (token == null) {\n");
         sb.append("            return null;\n");
         sb.append("        }\n");
@@ -490,35 +510,28 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("        return raw == null ? null : raw.strip();\n");
         sb.append("    }\n\n");
 
+        // Token is always org.unlaxer.Token (imported above): getToken()/tokenString/source are public
+        // and stable, so call them directly. The previous getClass().getMethod/getField reflection
+        // allocated a Method/Field + PublicMethods$MethodList + Class[] on every call; under the deeply
+        // nested expressions this was, with the per-token re-mapping, the dominant allocation. (#49)
         sb.append("    static String tokenTextCompat(Token token) {\n");
         sb.append("        if (token == null) {\n");
         sb.append("            return null;\n");
         sb.append("        }\n");
-        sb.append("        try {\n");
-        sb.append("            java.lang.reflect.Method m = token.getClass().getMethod(\"getToken\");\n");
-        sb.append("            Object value = m.invoke(token);\n");
-        sb.append("            if (value instanceof Optional<?> optional && optional.isPresent()) {\n");
-        sb.append("                Object v = optional.get();\n");
-        sb.append("                return v == null ? null : String.valueOf(v);\n");
-        sb.append("            }\n");
-        sb.append("        } catch (Throwable ignored) {}\n");
-        sb.append("        try {\n");
-        sb.append("            java.lang.reflect.Field f = token.getClass().getField(\"tokenString\");\n");
-        sb.append("            Object value = f.get(token);\n");
-        sb.append("            if (value instanceof Optional<?> optional && optional.isPresent()) {\n");
-        sb.append("                Object v = optional.get();\n");
-        sb.append("                return v == null ? null : String.valueOf(v);\n");
-        sb.append("            }\n");
-        sb.append("        } catch (Throwable ignored) {}\n");
-        sb.append("        try {\n");
-        sb.append("            java.lang.reflect.Field f = token.getClass().getField(\"source\");\n");
-        sb.append("            Object src = f.get(token);\n");
-        sb.append("            if (src != null) {\n");
-        sb.append("                java.lang.reflect.Method m = src.getClass().getMethod(\"sourceAsString\");\n");
-        sb.append("                Object v = m.invoke(src);\n");
-        sb.append("                return v == null ? null : String.valueOf(v);\n");
-        sb.append("            }\n");
-        sb.append("        } catch (Throwable ignored) {}\n");
+        sb.append("        Optional<String> tokenValue = token.getToken();\n");
+        sb.append("        if (tokenValue != null && tokenValue.isPresent()) {\n");
+        sb.append("            String v = tokenValue.get();\n");
+        sb.append("            return v == null ? null : String.valueOf(v);\n");
+        sb.append("        }\n");
+        sb.append("        if (token.tokenString != null && token.tokenString.isPresent()) {\n");
+        sb.append("            String v = token.tokenString.get();\n");
+        sb.append("            return v == null ? null : String.valueOf(v);\n");
+        sb.append("        }\n");
+        sb.append("        org.unlaxer.Source src = token.source;\n");
+        sb.append("        if (src != null) {\n");
+        sb.append("            String v = src.sourceAsString();\n");
+        sb.append("            return v == null ? null : String.valueOf(v);\n");
+        sb.append("        }\n");
         sb.append("        return null;\n");
         sb.append("    }\n\n");
 
@@ -531,27 +544,15 @@ public class MapperGenerator implements CodeGenerator {
         sb.append("        if (token == null) {\n");
         sb.append("            return 0;\n");
         sb.append("        }\n");
-        sb.append("        try {\n");
-        sb.append("            java.lang.reflect.Field sourceField = token.getClass().getField(\"source\");\n");
-        sb.append("            Object source = sourceField.get(token);\n");
-        sb.append("            if (source == null) {\n");
-        sb.append("                return 0;\n");
-        sb.append("            }\n");
-        sb.append("            java.lang.reflect.Method offsetMethod = source.getClass().getMethod(\"offsetFromRoot\");\n");
-        sb.append("            Object offset = offsetMethod.invoke(source);\n");
-        sb.append("            if (offset == null) {\n");
-        sb.append("                return 0;\n");
-        sb.append("            }\n");
-        sb.append("            java.lang.reflect.Method valueMethod = offset.getClass().getMethod(\"value\");\n");
-        sb.append("            Object value = valueMethod.invoke(offset);\n");
-        sb.append("            if (value instanceof Integer i) {\n");
-        sb.append("                return i;\n");
-        sb.append("            }\n");
-        sb.append("            if (value instanceof Number n) {\n");
-        sb.append("                return n.intValue();\n");
-        sb.append("            }\n");
-        sb.append("        } catch (Throwable ignored) {}\n");
-        sb.append("        return 0;\n");
+        sb.append("        org.unlaxer.Source source = token.source;\n");
+        sb.append("        if (source == null) {\n");
+        sb.append("            return 0;\n");
+        sb.append("        }\n");
+        sb.append("        org.unlaxer.CodePointOffset offset = source.offsetFromRoot();\n");
+        sb.append("        if (offset == null) {\n");
+        sb.append("            return 0;\n");
+        sb.append("        }\n");
+        sb.append("        return offset.value();\n");
         sb.append("    }\n\n");
 
         sb.append("    static <T> T registerNodeSourceSpan(T node, Token token) {\n");
