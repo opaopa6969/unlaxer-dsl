@@ -64,7 +64,7 @@ final class CodegenRunner {
         FileSystemPort fs
     ) throws IOException {
         String source = fs.readString(Path.of(config.grammarFile()));
-        UBNFFile file = UBNFMapper.parse(source);
+        UBNFFile file = UBNFMapper.parse(source, true);
 
         Map<String, CodeGenerator> generatorMap = generatorMap();
 

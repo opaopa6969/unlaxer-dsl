@@ -65,8 +65,25 @@ public class UBNFMapper {
      * @throws IllegalArgumentException パースに失敗した場合
      */
     public static UBNFFile parse(String source) {
+        return parse(source, false);
+    }
+
+    /**
+     * UBNF ソース文字列をパースして AST に変換する。
+     *
+     * @param source UBNF ファイルの文字列
+     * @param memoize packrat memoization を有効にするかどうか。有効にするとバックトラック時の
+     *     再パースを巻き込んでパース時間を短縮できる。本repoの全テストで、memoize 有無による
+     *     パース結果（トークン木から生成される AST）の差異は観測されていない。デフォルト無効。
+     * @return パース＋変換された UBNFFile AST ノード
+     * @throws IllegalArgumentException パースに失敗した場合
+     */
+    public static UBNFFile parse(String source, boolean memoize) {
         StringSource stringSource = StringSource.createRootSource(source);
         try (ParseContext context = new ParseContext(stringSource)) {
+            if (memoize) {
+                context.enableMemoize();
+            }
             Parser rootParser = UBNFParsers.getRootParser();
             Parsed parsed = rootParser.parse(context);
             if (false == parsed.isSucceeded()) {
