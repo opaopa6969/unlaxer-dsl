@@ -1,11 +1,12 @@
 # Parser IR 仕様
 
 > ステータス: draft
-> 最終更新: 2026-03-01
+> 最終更新: 2026-08-27
+> 規範性: Parser IR の唯一の規範文書
 
 ## スコープ
 
-このドキュメントは Parser IR（Intermediate Representation）の仕様を定義する。JSON スキーマ、ノードモデル、スコープイベント、バリデーションルールを含む。`docs/PARSER-IR-DRAFT.md` の形式化。
+このドキュメントは Parser IR（Intermediate Representation）の規範仕様を定義する。JSON スキーマ、ノードモデル、スコープイベント、バリデーションルールを含む。
 
 このドキュメントが **扱わない** 範囲:
 - CLI の `--validate-parser-ir` / `--export-parser-ir`（→ [cli.md](cli.md)）
@@ -14,7 +15,6 @@
 
 - [cli.md](cli.md) — Parser IR の CLI 操作
 - [annotations.md](annotations.md) — @scopeTree とスコープイベントの関係
-- [docs/PARSER-IR-DRAFT.md](../docs/PARSER-IR-DRAFT.md) — 設計メモ（参考）
 - [docs/schema/parser-ir-v1.draft.json](../docs/schema/parser-ir-v1.draft.json) — JSON スキーマ
 
 ---
@@ -38,6 +38,23 @@ Parser IR は以下を目的とする:
 
 ---
 
+## v1 ドキュメント構造
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `irVersion` | `string` | はい | 現在は `"1.0"` |
+| `source` | `string` | はい | 空白以外を含むソースパスまたは論理 ID |
+| `nodes` | `object[]` | はい | 1件以上の Parser IR ノード |
+| `diagnostics` | `object[]` | はい | 診断。診断がない場合は空配列 |
+| `tokens` | `object[]` | いいえ | トークン列 |
+| `trivia` | `object[]` | いいえ | trivia 列 |
+| `scopeEvents` | `object[]` | いいえ | スコープイベント列 |
+| `annotations` | `object[]` | いいえ | ノードに付与されたアノテーション |
+
+未定義のトップレベルフィールドは許可しない（MUST NOT）。
+
+---
+
 ## ノードモデル
 
 各ノードは以下のフィールドを持つ:
@@ -54,7 +71,8 @@ Parser IR は以下を目的とする:
 
 - `start`: 開始オフセット（inclusive）
 - `end`: 終了オフセット（exclusive）
-- `start < end`（MUST）
+- `start` と `end` は 0 以上（MUST）
+- `start <= end`（MUST）。空範囲は許可する
 
 ### 親子関係の整合性
 
@@ -67,12 +85,14 @@ Parser IR は以下を目的とする:
 
 ## スコープイベント
 
-| イベント種別 | 必須フィールド | 禁止フィールド |
-|------------|--------------|--------------|
+すべてのイベントで `event`, `scopeId`, `span` が必須である。
+
+| イベント種別 | 追加の必須フィールド | 禁止フィールド |
+|------------|--------------------|--------------|
 | `enterScope` | — | `symbol`, `kind`, `targetScopeId` |
 | `leaveScope` | — | `symbol`, `kind`, `targetScopeId` |
-| `define` | `symbol`, `kind` | — |
-| `use` | `symbol` | `kind` |
+| `define` | `symbol`, `kind` | `scopeMode` |
+| `use` | `symbol` | `kind`, `scopeMode` |
 
 ### スコープイベントのルール
 
@@ -104,10 +124,12 @@ Parser IR は以下を目的とする:
 
 | フィールド | 型 | 説明 |
 |-----------|-----|------|
-| `code` | `string` | 診断コード |
-| `span` | `object` | ソース位置 |
-| `message` | `string` | メッセージ |
-| `related` | `object[]` | 関連情報（optional） |
+| `code` | `string` | はい | 診断コード |
+| `severity` | `string` | はい | `ERROR`, `WARNING`, `INFO` のいずれか |
+| `span` | `object` | はい | ソース位置 |
+| `message` | `string` | はい | 空でないメッセージ |
+| `hint` | `string` | いいえ | 空でない修正ヒント |
+| `related` | `object[]` | いいえ | 関連情報 |
 
 ### ルール
 
@@ -134,6 +156,40 @@ NDJSON モードでは `parser-ir-export` イベントが出力される:
 
 ---
 
+## 外部パーサー統合
+
+UBNF で生成されていないパーサーは、次の SPI を使って同じ Parser IR
+パイプラインへ接続できる。
+
+- `ParseRequest` — ソース ID、内容、アダプター固有オプションを渡す
+- `ParserIrAdapter` — `metadata()` と `parseToIr(ParseRequest)` を実装する
+- `ParserIrAdapterMetadata` — アダプター ID、対応 IR バージョン、対応機能を宣言する
+- `ParserIrDocument` — 生成した IR ペイロードを保持する
+- `ParserIrConformanceValidator` — 共通の実行時契約を検査する
+- `ParserIrFeature` — tokens、trivia、scope events、annotations、diagnostics などの対応機能を表す
+
+アダプターは空でない ID と1件以上の対応 IR バージョンを宣言し（MUST）、
+返したドキュメントが本仕様と JSON スキーマを満たすことを保証する（MUST）。
+最小の実行例は `ParserIrAdapterContractTest` の
+`ScopeTreeSampleAdapter` を参照する。
+
+`GrammarToParserIrExporter` は UBNF のルールをノードとアノテーションへ
+変換する。`@scopeTree(...)` を持つルールについては、
+`scope:{GrammarName}::{RuleName}` を ID とする、同じ `scopeMode` の
+`enterScope` / `leaveScope` イベントを生成する。
+
+---
+
+## バージョニング
+
+- v1 の `irVersion` は `1.0` とする
+- 任意フィールドの追加は後方互換とする
+- 必須フィールドの削除または改名はメジャーバージョンを更新する
+- オフセット単位や ID 安定性などの意味変更はメジャーバージョンを更新する
+- アダプターは `ParserIrAdapterMetadata` で対応バージョンを宣言する
+
+---
+
 ## テストフィクスチャ
 
 `src/test/resources/schema/parser-ir/` に配置:
@@ -148,8 +204,9 @@ NDJSON モードでは `parser-ir-export` イベントが出力される:
 
 - Parser IR は Draft ステータス
 - UBNF → Parser IR のエクスポートは基本的なノード構造のみ
-- 非 UBNF パーサーとの統合は未実装
+- 外部パーサー向け SPI と適合性検査は提供するが、本番用途の参照アダプターは未提供
 
 ## 変更履歴
 
-- 2026-03-01: PARSER-IR-DRAFT.md を形式化
+- 2026-08-27: Parser IR の唯一の規範文書として位置づけ
+- 2026-03-01: 初版作成
