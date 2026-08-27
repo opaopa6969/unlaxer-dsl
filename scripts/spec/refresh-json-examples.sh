@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-SPEC_FILE="$ROOT_DIR/SPEC.md"
+CLI_SPEC_FILE="$ROOT_DIR/specs/cli.md"
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 SKIP_BUILD=false
@@ -128,13 +128,13 @@ SECTION
 START_MARKER='<!-- JSON_REPORT_EXAMPLES_START -->'
 END_MARKER='<!-- JSON_REPORT_EXAMPLES_END -->'
 
-if ! grep -q "^${START_MARKER}$" "$SPEC_FILE" || ! grep -q "^${END_MARKER}$" "$SPEC_FILE"; then
-  echo "[spec/refresh-json-examples] ERROR: marker block not found in SPEC.md" >&2
-  echo "[spec/refresh-json-examples] Fix: ensure SPEC.md includes JSON_REPORT_EXAMPLES_START/END markers." >&2
+if ! grep -q "^${START_MARKER}$" "$CLI_SPEC_FILE" || ! grep -q "^${END_MARKER}$" "$CLI_SPEC_FILE"; then
+  echo "[spec/refresh-json-examples] ERROR: marker block not found in specs/cli.md" >&2
+  echo "[spec/refresh-json-examples] Fix: ensure specs/cli.md includes JSON_REPORT_EXAMPLES_START/END markers." >&2
   exit 1
 fi
 
-TMP_FILE="$WORK_DIR/SPEC.md.tmp"
+TMP_FILE="$WORK_DIR/cli.md.tmp"
 awk -v start="$START_MARKER" -v end="$END_MARKER" -v content="$SECTION_CONTENT" '
 $0 == start {
   print;
@@ -153,8 +153,8 @@ in_block {
 {
   print;
 }
-' "$SPEC_FILE" > "$TMP_FILE"
+' "$CLI_SPEC_FILE" > "$TMP_FILE"
 
-mv "$TMP_FILE" "$SPEC_FILE"
+mv "$TMP_FILE" "$CLI_SPEC_FILE"
 
-echo "[spec/refresh-json-examples] Updated SPEC.md JSON examples."
+echo "[spec/refresh-json-examples] Updated specs/cli.md JSON examples."

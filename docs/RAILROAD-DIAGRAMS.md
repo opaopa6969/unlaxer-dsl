@@ -1,16 +1,24 @@
 # UBNF → Railroad Diagrams Generator
 
+> **Status: not implemented.** This document is a design proposal for a
+> possible future feature. The CLI, Java classes, output formats, and behavior
+> described below are not present in this repository and must not be treated as
+> supported functionality.
+
 ## Overview
 
-The **Railroad Diagram Generator** is a command-line tool that converts UBNF grammar files into visual railroad diagrams. Railroad diagrams are a clear, visual way to represent grammar rules and are particularly useful for documentation.
+The proposed **Railroad Diagram Generator** would be a command-line tool that converts UBNF grammar files into visual railroad diagrams. Railroad diagrams are a clear, visual way to represent grammar rules and are particularly useful for documentation.
 
-**Source files:**
+**Proposed source files (not present):**
 - `src/main/java/org/unlaxer/dsl/tools/railroad/RailroadMain.java` — CLI entry point
 - `src/main/java/org/unlaxer/dsl/tools/railroad/RailroadDiagram.java` — SVG rendering engine
 - `src/main/java/org/unlaxer/dsl/tools/railroad/UBNFToRailroad.java` — UBNF to Railroad model converter
 - `src/main/java/org/unlaxer/dsl/tools/railroad/SvgToPngConverter.java` — SVG→PNG transcoder (Apache Batik)
 
 ## Usage
+
+The following commands illustrate the proposed interface; they are not runnable
+with the current codebase.
 
 ```bash
 java RailroadMain <input.ubnf> [output-dir] [--format svg|png|both|markdown]
@@ -237,10 +245,9 @@ PNG output uses **Apache Batik** (`batik-transcoder`):
 
 ## Related Tools
 
-- **[BNF Converter](UBNF-TO-BNF.md)** — Generate EBNF from UBNF
-- **[Code Generators](CODEGEN.md)** — Generate Parser, AST, Mapper, LSP, DAP from UBNF
+- [UBNF syntax specification](../specs/ubnf-syntax.md)
+- [Implemented code generators](../specs/generators.md)
 
 ## See Also
 
 - [UBNF Syntax Specification](../grammar/ubnf.ubnf)
-- [RailroadDiagram Implementation](../src/main/java/org/unlaxer/dsl/tools/railroad/)

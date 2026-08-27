@@ -1,10 +1,10 @@
 # unlaxer-dsl
 [English](README.md) | [日本語](README.ja.md)
-[Specification](SPEC.md)
-[Parser IR Draft](docs/PARSER-IR-DRAFT.md)
-[Railroad Diagrams](docs/RAILROAD-DIAGRAMS.md)
+[Specifications](specs/overview.md)
+[Parser IR Specification](specs/parser-ir.md)
+[Railroad Diagram Design (not implemented)](docs/RAILROAD-DIAGRAMS.md)
 
-A tool that automatically generates Java parsers, ASTs, mappers, and evaluators from grammar definitions written in UBNF (Unlaxer BNF) notation.
+A tool that generates Java parsers, ASTs, mappers, evaluators, LSP servers, and DAP debug adapters from grammar definitions written in UBNF (Unlaxer BNF) notation, with sample VS Code extension builds.
 
 ---
 
@@ -27,6 +27,10 @@ A tool that automatically generates Java parsers, ASTs, mappers, and evaluators 
   - [ParserGenerator](#parsergenerator)
   - [MapperGenerator](#mappergenerator)
   - [EvaluatorGenerator](#evaluatorgenerator)
+  - [LSPGenerator](#lspgenerator)
+  - [LSPLauncherGenerator](#lsplaunchergenerator)
+  - [DAPGenerator](#dapgenerator)
+  - [DAPLauncherGenerator](#daplaunchergenerator)
 - [CodegenMain - CLI Tool](#codegenmain---cli-tool)
 - [Building the VS Code Extension (VSIX)](#building-the-vs-code-extension-vsix)
 - [Tutorial 1: TinyCalc](#tutorial-1-tinycalc)
@@ -40,11 +44,17 @@ A tool that automatically generates Java parsers, ASTs, mappers, and evaluators 
 ## Features
 
 - **UBNF notation**: Describe grammars concisely with extended BNF syntax (groups `()`, optional `[]`, repetition `{}`, capture `@name`)
-- **Four kinds of code generation**: Automatically generate four Java classes from one grammar definition
+- **Eight kinds of code generation**: Generate up to eight Java classes from one grammar definition
   - `XxxParsers.java`: parser classes using unlaxer-common parser combinators
   - `XxxAST.java`: type-safe AST using sealed interfaces + records
   - `XxxMapper.java`: parse-tree -> AST mapping skeleton
   - `XxxEvaluator.java`: abstract evaluator that traverses AST
+  - `XxxLanguageServer.java`: lsp4j language server with completion, hover, semantic tokens, and diagnostics
+  - `XxxLspLauncher.java`: stdio launcher for the language server
+  - `XxxDebugAdapter.java`: DAP server with launch, parse-error reporting, stepping, and breakpoints
+  - `XxxDapLauncher.java`: stdio launcher for the debug adapter
+- **`CodegenMain` CLI**: Generate sources from a `.ubnf` file in one command
+- **One-command VSIX builds**: `mvn verify` in `tinycalc-vscode/` or `ubnf-vscode/` builds an extension containing LSP and DAP support
 - **Java 21 support**: Full use of sealed interfaces, records, and switch expressions
 - **Self-hosting design**: UBNF grammar itself is written in UBNF, aiming to eventually process itself
 
@@ -56,6 +66,7 @@ A tool that automatically generates Java parsers, ASTs, mappers, and evaluators 
 |---|---|
 | Java | 21+ (with `--enable-preview`) |
 | Maven | 3.8+ |
+| Node.js + npm | 18+ (only when building a VSIX) |
 
 ---
 
@@ -85,13 +96,13 @@ Check golden snapshots are up to date:
 ./scripts/check-golden-snapshots.sh
 ```
 
-Refresh JSON report examples in `SPEC.md`:
+Refresh JSON report examples in `specs/cli.md`:
 
 ```bash
 ./scripts/spec/refresh-json-examples.sh
 ```
 
-Check `SPEC.md` JSON examples are current (for CI):
+Check `specs/cli.md` JSON examples are current (for CI):
 
 ```bash
 ./scripts/spec/check-json-examples.sh
@@ -143,15 +154,20 @@ String ubnfSource = Files.readString(Path.of("tinycalc.ubnf"));
 GrammarDecl grammar = UBNFMapper.parse(ubnfSource).grammars().get(0);
 
 // 3. Generate each output
-CodeGenerator.GeneratedSource ast       = new ASTGenerator()      .generate(grammar);
-CodeGenerator.GeneratedSource parsers   = new ParserGenerator()   .generate(grammar);
-CodeGenerator.GeneratedSource mapper    = new MapperGenerator()   .generate(grammar);
-CodeGenerator.GeneratedSource evaluator = new EvaluatorGenerator().generate(grammar);
+CodeGenerator.GeneratedSource ast        = new ASTGenerator()         .generate(grammar);
+CodeGenerator.GeneratedSource parsers    = new ParserGenerator()      .generate(grammar);
+CodeGenerator.GeneratedSource mapper     = new MapperGenerator()      .generate(grammar);
+CodeGenerator.GeneratedSource evaluator  = new EvaluatorGenerator()   .generate(grammar);
+CodeGenerator.GeneratedSource lspServer  = new LSPGenerator()         .generate(grammar);
+CodeGenerator.GeneratedSource lspLaunch  = new LSPLauncherGenerator() .generate(grammar);
+CodeGenerator.GeneratedSource dapAdapter = new DAPGenerator()         .generate(grammar);
+CodeGenerator.GeneratedSource dapLaunch  = new DAPLauncherGenerator() .generate(grammar);
 
 // 4. Extract and save source
 System.out.println(parsers.packageName()); // org.unlaxer.tinycalc.generated
 System.out.println(parsers.className());   // TinyCalcParsers
-System.out.println(parsers.source());      // public class TinyCalcParsers { ... }
+System.out.println(dapAdapter.className()); // TinyCalcDebugAdapter
+System.out.println(dapLaunch.className());  // TinyCalcDapLauncher
 ```
 
 ---
@@ -351,6 +367,14 @@ var mapper = new MapperGenerator().generate(grammar);
 
 // Generate evaluator
 var evaluator = new EvaluatorGenerator().generate(grammar);
+
+// Generate LSP server and stdio launcher
+var lspServer   = new LSPGenerator().generate(grammar);
+var lspLauncher = new LSPLauncherGenerator().generate(grammar);
+
+// Generate DAP adapter and stdio launcher
+var dapAdapter  = new DAPGenerator().generate(grammar);
+var dapLauncher = new DAPLauncherGenerator().generate(grammar);
 ```
 
 ---
@@ -830,6 +854,130 @@ public class TinyCalcCalculator extends TinyCalcEvaluator<Double> {
         };
     }
 }
+```
+
+---
+
+### LSPGenerator
+
+Generates `{Name}LanguageServer.java`, an lsp4j-based language server
+skeleton with the following behavior.
+
+| Capability | Generated behavior |
+|---|---|
+| `initialize` | Advertises full document sync, completion, hover, and semantic tokens |
+| `completion` | Returns keywords extracted from grammar terminal elements |
+| `hover` | Reports a valid document or the parse-error offset |
+| `semanticTokensFull` | Currently returns an empty token list while keeping the capability available for extension |
+| `didOpen` / `didChange` | Parses with `{Name}Parsers.getRootParser()` and publishes diagnostics |
+
+The generated server keeps the protocol plumbing and parser integration in one
+class so projects can extend the language-specific responses.
+
+```java
+public class TinyCalcLanguageServer
+        implements LanguageServer, LanguageClientAware {
+
+    private static final List<String> KEYWORDS =
+        List.of("var", "variable", "set", "(", ")", ";", "+", "-", "*", "/");
+
+    public ParseResult parseDocument(String uri, String content) {
+        Parser parser = TinyCalcParsers.getRootParser();
+        ParseContext context = new ParseContext(StringSource.createRootSource(content));
+        Parsed result = parser.parse(context);
+        // Publish diagnostics from the parse result.
+    }
+}
+```
+
+---
+
+### LSPLauncherGenerator
+
+Generates `{Name}LspLauncher.java`, the `main` class that connects the language
+server to an editor over standard input and output.
+
+```java
+public class TinyCalcLspLauncher {
+    public static void main(String[] args) throws IOException {
+        TinyCalcLanguageServer server = new TinyCalcLanguageServer();
+        Launcher<LanguageClient> launcher =
+            LSPLauncher.createServerLauncher(server, System.in, System.out);
+        server.connect(launcher.getRemoteProxy());
+        launcher.startListening();
+    }
+}
+```
+
+---
+
+### DAPGenerator
+
+Generates `{Name}DebugAdapter.java`, a Debug Adapter Protocol server that runs
+over stdio. It parses the launched program and exposes token-based stepping.
+
+| Request or event | Generated behavior |
+|---|---|
+| `initialize` | Reports support for `configurationDone` |
+| `launch` | Stores the program path and `stopOnEntry`, then emits `initialized` |
+| `configurationDone` | Parses the program, collects step points, and either stops or terminates |
+| `setBreakpoints` | Stores requested source lines and returns verified breakpoints |
+| `next` | Advances to the next token or emits `terminated` |
+| `continue` | Finds the next breakpoint or emits `terminated` |
+| `threads` | Returns one `main` thread |
+| `stackTrace` | Maps the current token offset to a one-based source line and column |
+| `scopes` / `variables` | Exposes the current token text and parser class |
+
+Step points come from the parsed token tree. With `stopOnEntry: true`, the
+adapter stops at the first point; F10 advances one point, while F5 searches for
+the next point whose source line has a breakpoint.
+
+```java
+public class TinyCalcDebugAdapter implements IDebugProtocolServer {
+    private List<Token> stepPoints = new ArrayList<>();
+    private int stepIndex = 0;
+
+    @Override
+    public CompletableFuture<Void> next(NextArguments args) {
+        stepIndex++;
+        if (stepIndex >= stepPoints.size()) {
+            sendTerminated();
+        } else {
+            StoppedEventArguments stopped = new StoppedEventArguments();
+            stopped.setReason("step");
+            stopped.setThreadId(1);
+            client.stopped(stopped);
+        }
+        return CompletableFuture.completedFuture(null);
+    }
+}
+```
+
+---
+
+### DAPLauncherGenerator
+
+Generates `{Name}DapLauncher.java`, the stdio entry point for the generated
+debug adapter.
+
+```java
+public class TinyCalcDapLauncher {
+    public static void main(String[] args) throws IOException {
+        TinyCalcDebugAdapter adapter = new TinyCalcDebugAdapter();
+        Launcher<IDebugProtocolClient> launcher =
+            DSPLauncher.createServerLauncher(adapter, System.in, System.out);
+        adapter.connect(launcher.getRemoteProxy());
+        launcher.startListening();
+    }
+}
+```
+
+The LSP and DAP launchers are packaged in the same fat jar. Start them with
+`-cp` and the desired main class rather than `-jar`:
+
+```bash
+java --enable-preview -cp tinycalc-lsp-server.jar \
+  org.unlaxer.tinycalc.generated.TinyCalcDapLauncher
 ```
 
 ---

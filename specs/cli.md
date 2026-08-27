@@ -1,13 +1,13 @@
 # CLI 仕様
 
 > ステータス: draft
-> 最終更新: 2026-03-01
+> 最終更新: 2026-08-27
 
 ## スコープ
 
 このドキュメントは `CodegenMain` CLI ツールの完全仕様を定義する。すべてのフラグ、終了コード、レポート形式、マニフェスト、各種動作モードを含む。
 
-このドキュメントは既存の `SPEC.md` の CLI 節から抽出・拡充したものである。
+CLI とレポート形式に関する規範的な記述は、このドキュメントで一元管理する。
 
 このドキュメントが **扱わない** 範囲:
 - バリデーションルール詳細（→ [validation.md](validation.md)）
@@ -162,6 +162,34 @@ ndjson モードでは:
 - `stderr` も JSON-lines のみ（バリデーション失敗時）
 - `--report-file` 使用時、永続化されるのは NDJSON イベントラッパーなしの生 JSON ペイロード
 
+### JSON レポート例
+
+実際の CLI 出力から再生成する:
+
+```bash
+./scripts/spec/refresh-json-examples.sh
+```
+
+<!-- JSON_REPORT_EXAMPLES_START -->
+Validate success:
+
+```json
+{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","argsHash":"<argsHash>","generatedAt":"<generatedAt>","mode":"validate","ok":true,"grammarCount":1,"warningsCount":0,"issues":[]}
+```
+
+Validate failure:
+
+```json
+{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","argsHash":"<argsHash>","generatedAt":"<generatedAt>","mode":"validate","ok":false,"failReasonCode":null,"issueCount":1,"warningsCount":0,"severityCounts":{"ERROR":1},"categoryCounts":{"MAPPING":1},"issues":[{"grammar":"Invalid","rule":"Invalid","code":"E-MAPPING-MISSING-CAPTURE","severity":"ERROR","category":"MAPPING","message":"rule Invalid @mapping(RootNode) param 'missing' has no matching capture","hint":"Add @missing capture in the rule body or remove it from params."}]}
+```
+
+Generate success:
+
+```json
+{"reportVersion":1,"schemaVersion":"1.0","schemaUrl":"https://unlaxer.dev/schema/report-v1.json","toolVersion":"<toolVersion>","argsHash":"<argsHash>","generatedAt":"<generatedAt>","mode":"generate","ok":true,"failReasonCode":null,"grammarCount":1,"generatedCount":1,"warningsCount":0,"writtenCount":1,"skippedCount":0,"conflictCount":0,"dryRunCount":0,"generatedFiles":["/path/to/out/org/example/valid/ValidAST.java"]}
+```
+<!-- JSON_REPORT_EXAMPLES_END -->
+
 ---
 
 ## argsHash
@@ -218,4 +246,5 @@ ndjson モードでは:
 
 ## 変更履歴
 
-- 2026-03-01: 既存 SPEC.md から抽出・拡充
+- 2026-08-27: CLI とレポート形式の規範文書として一元化
+- 2026-03-01: 初版作成

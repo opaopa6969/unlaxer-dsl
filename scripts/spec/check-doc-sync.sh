@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
 README_EN="$ROOT_DIR/README.md"
 README_JA="$ROOT_DIR/README.ja.md"
-SPEC_DOC="$ROOT_DIR/SPEC.md"
+SPEC_CLI="$ROOT_DIR/specs/cli.md"
 
 EXPECTED_FLAGS=(
   '--grammar'
@@ -42,7 +42,7 @@ extract_table_flags() {
 
 expected_sorted="$(printf '%s\n' "${EXPECTED_FLAGS[@]}" | sort -u)"
 
-for doc in "$README_EN" "$README_JA" "$SPEC_DOC"; do
+for doc in "$README_EN" "$README_JA" "$SPEC_CLI"; do
   if [[ ! -f "$doc" ]]; then
     echo "[spec/check-doc-sync] ERROR: missing doc file: $doc" >&2
     echo "[spec/check-doc-sync] Fix: restore the missing documentation file." >&2
@@ -70,11 +70,11 @@ for doc in "$README_EN" "$README_JA"; do
 done
 
 for opt in "${EXPECTED_FLAGS[@]}"; do
-  if ! grep -Fq -- "$opt" "$SPEC_DOC"; then
-    echo "[spec/check-doc-sync] ERROR: option '$opt' is missing in $(basename "$SPEC_DOC")" >&2
-    echo "[spec/check-doc-sync] Fix: add '$opt' to the CLI behavior section in SPEC.md." >&2
+  if ! grep -Fq -- "$opt" "$SPEC_CLI"; then
+    echo "[spec/check-doc-sync] ERROR: option '$opt' is missing in specs/cli.md" >&2
+    echo "[spec/check-doc-sync] Fix: add '$opt' to the CLI behavior section in specs/cli.md." >&2
     exit 1
   fi
 done
 
-echo "[spec/check-doc-sync] OK: CLI option docs are synchronized across README.md, README.ja.md, and SPEC.md."
+echo "[spec/check-doc-sync] OK: CLI option docs are synchronized across README.md, README.ja.md, and specs/cli.md."
