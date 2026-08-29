@@ -187,7 +187,7 @@ public class UBNFMapper {
         if (!qualifiedTokens.isEmpty()) {
             List<Token> segments = findDescendants(qualifiedTokens.get(0), UBNFParsers.IdentifierParser.class);
             parserClass = segments.stream()
-                .map(t -> t.source.toString().trim())
+                .map(t -> firstWord(t.source.toString()))
                 .filter(s -> !s.isEmpty())
                 .collect(java.util.stream.Collectors.joining("."));
         } else {
