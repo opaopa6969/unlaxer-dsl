@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, unlaxer-dsl-ci]
 
     steps:
       - name: Checkout
@@ -28,20 +28,20 @@ jobs:
         run: mvn -q test
 
   script-check:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, unlaxer-dsl-ci]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install shellcheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
+        run: command -v shellcheck || { curl -fsSL https://github.com/koalaman/shellcheck/releases/download/v0.10.0/shellcheck-v0.10.0.linux.x86_64.tar.xz | tar -xJ -C "$RUNNER_TEMP" && echo "$RUNNER_TEMP/shellcheck-v0.10.0" >> "$GITHUB_PATH"; }
 
       - name: Check shell scripts
         run: ./scripts/check-scripts.sh
 
   doc-sync:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, unlaxer-dsl-ci]
 
     steps:
       - name: Checkout
@@ -51,7 +51,7 @@ jobs:
         run: ./scripts/spec/check-doc-sync.sh
 
   spec-check:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, unlaxer-dsl-ci]
 
     steps:
       - name: Checkout
@@ -74,7 +74,7 @@ jobs:
         run: ./scripts/spec/check-json-examples.sh
 
   golden-check:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, unlaxer-dsl-ci]
 
     steps:
       - name: Checkout
